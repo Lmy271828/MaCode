@@ -96,6 +96,22 @@ fi
 
 bash "$ENGINE_SCRIPT" "$SCENE_FILE" "$FRAMES_DIR" "$FPS" "$DURATION" "$WIDTH" "$HEIGHT" >> "$LOG_FILE" 2>&1
 
+# ── Resource Fuse Checks ──────────────────────────────────────
+FRAME_COUNT=$(find "$FRAMES_DIR" -name "*.png" | wc -l)
+if [[ "$FRAME_COUNT" -gt 10000 ]]; then
+    echo "FUSE: frame count $FRAME_COUNT exceeds limit 10000" >&2
+    exit 1
+fi
+
+# 50 GB = 53687091200 bytes
+DISK_BYTES=$(du -sb .agent/tmp/ 2>/dev/null | awk '{print $1}')
+if [[ "$DISK_BYTES" -gt 53687091200 ]]; then
+    DISK_GB=$((DISK_BYTES / 1024 / 1024 / 1024))
+    echo "FUSE: disk usage ${DISK_GB}GB exceeds limit 50GB" >&2
+    exit 1
+fi
+# ──────────────────────────────────────────────────────────────
+
 # 编码为 MP4
 bash "$PROJECT_ROOT/pipeline/concat.sh" "$FRAMES_DIR" "$OUTPUT_DIR/raw.mp4" >> "$LOG_FILE" 2>&1
 

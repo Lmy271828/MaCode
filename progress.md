@@ -129,15 +129,15 @@ $ diff <(ffprobe manim_version.mp4) <(ffprobe motion_canvas_version.mp4)
 **目标**：让 Agent 可以安全地自主迭代，错误可一键回滚。
 
 ### 3.1 必须完成
-- [ ] 编写 `bin/macode`：主入口 CLI，支持 `macode render <scene>`、`macode status`、`macode undo`。
-- [ ] 编写 `bin/agent-shell`：Agent 的默认 shell 入口，预装 PATH 与别名。
-- [ ] 编写 `bin/agent-run.sh`：包装器，实现 Git 原子操作协议：
+- [x] 编写 `bin/macode`：主入口 CLI，支持 `macode render <scene>`、`macode status`、`macode undo`。
+- [x] 编写 `bin/agent-shell`：Agent 的默认 shell 入口，预装 PATH 与别名。
+- [x] 编写 `bin/agent-run.sh`：包装器，实现 Git 原子操作协议：
   - 任务前：`git stash` + `git checkout -b agent/task_id`
   - 任务后：成功则 `commit + merge --no-ff`，失败则 `checkout - + branch -D`
-- [ ] 编写 `bin/safety-gate.sh`：命令白名单拦截器，解析 Agent 提交的 bash 命令，拦截非白名单工具。
-- [ ] 编写 `bin/discover`：交互式项目结构探索脚本，Agent 迷路时调用。
-- [ ] 引入 `project.yaml`：全局配置（默认引擎、分辨率、安全白名单、资源限制）。
-- [ ] 实现资源熔断：渲染前检查帧数 / 磁盘 / 时间上限。
+- [x] 编写 `bin/safety-gate.sh`：命令白名单拦截器，解析 Agent 提交的 bash 命令，拦截非白名单工具。
+- [x] 编写 `bin/discover`：交互式项目结构探索脚本，Agent 迷路时调用。
+- [x] 引入 `project.yaml`：全局配置（默认引擎、分辨率、安全白名单、资源限制）。
+- [x] 实现资源熔断：渲染前检查帧数 / 磁盘 / 时间上限。
 
 ### 3.2 明确不做
 - ❌ 不做复杂的权限系统（RBAC/OAuth），单用户本地运行。
@@ -210,4 +210,4 @@ Last render: scenes/01_test/ — 3.0s @ 1920x1080
 
 *路线图版本：v0.1*  
 *哲学：Make it work → Make it right → Make it fast*  
-*当前阶段：Phase 2 已完成，进入 Phase 3*
+*当前阶段：Phase 3 已完成，进入 Phase 4*
