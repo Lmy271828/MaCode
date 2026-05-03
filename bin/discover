@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# bin/discover
+# 交互式项目结构探索助手。
+# Agent 迷路时调用，展示项目结构和可用操作。
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+cd "$PROJECT_ROOT"
+
+echo ""
+echo "╔══════════════════════════════════════════════════════════════╗"
+echo "║           MaCode Project Structure Explorer                  ║"
+echo "╚══════════════════════════════════════════════════════════════╝"
+echo ""
+
+echo "📁 scenes/        — 场景目录（Agent 主要工作区）"
+find scenes -maxdepth 2 -type f \( -name "*.json" -o -name "*.py" -o -name "*.tsx" \) | sort | sed 's/^/   /'
+echo ""
+
+echo "⚙️  engines/       — 渲染引擎适配层"
+find engines -maxdepth 3 -type f | grep -v "node_modules" | sort | sed 's/^/   /'
+echo ""
+
+echo "🔧 pipeline/      — 后处理管道"
+find pipeline -maxdepth 1 -type f | sort | sed 's/^/   /'
+echo ""
+
+echo "🛠️  bin/           — 全局工具脚本"
+find bin -maxdepth 1 -type f | sort | sed 's/^/   /'
+echo ""
+
+echo "📋 配置文件"
+for f in project.yaml CLAUDE.md progress.md; do
+    if [[ -f "$f" ]]; then
+        echo "   $f"
+    fi
+done
+echo ""
+
+echo "📊 Agent 工作区"
+if [[ -d ".agent" ]]; then
+    echo "   .agent/tmp/  — 临时帧和中间文件"
+    echo "   .agent/log/  — 渲染日志"
+    LAST_LOG=$(find .agent/log -name "*.log" -type f 2>/dev/null | sort | tail -1)
+    if [[ -n "$LAST_LOG" ]]; then
+        echo "   Latest log: $(basename "$LAST_LOG")"
+    fi
+    LAST_RENDER=$(find .agent/tmp -name "final.mp4" -type f 2>/dev/null | sort | tail -1)
+    if [[ -n "$LAST_RENDER" ]]; then
+        echo "   Latest render: $(basename "$(dirname "$LAST_RENDER")")"
+    fi
+else
+    echo "   (empty — no renders yet)"
+fi
+echo ""
+
+echo "🚀 快速操作"
+echo "   bin/macode render <scene>     渲染场景"
+echo "   bin/macode render-all         批量渲染"
+echo "   bin/macode status             项目状态"
+echo "   bin/agent-run.sh '<cmd>'      原子化执行命令"
+echo "   bin/safety-gate.sh '<cmd>'    检查命令安全性"
+echo "   pipeline/render.sh <scene>    直接调用渲染管道"
+echo ""
