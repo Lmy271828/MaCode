@@ -1,0 +1,70 @@
+# MaCode 全局配置
+# 引擎无关的场景契约层 + 安全策略
+
+project:
+  name: MaCode
+  version: "0.1.0"
+
+# 默认渲染设置
+defaults:
+  engine: manim
+  resolution: [1920, 1080]
+  fps: 30
+
+# Agent 安全策略
+agent:
+  allowed_commands:
+    - manim
+    - ffmpeg
+    - ffprobe
+    - jq
+    - yq
+    - git
+    - find
+    - grep
+    - sed
+    - awk
+    - just
+    - du
+    - df
+    - cat
+    - ls
+    - cp
+    - mv
+    - rm
+    - mkdir
+    - touch
+    - python3
+    - node
+    - npm
+    - npx
+    - bash
+    - echo
+    - tee
+    - tail
+    - head
+    - wc
+
+  blocked_patterns:
+    - "rm -rf /"
+    - "rm -rf ~"
+    - "curl|wget"
+    - "eval|exec|bash -c"
+    - "pip install"
+    - "npm install"
+    - "sudo|su -"
+    - "\.+\./"
+    - "> /dev/sda"
+    - "dd if="
+
+  resource_limits:
+    max_frames_per_scene: 10000
+    max_disk_gb: 50
+    max_render_time_sec: 600
+    max_concurrent_scenes: 4
+
+# 日志配置
+logging:
+  level: info
+  directory: .agent/log
+  format: "text"

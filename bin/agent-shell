@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+# bin/agent-shell
+# Agent 默认 shell 入口，预装 PATH 与别名。
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# 预装 PATH
+export PATH="$PROJECT_ROOT/bin:$PROJECT_ROOT/pipeline:$PROJECT_ROOT/engines/manim/scripts:$PATH"
+
+# conda math 环境（如果存在）
+if [[ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]]; then
+    source "$HOME/miniconda3/etc/profile.d/conda.sh" >/dev/null 2>&1 || true
+    conda activate math >/dev/null 2>&1 || true
+fi
+
+# 实用别名
+alias render='pipeline/render.sh'
+alias render-all='bin/render-all.sh'
+alias status='bin/macode status'
+alias mc='bin/macode'
+alias log='tail -n 50 .agent/log/*.log 2>/dev/null || echo "No logs yet"'
+alias scenes='ls scenes/'
+alias frames='find .agent/tmp -name "*.png" | wc -l'
+alias inspect-manim='engines/manim/scripts/inspect.sh'
+alias inspect-mc='engines/motion_canvas/scripts/inspect.sh'
+
+# 提示符
+export PS1='[macode] \w\$ '
+
+echo "=== MaCode Agent Shell ==="
+echo "Project: $PROJECT_ROOT"
+echo ""
+echo "Quick commands:"
+echo "  render <scene_dir>     Render a scene"
+echo "  render-all             Render all scenes"
+echo "  status                 Project status"
+echo "  mc render <scene>     Via macode CLI"
+echo "  log                    View latest logs"
+echo "  inspect-manim          List Manim capabilities"
+echo "  inspect-mc             List Motion Canvas capabilities"
+echo ""
+
+cd "$PROJECT_ROOT"
+exec bash --rcfile <( echo 'export PS1="[macode] \w\$ "' )
