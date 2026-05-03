@@ -1,0 +1,14 @@
+{
+  "engine": "manim",
+  "template": "Scene",
+  "duration": 2,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "assets": [],
+  "dependencies": [],
+  "meta": {
+    "title": "标题页",
+    "author": "agent",
+    "tags": ["title"]
+  }
+}

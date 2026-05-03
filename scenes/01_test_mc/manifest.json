@@ -1,0 +1,14 @@
+{
+  "engine": "motion_canvas",
+  "template": "makeScene2D",
+  "duration": 3,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "assets": [],
+  "dependencies": [],
+  "meta": {
+    "title": "Phase 2 迁移示例：Motion Canvas 版本",
+    "author": "agent",
+    "tags": ["test", "circle", "migration"]
+  }
+}

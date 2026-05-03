@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls *)",
+      "Bash(manim --version)",
+      "Bash(ffmpeg -version)",
+      "Bash(wsl *)",
+      "Bash(MSYS2_ARG_CONV_EXCL='*' wsl *)",
+      "Bash(MSYS2_ARG_CONV_EXCL_EXCL='*' wsl *)"
+    ]
+  }
+}

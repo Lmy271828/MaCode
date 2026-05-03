@@ -1,0 +1,14 @@
+{
+  "engine": "manim",
+  "template": "Scene",
+  "duration": 4,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "assets": [],
+  "dependencies": ["scenes/01_test/manifest.json"],
+  "meta": {
+    "title": "几何变换演示",
+    "author": "agent",
+    "tags": ["demo", "transform"]
+  }
+}

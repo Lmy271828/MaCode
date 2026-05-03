@@ -1,0 +1,27 @@
+# MaCode .gitignore
+# Agent workspace (ephemeral)
+.agent/
+
+# Python virtual environments
+.venv/
+__pycache__/
+*.pyc
+
+# Node.js
+node_modules/
+
+# Output artifacts (videos, frames, audio)
+output/
+*.mp4
+*.wav
+*.mp3
+*.png
+
+# Editor / OS
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Windows Zone.Identifier files
+*:Zone.Identifier
