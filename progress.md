@@ -194,6 +194,46 @@ Last render: scenes/01_test/ — 3.0s @ 1920x1080
 
 ---
 
+## Phase 5：安全加固 —— Coding Agent 接入（2026-05-04 ~ 2026-05-05）
+
+**目标**：在 Phase 0-4 功能就绪后，系统性审计并修复安全漏洞，使 Coding Agent 可安全自主操作。
+
+### 5.1 P0 必须修复（最低防线）
+- [x] 接入 `safety-gate.sh`：agent-shell 通过 READLINE Enter-key 拦截 + `bin/gate` 包装器，所有命令经白名单检查。
+- [x] 接入 `agent-run.sh`：`macode render` 默认包裹 Git 原子操作（成功 commit 场景变更，失败回滚）。
+- [x] 渲染超时强制执行：manim 调用包装在 `timeout` 中，读取 `project.yaml` 的 `max_render_time_sec`（默认 600s）。
+- [x] 保护 `.macode/`：blocked_patterns 拦截 `cat .macode/*` 等敏感文件读取。
+- [x] 收缩命令白名单：从 `project.yaml` 移除 `bash`、`python3`、`node`、`npm`、`npx`。
+
+### 5.2 P1 应当修复（纵深防御）
+- [x] Python sandbox：`api-gate.py` 新增 16 种危险调用模式检测（subprocess、os.system、socket、requests、shutil.rmtree、__import__ 等）。
+- [x] manifest.json 校验：`pipeline/render.sh` 渲染前验证必填字段、引擎枚举、fps > 0、resolution 格式。
+- [x] Git 保护：blocked_patterns 拦截 `git push --force`、`git reset --hard`、`git clean -f`。
+
+### 5.3 Coding Agent 入口
+- [x] 编写 `bin/agent`：配置检查 + 系统提示生成 + 安全 agent-shell 启动。
+- [x] 修复 `agent-shell` 尾部 bug：原来 `exec bash --rcfile` 丢弃了全部环境变量，改为生成完整 rcfile。
+
+### 5.4 安全态势验证
+
+| 测试用例 | 预期 | 结果 |
+|----------|------|------|
+| `git push --force` | 拦截 | ✓ REJECTED |
+| `cat .macode/settings.json` | 拦截 | ✓ REJECTED |
+| `curl evil.com` | 拦截 | ✓ REJECTED |
+| `pip install requests` | 拦截 | ✓ REJECTED |
+| `import subprocess` (scene.py) | 拦截 | ✓ API_GATE_VIOLATIONS |
+| `os.system('ls')` (scene.py) | 拦截 | ✓ SANDBOX violation |
+| `git status` | 放行 | ✓ ALLOWED |
+| `ffmpeg -i in.mp4 out.mp4` | 放行 | ✓ ALLOWED |
+| 畸形 manifest.json | 拦截 | ✓ FAILED |
+
+### 5.5 明确不做
+- ❌ 不做 Python 完整沙箱（容器/虚拟机），依赖多层静态检查 + timeout 熔断已足够。
+- ❌ 不做 Claude Code 插件化（skill/hook），当前通过 `CLAUDE.md` + `agent-shell` 协作已满足需求。
+
+---
+
 ## 附录：决策日志
 
 | 日期 | 决策 | 理由 |
@@ -205,15 +245,21 @@ Last render: scenes/01_test/ — 3.0s @ 1920x1080
 | Day 0 | 使用 `manifest.json` 而非数据库 | 符合 UNIX 文本流原则，`jq` 即可处理，无需 SQL |
 | Day 0 | 使用 `Just` 而非 `Make` | 语法现代，Agent 易读易改，但底层仍是文件时间戳 |
 | Day 0 | 放弃 SoX，音频统一由 ffmpeg 处理 | Windows 下 SoX 管道不可靠、MP3 支持缺失、PowerShell 集成差；ffmpeg 跨平台一致 |
-| 2026-05-04 | Phase 3 Agent Harness 完成 | macode CLI、agent-run.sh（Git 原子操作）、safety-gate.sh（白名单拦截）、project.yaml（安全策略）全部就绪 |
-| 2026-05-04 | 启动 Phase 4 优化阶段 | 先测量再优化：帧级缓存 → 并行渲染 → 智能剪辑，just 未安装故使用纯 bash + sha256sum 实现缓存 |
-| 2026-05-04 | 缓存用 sha256sum 而非 just | `just` 未安装；内容哈希比文件时间戳更准确反映"内容是否变更" |
-| 2026-05-04 | 并行渲染用拓扑排序调度 | 读取 manifest.json 依赖构建 DAG，层级并行，避免竞态 |
+| 2026-05-04 | Phase 3 Agent Harness 完成 | macode CLI、agent-run.sh、safety-gate.sh、project.yaml 全部就绪 |
+| 2026-05-04 | 启动 Phase 4 优化阶段 | 帧级缓存 → 并行渲染 → 智能剪辑 |
+| 2026-05-04 | 帧级缓存用 sha256sum 实现 | `just` 未安装；内容哈希比文件时间戳更准确 |
+| 2026-05-04 | 并行渲染用拓扑排序调度 | 读取 manifest.json 依赖构建 DAG，层级并行 |
 | 2026-05-04 | 跳过帧级并行 | 需先测量单帧渲染开销，无性能数据前暂不实现 |
 | 2026-05-04 | smart-cut 无音频时 passthrough | 无音频视频直接复制，避免破坏纯视觉内容 |
+| 2026-05-04 | 启动安全审计 | safety-gate 和 agent-run 存在但从未被调用，属于死代码 |
+| 2026-05-05 | safety-gate 改为主命令检查 | 原来逐词检查导致 `git status` 被拒绝（status 不在白名单），改为只检查每段第一个词 |
+| 2026-05-05 | 修复 agent-shell 丢失环境的 bug | `exec bash --rcfile` 用了极简 rcfile，所有 PATH/别名/env 被丢弃 |
+| 2026-05-05 | api-gate 新增 sandbox 扫描 | 除 BLACKLIST 导入外，增加 16 种危险 Python 调用检测 |
+| 2026-05-05 | 不做 Claude Code 插件化 | 当前 `CLAUDE.md` + `agent-shell` 协作已满足 Claude Code 作为 Coding Agent 的需求 |
+| 2026-05-05 | Phase 5 完成，MaCode v0.1.0 可安全接入 Coding Agent | 五层防御：safety-gate → agent-run → manifest 校验 → api-gate + sandbox → timeout 熔断 |
 
 ---
 
-*路线图版本：v0.2*  
+*路线图版本：v0.3*  
 *哲学：Make it work → Make it right → Make it fast*  
-*当前阶段：Phase 4 完成，待定义 Phase 5 —— 2026-05-04*
+*当前阶段：Phase 5 完成，v0.1.0 就绪 —— 2026-05-05*

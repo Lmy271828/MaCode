@@ -73,13 +73,15 @@ macode/
 │   ├── thumbnail.sh        #   关键帧提取
 │   └── cache.sh            #   帧级缓存
 ├── bin/                    # 全局工具脚本
-│   ├── setup.sh             #   项目初始化（权限修复 + 依赖检查）
-│   ├── macode               #   主入口 CLI
-│   ├── agent-shell          #   Agent 默认 shell 入口
+│   ├── setup.sh             #   项目初始化（权限 + 依赖 + API 配置）
+│   ├── agent                #   Coding Agent 入口（配置检查 + 系统提示）
+│   ├── agent-shell          #   Agent 安全 shell（safety-gate 拦截）
+│   ├── macode               #   主入口 CLI（render / status / inspect）
 │   ├── agent-run.sh         #   Git 原子操作包装器
-│   ├── safety-gate.sh       #   命令白名单拦截器
-│   ├── api-gate.py          #   SOURCEMAP 导入审查门
-│   ├── render-all.sh        #   批量渲染（支持并行）
+│   ├── safety-gate.sh       #   命令白名单 / 黑名单拦截器
+│   ├── gate                 #   安全门包装器
+│   ├── api-gate.py          #   BLACKLIST 导入 + sandbox 危险调用扫描
+│   ├── render-all.sh        #   批量渲染（支持 --parallel）
 │   └── discover             #   交互式项目结构探索
 ├── project.yaml            # 全局配置（引擎、分辨率、安全策略）
 ├── SOURCEMAP_SPEC.md       # SOURCEMAP 规范
@@ -182,6 +184,38 @@ pipeline/add_audio.sh output/lecture.mp4 assets/bgm.mp3 output/final.mp4
 
 迁移引擎只需修改 `manifest.json` 的 `engine` 字段并重写场景文件，管道脚本无需改动。
 
+## 安全模型
+
+渲染前自动执行五层防御：
+
+```
+Agent 命令
+  → safety-gate.sh (命令白名单 + blocked_patterns)
+  → agent-run.sh  (Git 原子操作：失败自动回滚)
+  → manifest.json 校验 (必填字段 + 引擎枚举 + 类型检查)
+  → api-gate.py   (BLACKLIST 导入拦截 + 16 项 sandbox 危险调用扫描)
+  → timeout 600s  (渲染超时熔断，帧数上限 10000，磁盘上限 50GB)
+  → ffmpeg 编码
+```
+
+## 两种使用方式
+
+### Claude Code 直接使用（推荐）
+
+```bash
+cd MaCode/
+claude    # Claude Code 自动读 CLAUDE.md，理解全部工作流
+```
+
+Claude Code 本身就是 Coding Agent，它读取 `CLAUDE.md` → `project.yaml` → `SOURCEMAP.md`，理解架构后自动执行 bash 命令完成任务。
+
+### 手动 / 其他 LLM
+
+```bash
+bin/agent           # 进入安全 agent-shell（命令经过 safety-gate）
+bin/agent --prompt  # 打印系统提示，复制给其他 LLM 使用
+```
+
 ## 开发阶段
 
 | Phase | 内容 | 状态 |
@@ -191,6 +225,7 @@ pipeline/add_audio.sh output/lecture.mp4 assets/bgm.mp3 output/final.mp4
 | 2 | 引擎抽象 — Motion Canvas 适配 | ✅ |
 | 3 | Agent Harness — Git 流控制 + 安全门 | ✅ |
 | 4 | 优化 — 缓存 + 并行 + 智能剪辑 | ✅ |
+| 5 | 安全加固 — Coding Agent 接入 | ✅ |
 
 详见 [`progress.md`](progress.md)。
 
