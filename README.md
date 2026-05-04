@@ -14,10 +14,13 @@ MaCode 是一个 Bash-First 的数学动画 Agent 工作流系统。它不封装
 ## 快速开始
 
 ```bash
-# 克隆后首次：初始化权限、目录、依赖检查
+# 克隆后首次：初始化权限、目录、依赖检查、配置 API
 bash bin/setup.sh
 
-# 进入 Agent 环境
+# 启动 Coding Agent（配置检查 + 系统提示 + 安全 shell）
+bin/agent
+
+# 或直接进入 Agent 环境
 bin/agent-shell
 
 # 查看项目状态

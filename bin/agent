@@ -1,0 +1,200 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# bin/agent
+# MaCode Coding Agent 入口。
+# 校验配置 → 注入系统提示 → 启动安全 agent-shell。
+#
+# 用法:
+#   bin/agent                 交互模式：进入 agent-shell
+#   bin/agent --prompt        仅输出系统提示（调试用）
+#   bin/agent --check         检查配置但不启动
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$PROJECT_ROOT"
+
+MODE="${1:-shell}"
+
+# ── 颜色 ────────────────────────────────────────────
+BOLD='\033[1m'
+GREEN='\033[32m'
+YELLOW='\033[33m'
+RED='\033[31m'
+CYAN='\033[36m'
+RESET='\033[0m'
+
+# ── 配置检查 ──────────────────────────────────────────
+check_config() {
+    local ok=true
+
+    echo -e "${BOLD}MaCode Coding Agent — Configuration Check${RESET}"
+    echo ""
+
+    # API 配置
+    if [[ -f ".macode/settings.json" ]]; then
+        PROVIDER=$(python3 -c "import json; print(json.load(open('.macode/settings.json')).get('provider','?'))" 2>/dev/null || \
+                   python -c "import json; print(json.load(open('.macode/settings.json')).get('provider','?'))" 2>/dev/null || echo "?")
+        MODEL=$(python3 -c "import json; print(json.load(open('.macode/settings.json')).get('model','?'))" 2>/dev/null || \
+                python -c "import json; print(json.load(open('.macode/settings.json')).get('model','?'))" 2>/dev/null || echo "?")
+        echo -e "  ${GREEN}✓${RESET} API config: provider=$PROVIDER, model=$MODEL"
+    else
+        echo -e "  ${RED}✗${RESET} .macode/settings.json not found — API calls will fail"
+        echo "    Run: bash bin/setup.sh"
+        ok=false
+    fi
+
+    # 引擎
+    ENGINE=$(grep -oP 'engine:\s*\K\S+' project.yaml 2>/dev/null || echo "manim")
+    if [[ -f "engines/$ENGINE/SOURCEMAP.md" ]]; then
+        echo -e "  ${GREEN}✓${RESET} Engine: $ENGINE (SOURCEMAP ready)"
+    else
+        echo -e "  ${YELLOW}~${RESET} Engine: $ENGINE (SOURCEMAP not found)"
+    fi
+
+    # 安全门
+    if [[ -x "bin/safety-gate.sh" ]]; then
+        echo -e "  ${GREEN}✓${RESET} safety-gate: active"
+    else
+        echo -e "  ${RED}✗${RESET} safety-gate: missing"
+        ok=false
+    fi
+
+    # api-gate
+    if [[ -x "bin/api-gate.py" ]] || [[ -f "bin/api-gate.py" ]]; then
+        echo -e "  ${GREEN}✓${RESET} api-gate: active"
+    else
+        echo -e "  ${RED}✗${RESET} api-gate: missing"
+        ok=false
+    fi
+
+    # Git
+    if git rev-parse --git-dir >/dev/null 2>&1; then
+        echo -e "  ${GREEN}✓${RESET} Git: available"
+    else
+        echo -e "  ${YELLOW}~${RESET} Git: not available (rollback disabled)"
+    fi
+
+    echo ""
+    if $ok; then
+        echo -e "${GREEN}All checks passed. Agent ready.${RESET}"
+    else
+        echo -e "${RED}Fix issues above before starting agent.${RESET}"
+    fi
+
+    return 0
+}
+
+# ── 生成系统提示 ──────────────────────────────────────
+generate_prompt() {
+    ENGINE=$(grep -oP 'engine:\s*\K\S+' project.yaml 2>/dev/null || echo "manim")
+    SOURCEMAP="engines/$ENGINE/SOURCEMAP.md"
+
+    echo ""
+    echo "================================================"
+    echo "  MaCode Agent System Prompt"
+    echo "================================================"
+    echo ""
+
+    # 核心指令
+    cat << 'PROMPT'
+你是一个数学动画工程师，工作在 MaCode —— 一个 UNIX 原生的数学动画 Harness 中。
+
+【环境】
+- 当前在 agent-shell 中，所有命令经过 safety-gate 白名单检查
+- 工作目录是 MaCode 项目根目录
+- 渲染引擎、管道脚本、SOURCEMAP 都已就绪
+
+【你的工作流】
+1. 读取 project.yaml 了解项目配置与安全策略
+2. 读取目标场景的 scenes/*/manifest.json 理解需求
+3. 使用 macode inspect --grep <keyword> 查询引擎 API（勿 grep -r 整个源码树）
+4. 编写场景源码到 scenes/<scene_name>/，创建 scene.py + manifest.json
+5. 调用 macode render scenes/<scene_name>/ 触发渲染（自动通过 api-gate + 缓存）
+6. 若 api-gate 拦截，阅读违规列表，用 WHITELIST API 替代
+7. 若渲染失败，tail .agent/log/ 查看日志和 SOURCEMAP 诊断
+8. 后处理通过 pipeline/*.sh 完成（ffmpeg 拼接、音频、压缩）
+
+【安全约束】
+- 禁止导入 SOURCEMAP BLACKLIST 中的模块（manimlib、manim._config 等）
+- 禁止使用 subprocess / os.system / socket / requests 等危险调用
+- 禁止访问 .macode/ .claude/ .git/config
+- 禁止 git push --force / git reset --hard
+- 所有命令受 safety-gate 白名单限制
+- 渲染超时 600 秒，帧数上限 10000
+
+【SOURCEMAP 使用】
+- macode inspect --grep <re>    搜索 WHITELIST API
+- macode inspect --level P0     查看核心 API
+- macode inspect --blacklist    查看禁止使用的模块
+
+【关键脚本】
+- macode render <dir>          渲染场景（含 api-gate + 缓存 + git 原子操作）
+- macode status                项目状态
+- pipeline/preview.sh <mp4>    快速预览
+- log                          查看最近日志
+PROMPT
+
+    echo ""
+
+    # SOURCEMAP 上下文（P0/P1 API 速查）
+    echo "────────────────────────────────────────────────"
+    echo " 【引擎环境: $ENGINE】"
+    echo "────────────────────────────────────────────────"
+    echo ""
+    if [[ -f "$SOURCEMAP" ]]; then
+        echo "可用核心 API (P0/P1):"
+        awk '/^## WHITELIST/{found=1; next} /^## /{if(found) exit} found && /^\|/ && !/ 标识 /' "$SOURCEMAP" | \
+            while IFS='|' read -r _ id path purpose priority; do
+                id=$(echo "$id" | xargs)
+                priority=$(echo "$priority" | xargs)
+                purpose=$(echo "$purpose" | xargs)
+                if [[ "$priority" == "P0" || "$priority" == "P1" ]]; then
+                    printf "  · %-30s [%s] %s\n" "$id" "$priority" "$purpose"
+                fi
+            done
+        echo ""
+        echo "禁止导入:"
+        awk '/^## BLACKLIST/{found=1; next} /^## /{if(found) exit} found && /^\|/ && !/ 标识 /' "$SOURCEMAP" | \
+            while IFS='|' read -r _ id path reason; do
+                id=$(echo "$id" | xargs)
+                reason=$(echo "$reason" | xargs)
+                printf "  × %-30s %s\n" "$id" "$reason"
+            done
+    fi
+    echo ""
+    echo "================================================"
+
+}
+
+# ── 入口 ──────────────────────────────────────────────
+case "$MODE" in
+    --check)
+        check_config
+        ;;
+    --prompt)
+        check_config
+        generate_prompt
+        ;;
+    shell|*)
+        echo -e "${BOLD}${CYAN}╔══════════════════════════════════════╗${RESET}"
+        echo -e "${BOLD}${CYAN}║     MaCode Coding Agent v0.1.0      ║${RESET}"
+        echo -e "${BOLD}${CYAN}╚══════════════════════════════════════╝${RESET}"
+        echo ""
+
+        check_config
+        echo ""
+
+        echo -e "${BOLD}Agent 能力摘要:${RESET}"
+        echo "  · 场景编写:  ManimCE Python / Motion Canvas TypeScript"
+        echo "  · 渲染管道:  macode render → api-gate → cache → timeout → ffmpeg"
+        echo "  · API 发现:  macode inspect → SOURCEMAP WHITELIST"
+        echo "  · 安全防护:  safety-gate 白名单 + api-gate 沙箱 + Git 原子回滚"
+        echo "  · 后处理:    ffmpeg 拼接 / 音频合成 / 压缩 / 剪辑"
+        echo ""
+
+        echo -e "${BOLD}启动 agent-shell...${RESET}"
+        echo ""
+        exec bash "$SCRIPT_DIR/agent-shell"
+        ;;
+esac
