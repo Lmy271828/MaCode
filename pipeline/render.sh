@@ -94,7 +94,32 @@ if [[ ! -f "$ENGINE_SCRIPT" ]]; then
     exit 1
 fi
 
-bash "$ENGINE_SCRIPT" "$SCENE_FILE" "$FRAMES_DIR" "$FPS" "$DURATION" "$WIDTH" "$HEIGHT" >> "$LOG_FILE" 2>&1
+# ── API-Gate: 代码审查门 ────────────────────────────
+SOURCEMAP="engines/${ENGINE}/SOURCEMAP.md"
+if [[ -f "$SOURCEMAP" && -x "$PROJECT_ROOT/bin/api-gate.py" ]]; then
+    echo "[api-gate] Checking $SCENE_FILE against SOURCEMAP BLACKLIST..."
+    if ! "$PROJECT_ROOT/bin/api-gate.py" "$SCENE_FILE" "$SOURCEMAP" >> "$LOG_FILE" 2>&1; then
+        echo "[api-gate] BLOCKED. Fix violations before rendering." | tee -a "$LOG_FILE"
+        tail -5 "$LOG_FILE"
+        exit 1
+    fi
+    echo "[api-gate] OK"
+fi
+# ──────────────────────────────────────────────────────
+
+# ── Phase 4.1: 帧级缓存检查 ──────────────────────────
+CACHE_SCRIPT="$PROJECT_ROOT/pipeline/cache.sh"
+if [[ -x "$CACHE_SCRIPT" ]]; then
+    if "$CACHE_SCRIPT" "$SCENE_DIR" check "$OUTPUT_DIR" >> "$LOG_FILE" 2>&1; then
+        echo "[cache] Using cached frames, skipping engine render"
+    else
+        echo "[cache] Cache miss, rendering with $ENGINE..."
+        bash "$ENGINE_SCRIPT" "$SCENE_FILE" "$FRAMES_DIR" "$FPS" "$DURATION" "$WIDTH" "$HEIGHT" >> "$LOG_FILE" 2>&1
+    fi
+else
+    bash "$ENGINE_SCRIPT" "$SCENE_FILE" "$FRAMES_DIR" "$FPS" "$DURATION" "$WIDTH" "$HEIGHT" >> "$LOG_FILE" 2>&1
+fi
+# ──────────────────────────────────────────────────────
 
 # ── Resource Fuse Checks ──────────────────────────────────────
 FRAME_COUNT=$(find "$FRAMES_DIR" -name "*.png" | wc -l)
@@ -117,5 +142,11 @@ bash "$PROJECT_ROOT/pipeline/concat.sh" "$FRAMES_DIR" "$OUTPUT_DIR/raw.mp4" >> "
 
 # Phase 2: 仍然无音频，raw.mp4 即 final.mp4
 cp "$OUTPUT_DIR/raw.mp4" "$OUTPUT_DIR/final.mp4"
+
+# ── Phase 4.1: 缓存写入 ──────────────────────────────
+if [[ -x "$CACHE_SCRIPT" ]]; then
+    "$CACHE_SCRIPT" "$SCENE_DIR" populate "$OUTPUT_DIR" >> "$LOG_FILE" 2>&1 || true
+fi
+# ──────────────────────────────────────────────────────
 
 echo "Done: $OUTPUT_DIR/final.mp4"

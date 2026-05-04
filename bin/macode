@@ -110,16 +110,97 @@ case "$CMD" in
         echo "Review with 'git diff' and commit when ready."
         ;;
 
+    inspect)
+        # 查询 SOURCEMAP
+        ENGINE="${2:-$DEFAULT_ENGINE}"
+        SOURCEMAP="engines/${ENGINE}/SOURCEMAP.md"
+
+        if [[ ! -f "$SOURCEMAP" ]]; then
+            echo "Error: SOURCEMAP.md not found for engine '$ENGINE'" >&2
+            echo "Run: macode sourcemap init $ENGINE" >&2
+            exit 1
+        fi
+
+        # 解析 --grep / --level / --blacklist / --format 参数
+        GREP=""
+        LEVEL=""
+        BLACKLIST_ONLY=false
+        FORMAT="text"
+
+        shift 2 2>/dev/null || true
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --grep) GREP="$2"; shift ;;
+                --level) LEVEL="$2"; shift ;;
+                --blacklist) BLACKLIST_ONLY=true ;;
+                --format) FORMAT="$2"; shift ;;
+                *) ;;
+            esac
+            shift 2>/dev/null || shift
+        done
+
+        if $BLACKLIST_ONLY; then
+            echo "=== BLACKLIST ($ENGINE) ==="
+            awk '/^## BLACKLIST/{found=1; next} /^## /{if(found) exit} found && /^\|/ && !/ 标识 /' "$SOURCEMAP" | \
+                while IFS='|' read -r _ id path reason; do
+                    id=$(echo "$id" | xargs)
+                    reason=$(echo "$reason" | xargs)
+                    printf "  %-30s %s\n" "$id" "$reason"
+                done
+        else
+            echo "=== WHITELIST ($ENGINE) ==="
+            awk '/^## WHITELIST/{found=1; next} /^## /{if(found) exit} found && /^\|/ && !/ 标识 /' "$SOURCEMAP" | {
+                if [[ -n "$GREP" ]]; then
+                    grep -iE "$GREP"
+                elif [[ -n "$LEVEL" ]]; then
+                    grep -E "\[$LEVEL\]"
+                else
+                    cat
+                fi
+            } | while IFS='|' read -r _ id path purpose priority; do
+                id=$(echo "$id" | xargs)
+                priority=$(echo "$priority" | xargs)
+                purpose=$(echo "$purpose" | xargs)
+                printf "  %-30s [%s] %s\n" "$id" "$priority" "$purpose"
+            done
+        fi
+        ;;
+
+    sourcemap)
+        SUB="${2:-help}"
+        ENGINE="${3:-$DEFAULT_ENGINE}"
+        case "$SUB" in
+            init)
+                echo "Run: engines/$ENGINE/scripts/inspect.sh  to explore the engine"
+                echo "Then: engines/$ENGINE/scripts/validate_sourcemap.sh  to verify paths"
+                echo "SOURCEMAP location: engines/$ENGINE/SOURCEMAP.md"
+                ;;
+            validate)
+                bash "$PROJECT_ROOT/engines/$ENGINE/scripts/validate_sourcemap.sh"
+                ;;
+            help|*)
+                echo "Usage: macode sourcemap <init|validate> [engine]"
+                echo "  init       Show instructions for creating SOURCEMAP"
+                echo "  validate   Run validate_sourcemap.sh for the engine"
+                ;;
+        esac
+        ;;
+
     help|*)
         echo "MaCode — Math Animation Harness"
         echo ""
         echo "Usage: macode <command> [args]"
         echo ""
         echo "Commands:"
-        echo "  render <scene_dir>   Render a single scene"
-        echo "  render-all           Render all scenes"
-        echo "  status               Show project status"
-        echo "  undo                 Revert last Agent change"
-        echo "  help                 Show this help"
+        echo "  render <scene_dir>     Render a single scene"
+        echo "  render-all             Render all scenes"
+        echo "  status                 Show project status"
+        echo "  undo                   Revert last Agent change"
+        echo "  inspect [--grep <re>]  Query SOURCEMAP WHITELIST"
+        echo "    --blacklist           Show BLACKLIST instead"
+        echo "    --level P0|P1|P2     Filter by priority"
+        echo "  sourcemap <init|validate> [engine]"
+        echo "                         Manage SOURCEMAP.md"
+        echo "  help                   Show this help"
         ;;
 esac

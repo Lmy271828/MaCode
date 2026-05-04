@@ -169,22 +169,22 @@ Last render: scenes/01_test/ — 3.0s @ 1920x1080
 
 ---
 
-## Phase 4：优化 —— 缓存、并行与压缩（Week 5+）
+## Phase 4：优化 —— 缓存、并行与压缩（Week 5+, 2026-05-04 启动）
 
 **目标**：在"工作"被证明之后，让系统更快、更省资源。
 
 ### 4.1 缓存层（先测量，再优化）
-- [ ] 实现帧级缓存：基于 `scene.py` 内容哈希 + 帧号，避免重复渲染未变更的帧。
-- [ ] 使用 `just` 替代裸 bash 脚本，利用文件时间戳判断过期。
-- [ ] 缓存目录：`.agent/cache/{scene_hash}/frames/`。
+- [x] 实现帧级缓存：基于 `scene.py` + `manifest.json` 内容哈希（sha256sum/md5sum），避免重复渲染未变更的帧。
+- [x] 缓存目录：`.agent/cache/{scene_hash}/frames/`，同时保存 manifest 与源码副本便于审计。
+- [ ] 使用 `just` 替代裸 bash 脚本，利用文件时间戳判断过期。→ **跳过**：`just` 未安装在当前环境，纯 bash + 内容哈希已满足需求。
 
 ### 4.2 并行渲染
-- [ ] 场景级并行：多个独立场景同时渲染（`xargs -P`）。
-- [ ] 帧级并行（谨慎）：对无状态引擎，尝试 `seq 0 300 | xargs -P4 -I{} manim --frame {}`。
+- [x] 场景级并行：依赖拓扑排序 + 层级调度，独立场景按 `max_concurrent_scenes` 并发渲染。
+- [ ] 帧级并行（谨慎）：对无状态引擎，尝试 `seq 0 300 | xargs -P4 -I{} manim --frame {}`。→ **跳过**：需要先测量单帧渲染开销，当前阶段无性能数据支撑。
 
 ### 4.3 智能剪辑
-- [ ] 实现 `pipeline/smart-cut.sh`：基于 `ffprobe` 检测静默段，自动剪辑停顿。
-- [ ] 实现 `pipeline/thumbnail.sh`：自动提取关键帧作为封面。
+- [x] 实现 `pipeline/smart-cut.sh`：基于 `ffprobe silencedetect` 检测静默段，ffmpeg filtergraph 精确切割非静默段拼接。
+- [x] 实现 `pipeline/thumbnail.sh`：支持 mid / N 帧均匀 / time=MM:SS / interval=N 四种模式提取关键帧。
 
 ### 4.4 明确不做（直到有明确需求）
 - ❌ 不引入数据库（SQLite/Redis）管理缓存，继续用文件系统 + 哈希。
@@ -205,9 +205,15 @@ Last render: scenes/01_test/ — 3.0s @ 1920x1080
 | Day 0 | 使用 `manifest.json` 而非数据库 | 符合 UNIX 文本流原则，`jq` 即可处理，无需 SQL |
 | Day 0 | 使用 `Just` 而非 `Make` | 语法现代，Agent 易读易改，但底层仍是文件时间戳 |
 | Day 0 | 放弃 SoX，音频统一由 ffmpeg 处理 | Windows 下 SoX 管道不可靠、MP3 支持缺失、PowerShell 集成差；ffmpeg 跨平台一致 |
+| 2026-05-04 | Phase 3 Agent Harness 完成 | macode CLI、agent-run.sh（Git 原子操作）、safety-gate.sh（白名单拦截）、project.yaml（安全策略）全部就绪 |
+| 2026-05-04 | 启动 Phase 4 优化阶段 | 先测量再优化：帧级缓存 → 并行渲染 → 智能剪辑，just 未安装故使用纯 bash + sha256sum 实现缓存 |
+| 2026-05-04 | 缓存用 sha256sum 而非 just | `just` 未安装；内容哈希比文件时间戳更准确反映"内容是否变更" |
+| 2026-05-04 | 并行渲染用拓扑排序调度 | 读取 manifest.json 依赖构建 DAG，层级并行，避免竞态 |
+| 2026-05-04 | 跳过帧级并行 | 需先测量单帧渲染开销，无性能数据前暂不实现 |
+| 2026-05-04 | smart-cut 无音频时 passthrough | 无音频视频直接复制，避免破坏纯视觉内容 |
 
 ---
 
-*路线图版本：v0.1*  
+*路线图版本：v0.2*  
 *哲学：Make it work → Make it right → Make it fast*  
-*当前阶段：Phase 3 已完成，进入 Phase 4*
+*当前阶段：Phase 4 完成，待定义 Phase 5 —— 2026-05-04*

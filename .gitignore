@@ -1,4 +1,10 @@
 # MaCode .gitignore
+# Claude Code local settings (development tool)
+.claude/settings.local.json
+
+# MaCode agent config (contains API keys)
+.macode/settings.json
+
 # Agent workspace (ephemeral)
 .agent/
 

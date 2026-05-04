@@ -6,6 +6,39 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# ── 加载 .macode/settings.json ──────────────────────────────
+MACODE_SETTINGS="$PROJECT_ROOT/.macode/settings.json"
+if [[ -f "$MACODE_SETTINGS" ]]; then
+    # 解析 JSON 并导出环境变量（不依赖 jq）
+    if command -v python3 >/dev/null 2>&1; then
+        eval "$(python3 -c "
+import json, sys
+with open('$MACODE_SETTINGS') as f:
+    cfg = json.load(f)
+env = cfg.get('env', {})
+for k, v in env.items():
+    print(f'export {k}=\"{v}\"')
+print(f'export MACODE_MODEL=\"{cfg.get(\"model\", \"\")}\"')
+print(f'export MACODE_PROVIDER=\"{cfg.get(\"provider\", \"\")}\"')
+" 2>/dev/null)"
+    elif command -v python >/dev/null 2>&1; then
+        eval "$(python -c "
+import json, sys
+with open('$MACODE_SETTINGS') as f:
+    cfg = json.load(f)
+env = cfg.get('env', {})
+for k, v in env.items():
+    print(f'export {k}=\"{v}\"')
+print(f'export MACODE_MODEL=\"{cfg.get(\"model\", \"\")}\"')
+print(f'export MACODE_PROVIDER=\"{cfg.get(\"provider\", \"\")}\"')
+" 2>/dev/null)"
+    fi
+    echo "[macode] Loaded config: provider=$(echo ${MACODE_PROVIDER:-unknown}), model=$(echo ${MACODE_MODEL:-unknown})"
+else
+    echo "WARN: .macode/settings.json not found — API calls will fail" >&2
+fi
+# ────────────────────────────────────────────────────────────
+
 # 预装 PATH
 export PATH="$PROJECT_ROOT/bin:$PROJECT_ROOT/pipeline:$PROJECT_ROOT/engines/manim/scripts:$PATH"
 
@@ -14,6 +47,54 @@ if [[ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]]; then
     source "$HOME/miniconda3/etc/profile.d/conda.sh" >/dev/null 2>&1 || true
     conda activate math >/dev/null 2>&1 || true
 fi
+
+# ── SOURCEMAP Bootstrap ───────────────────────────────────────
+ENGINE=$(grep -oP 'defaults:\s*\n\s*engine:\s*\K\S+' project.yaml 2>/dev/null || echo "manim")
+SOURCEMAP="engines/${ENGINE}/SOURCEMAP.md"
+
+if [[ -f "$SOURCEMAP" ]]; then
+    MAP_VER=$(grep "引擎版本" "$SOURCEMAP" 2>/dev/null | head -1 | sed 's/.*引擎版本:[[:space:]]*//' | xargs)
+
+    # 检测版本新鲜度
+    if [[ "$ENGINE" == "manim" ]]; then
+        CONDA_PYTHON="$HOME/miniconda3/envs/math/bin/python"
+        [[ -x "$CONDA_PYTHON" ]] && ENG_VER=$("$CONDA_PYTHON" -c "import manim; print(manim.__version__)" 2>/dev/null || echo "unknown") || ENG_VER="unknown"
+    else
+        ENG_VER=$(node -e "console.log(require('@motion-canvas/core/package.json').version)" 2>/dev/null || echo "unknown")
+    fi
+
+    if [[ "$ENG_VER" != "$MAP_VER" && "$ENG_VER" != "unknown" ]]; then
+        echo "WARN: SOURCEMAP may be outdated (map: v$MAP_VER, engine: v$ENG_VER)" >&2
+    fi
+
+    # 提取 WHITELIST P0/P1 到 Agent 工作区
+    mkdir -p .agent/context
+    awk '/^## WHITELIST/{found=1; next} /^## /{if(found) exit} found && /^\|/ && !/ 标识 /' "$SOURCEMAP" | \
+        while IFS='|' read -r _ id path purpose priority; do
+            id=$(echo "$id" | xargs)
+            priority=$(echo "$priority" | xargs)
+            purpose=$(echo "$purpose" | xargs)
+            if [[ "$priority" == "P0" || "$priority" == "P1" ]]; then
+                printf "%-30s %s\n" "$id" "$purpose"
+            fi
+        done > .agent/context/engine_api.txt
+
+    # 提取 BLACKLIST 到安全上下文
+    awk '/^## BLACKLIST/{found=1; next} /^## /{if(found) exit} found && /^\|/ && !/ 标识 /' "$SOURCEMAP" | \
+        while IFS='|' read -r _ id path reason; do
+            id=$(echo "$id" | xargs)
+            reason=$(echo "$reason" | xargs)
+            printf "%-30s %s\n" "$id" "$reason"
+        done > .agent/context/engine_blacklist.txt
+
+    export MACODE_ENGINE="$ENGINE"
+    export MACODE_SOURCEMAP="$SOURCEMAP"
+    export MACODE_CONTEXT=".agent/context"
+else
+    echo "WARN: SOURCEMAP.md not found for engine '$ENGINE'" >&2
+    echo "  Run: macode sourcemap init $ENGINE" >&2
+fi
+# ──────────────────────────────────────────────────────────────
 
 # 实用别名
 alias render='pipeline/render.sh'

@@ -224,9 +224,59 @@ ffmpeg -f lavfi -i "sine=frequency=1000:duration=1" -acodec pcm_s16le ding.wav
 ffmpeg -f lavfi -i anullsrc=r=48000:cl=stereo -t 5 -acodec pcm_s16le silence_5s.wav
 ```
 
+### 4.5 SOURCEMAP 协议 —— Agent 的安全地图
+
+SOURCEMAP 是每个引擎目录下的结构化黑白名单文档（`engines/{name}/SOURCEMAP.md`）。它不是给 Agent 看的文档，而是 **Harness 用来约束和引导 Agent 的协议**。
+
+**核心原则**：
+- **使用者 Agent 只读** SOURCEMAP，通过 `macode inspect` 查询 API
+- **开发者 Agent 读写** SOURCEMAP，负责维护引擎适配层
+- Harness 在启动时将它注入 Agent 的**工作记忆**，在编码时用它做**审查门**，在出错时用它做**诊断地图**
+
+**Agent 工作流中的 SOURCEMAP**：
+
+```bash
+# 1. 启动时自动加载（agent-shell 内置）
+bin/agent-shell
+# → 校验 engines/{engine}/SOURCEMAP.md 存在且版本匹配
+# → 提取 P0/P1 API 到 .agent/context/engine_api.txt
+# → 提取 BLACKLIST 到 .agent/context/engine_blacklist.txt
+
+# 2. 编码前查询 API
+macode inspect --grep "NumberLine\|Axes\|MathTex"
+# → 查询 SOURCEMAP WHITELIST，确认 API 存在且安全
+
+# 3. 渲染前自动审查（pipeline/render.sh 内置）
+pipeline/render.sh scenes/02_demo/
+# → api-gate.py 检查 scene.py 是否包含 BLACKLIST 导入
+# → 若发现 "import manimlib" → 立即阻断，提示修复
+
+# 4. 出错时定向诊断（engines/*/scripts/render.sh 内置）
+# → 日志解析器扫描错误关键词
+# → 匹配 BLACKLIST 条目 → "你踩了 DEPRECATED_GL，修复方案是 X"
+```
+
+**Agent 必须遵守的 SOURCEMAP 规则**：
+1. 禁止直接编辑 `engines/{name}/SOURCEMAP.md`
+2. 在场景代码中 `import` 未确认的模块前，先用 `macode inspect --grep` 查 WHITELIST
+3. 被 `api-gate.py` 拦截时，必须先修复违规导入再渲染
+4. 渲染失败时，先读日志中的 SOURCEMAP 诊断建议，不盲目重试
+5. 禁止 `grep -r` 整个引擎源码树 —— 用 `macode inspect` 按图索骥
+
+**SOURCEMAP 维护触发条件**（开发者关注）：
+- 引擎版本升级（`pip install --upgrade manim` / `npm update`）
+- Agent 误入陷阱（复盘后补入 BLACKLIST）
+- 适配层新增代码（`engines/{name}/src/` 下新增文件）
+- 扩展计划变更（EXTENSION 中的 TODO → DONE/WONTFIX）
+
+**验证**：生成或修改 SOURCEMAP.md 后必须运行：
+```bash
+engines/{name}/scripts/validate_sourcemap.sh
+```
+
 ---
 
-## 5. 安全模型：Git 核心 + 三层硬壳
+## 5. 安全模型：Git 核心 + 四层硬壳
 
 在显式指定工具边界（`manim` + `ffmpeg` + 白名单命令）后，纵深防御收敛为以下四层：
 
@@ -359,6 +409,8 @@ scenes/
 4. **不要动态下载依赖**：Agent 禁止执行 `pip install` 或 `npm install`。依赖必须在项目初始化时固化（`requirements.txt`、`package-lock.json`、Docker 镜像）。
 5. **不要假设引擎版本**：Agent 必须通过 `engines/*/scripts/inspect.sh` 查询能力，不硬编码 API。
 6. **不要引入额外音频工具**：所有音频处理由 `ffmpeg` 完成，禁止调用 `sox`、`audacity` 或其他音频处理软件。
+7. **不要绕过 SOURCEMAP 审查**：禁止直接修改 `engines/{name}/SOURCEMAP.md`。禁止在 `api-gate.py` 拦截后强行渲染。禁止 `grep -r` 整个引擎源码树 —— 用 `macode inspect` 按图索骥。
+8. **不要忽略 SOURCEMAP 诊断**：渲染失败时先读日志中的定向诊断建议，不盲目重试。错误信息指向 BLACKLIST 条目时，按提示修复而非绕过。
 
 ---
 
@@ -369,20 +421,22 @@ scenes/
 > **你的工作流：**
 > 1. 读取 `project.yaml` 了解项目配置与安全策略。
 > 2. 读取目标场景的 `scenes/*/manifest.json` 理解需求。
-> 3. 使用 `engines/<engine>/scripts/inspect.sh` 查看可用构建块。
-> 4. 使用 `grep / find` 探索引擎源码，理解内部实现。
+> 3. 使用 `engines/<engine>/scripts/inspect.sh` 查看可用构建块（基于 SOURCEMAP.md）。
+> 4. 使用 `macode inspect --grep <keyword>` 查询 SOURCEMAP WHITELIST 确认 API 存在。
 > 5. 生成场景源码到 `scenes/` 目录，确保符合 `manifest.json` 契约。
-> 6. 调用 `pipeline/render.sh <scene_dir>` 触发渲染。
-> 7. 若失败，阅读 `.agent/log/` 中的日志，用 bash 诊断并修复。
-> 8. 后处理通过 `pipeline/` 中的脚本调用 `ffmpeg` 完成。
-> 9. 音频处理统一使用 `ffmpeg`，禁止引入 `sox` 或其他音频工具。
+> 6. **禁止导入 SOURCEMAP BLACKLIST 中的模块**（如 `manimlib`、`manim._config`）。
+> 7. 调用 `pipeline/render.sh <scene_dir>` 触发渲染（自动通过 api-gate 审查）。
+> 8. 若 api-gate 拦截，按提示修复违规导入后重试。
+> 9. 若渲染失败，阅读 `.agent/log/` 中的日志和 SOURCEMAP 定向诊断，针对性修复。
+> 10. 后处理通过 `pipeline/` 中的脚本调用 `ffmpeg` 完成。
+> 11. 音频处理统一使用 `ffmpeg`，禁止引入 `sox` 或其他音频工具。
 >
 > **可迁移原则**：场景逻辑应尽可能表达在 `manifest.json` 中，具体实现文件（`.py`/`.tsx`）只是引擎的"视图层"。
 >
-> **安全约束**：你只能调用 `project.yaml` 中 `allowed_commands` 白名单内的命令。禁止修改 `engines/` 目录。禁止执行网络下载。所有破坏性操作前确保 Git 状态干净。
+> **安全约束**：你只能调用 `project.yaml` 中 `allowed_commands` 白名单内的命令。禁止修改 `engines/` 目录（SOURCEMAP.md 为只读）。禁止执行网络下载。所有破坏性操作前确保 Git 状态干净。
 
 ---
 
-*文档版本：v0.1*  
+*文档版本：v0.2*  
 *设计原则：UNIX Philosophy + Claude Code "Bash is All You Need"*  
-*状态：设计阶段，见 progress.md*
+*状态：Phase 0-3 完成，Phase 4 进行中*

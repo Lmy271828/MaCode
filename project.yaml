@@ -13,6 +13,13 @@ defaults:
 
 # Agent 安全策略
 agent:
+  context_bootstrap:
+    - "engines/${default_engine}/SOURCEMAP.md"
+  prompt_injection:
+    whitelist_max: 10
+    blacklist_enforcement: true
+    extension_visibility: false
+
   allowed_commands:
     - manim
     - ffmpeg

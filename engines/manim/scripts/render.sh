@@ -58,6 +58,26 @@ fi
     "$SCENE_PY" \
     2>&1 | tee "$OUTPUT_DIR/render.log"
 
+MANIM_EXIT=${PIPESTATUS[0]}
+if [[ $MANIM_EXIT -ne 0 ]]; then
+    echo "[manim] FAILED (exit $MANIM_EXIT). Analyzing error..." >&2
+    SOURCEMAP="$(dirname "$(dirname "${BASH_SOURCE[0]}")")/SOURCEMAP.md"
+    if [[ -f "$SOURCEMAP" ]]; then
+        if grep -q "manimlib" "$OUTPUT_DIR/render.log" 2>/dev/null; then
+            echo "[diagnosis] Deprecated manimlib API detected." >&2
+            echo "[action]    See BLACKLIST: DEPRECATED_GL in $SOURCEMAP" >&2
+            echo "[fix]       Replace 'from manimlib' with 'from manim'" >&2
+        fi
+        if grep -q "_config" "$OUTPUT_DIR/render.log" 2>/dev/null; then
+            echo "[diagnosis] Internal config module detected." >&2
+            echo "[action]    See BLACKLIST: INTERNAL_CONFIG in $SOURCEMAP" >&2
+            echo "[fix]       Remove imports from manim._config" >&2
+        fi
+        echo "[hint] Run 'macode inspect --grep <keyword>' to find correct API." >&2
+    fi
+    exit $MANIM_EXIT
+fi
+
 # manim PNG 输出目录结构: .media/images/<scene_name>/<SceneClass>/<SceneClass>0001.png
 # 将其移动到标准位置并重命名为 frame_*.png
 MEDIA_DIR="$OUTPUT_DIR/.media/images/$SCENE_NAME"
