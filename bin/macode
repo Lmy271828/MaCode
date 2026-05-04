@@ -112,7 +112,25 @@ case "$CMD" in
 
     inspect)
         # 查询 SOURCEMAP
-        ENGINE="${2:-$DEFAULT_ENGINE}"
+        # 用法: macode inspect [engine] [--grep <re>] [--level P0|P1|P2] [--blacklist]
+        GREP=""
+        LEVEL=""
+        BLACKLIST_ONLY=false
+        FORMAT="text"
+        ENGINE="$DEFAULT_ENGINE"
+
+        shift
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --grep)   GREP="$2"; shift 2 ;;
+                --level)  LEVEL="$2"; shift 2 ;;
+                --blacklist) BLACKLIST_ONLY=true; shift ;;
+                --format) FORMAT="$2"; shift 2 ;;
+                -*)       shift ;;  # 跳过未知 flag
+                *)        ENGINE="$1"; shift ;;  # 第一个非 flag 参数 = 引擎名
+            esac
+        done
+
         SOURCEMAP="engines/${ENGINE}/SOURCEMAP.md"
 
         if [[ ! -f "$SOURCEMAP" ]]; then
@@ -120,24 +138,6 @@ case "$CMD" in
             echo "Run: macode sourcemap init $ENGINE" >&2
             exit 1
         fi
-
-        # 解析 --grep / --level / --blacklist / --format 参数
-        GREP=""
-        LEVEL=""
-        BLACKLIST_ONLY=false
-        FORMAT="text"
-
-        shift 2 2>/dev/null || true
-        while [[ $# -gt 0 ]]; do
-            case "$1" in
-                --grep) GREP="$2"; shift ;;
-                --level) LEVEL="$2"; shift ;;
-                --blacklist) BLACKLIST_ONLY=true ;;
-                --format) FORMAT="$2"; shift ;;
-                *) ;;
-            esac
-            shift 2>/dev/null || shift
-        done
 
         if $BLACKLIST_ONLY; then
             echo "=== BLACKLIST ($ENGINE) ==="
