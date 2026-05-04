@@ -14,6 +14,9 @@ MaCode 是一个 Bash-First 的数学动画 Agent 工作流系统。它不封装
 ## 快速开始
 
 ```bash
+# 克隆后首次：初始化权限、目录、依赖检查
+bash bin/setup.sh
+
 # 进入 Agent 环境
 bin/agent-shell
 
@@ -67,13 +70,14 @@ macode/
 │   ├── thumbnail.sh        #   关键帧提取
 │   └── cache.sh            #   帧级缓存
 ├── bin/                    # 全局工具脚本
-│   ├── macode              #   主入口 CLI
-│   ├── agent-shell         #   Agent 默认 shell 入口
-│   ├── agent-run.sh        #   Git 原子操作包装器
-│   ├── safety-gate.sh      #   命令白名单拦截器
-│   ├── api-gate.py         #   SOURCEMAP 导入审查门
-│   ├── render-all.sh       #   批量渲染（支持并行）
-│   └── discover            #   交互式项目结构探索
+│   ├── setup.sh             #   项目初始化（权限修复 + 依赖检查）
+│   ├── macode               #   主入口 CLI
+│   ├── agent-shell          #   Agent 默认 shell 入口
+│   ├── agent-run.sh         #   Git 原子操作包装器
+│   ├── safety-gate.sh       #   命令白名单拦截器
+│   ├── api-gate.py          #   SOURCEMAP 导入审查门
+│   ├── render-all.sh        #   批量渲染（支持并行）
+│   └── discover             #   交互式项目结构探索
 ├── project.yaml            # 全局配置（引擎、分辨率、安全策略）
 ├── SOURCEMAP_SPEC.md       # SOURCEMAP 规范
 └── progress.md             # 开发路线图
