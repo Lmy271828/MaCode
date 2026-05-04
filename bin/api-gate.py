@@ -42,21 +42,52 @@ def load_blacklist(sourcemap_path):
         if len(parts) >= 4:
             path_raw = parts[2].strip('`').strip()
             if path_raw and path_raw != '路径/命令':
-                # 将路径转换为模块模式
-                # e.g., "manimlib/" -> "manimlib"
-                # e.g., "manim/_config/" -> "manim._config"
-                # e.g., "node_modules/.cache/" -> skip (not importable)
-                module = path_raw.rstrip('/')
-
-                # 跳过明显的文件系统路径（非导入模块）
-                if module.startswith('.') or module.startswith('node_modules'):
-                    continue
-
-                # 将 / 替换为 . 生成可能的导入前缀
-                module_dot = module.replace('/', '.')
-                patterns.append((path_raw, module_dot))
+                module = _path_to_module(path_raw)
+                if module:
+                    patterns.append((path_raw, module))
 
     return patterns
+
+
+def _path_to_module(path_raw):
+    """将 SOURCEMAP 路径转换为 Python 导入模块名。
+
+    >>> _path_to_module('manimlib/')
+    'manimlib'
+    >>> _path_to_module('$(python -c "...")/_config/')
+    '_config'
+    >>> _path_to_module('$(python -c "...")/mobject/types/')
+    'mobject.types'
+    >>> _path_to_module('.agent/tmp/')
+    None
+    """
+    path = path_raw.strip().rstrip('/')
+
+    # 跳过非代码路径
+    if (path.startswith('.') and not path.startswith('./')) or \
+       path.startswith('node_modules') or \
+       path.startswith('venv'):
+        return None
+
+    # 动态路径：$(python -c "...")/foo/bar/ → 取尾部 → foo.bar
+    if '$(' in path:
+        # 取最后一个 ) 之后的部分
+        idx = path.rfind(')')
+        if idx >= 0:
+            path = path[idx + 1:].lstrip('/')
+        else:
+            path = path.lstrip('/')
+
+    # 去掉多余的引号和括号
+    path = path.strip('"').strip("'")
+
+    # 路径分隔符 → 点号
+    module = path.replace('/', '.')
+
+    if not module or module in ('.', '..'):
+        return None
+
+    return module
 
 
 def check_scene(filepath, blacklist):
@@ -73,9 +104,13 @@ def check_scene(filepath, blacklist):
 
     violations = []
     for raw_path, module in blacklist:
-        # 匹配 import / from ... import 语句
+        # 匹配两种导入模式：
+        #   PREFIX: import <module>...  /  from <module>... import ...
+        #   SUBMOD: from <parent>.<module>... import ... / import <parent>.<module>
         escaped = re.escape(module)
-        if re.search(rf'\b(?:import\s+{escaped}|from\s+{escaped}\s+import)', code):
+        prefix_rx = rf'\b(?:import\s+{escaped}\b|from\s+{escaped}(?:\.\S+)?\s+import\b)'
+        submod_rx = rf'\b(?:import\s+\S+\.{escaped}\b|from\s+\S+\.{escaped}(?:\.\S+)?\s+import\b)'
+        if re.search(prefix_rx, code) or re.search(submod_rx, code):
             violations.append(
                 f"BLACKLIST import: {module} (pattern: {raw_path})"
             )
