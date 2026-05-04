@@ -90,18 +90,8 @@ def _path_to_module(path_raw):
     return module
 
 
-def check_scene(filepath, blacklist):
+def check_scene_content(code, blacklist):
     """检查场景源码是否包含 BLACKLIST 中的违规导入。"""
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            code = f.read()
-    except FileNotFoundError:
-        print(f"FATAL: Scene file not found: {filepath}", file=sys.stderr)
-        sys.exit(2)
-    except OSError as e:
-        print(f"FATAL: Cannot read scene: {e}", file=sys.stderr)
-        sys.exit(2)
-
     violations = []
     for raw_path, module in blacklist:
         # 匹配两种导入模式：
@@ -118,6 +108,43 @@ def check_scene(filepath, blacklist):
     return violations
 
 
+# ── Sandbox: dangerous Python call patterns ──────────────
+# 这些 pattern 在数学动画场景中没有合法用途
+SANDBOX_PATTERNS = [
+    # 子进程执行
+    (r'\bsubprocess\b', 'subprocess — arbitrary command execution'),
+    (r'\bos\.system\s*\(', 'os.system() — arbitrary shell command'),
+    (r'\bos\.popen\s*\(', 'os.popen() — arbitrary shell command'),
+    # 动态导入（绕过 api-gate 静态检查）
+    (r'\b__import__\s*\(', '__import__() — dynamic import bypass'),
+    # 网络访问
+    (r'\bimport\s+socket\b', 'socket — raw network access'),
+    (r'\bfrom\s+socket\s+import\b', 'socket — raw network access'),
+    (r'\bimport\s+requests\b', 'requests — HTTP client'),
+    (r'\bfrom\s+requests\s+import\b', 'requests — HTTP client'),
+    (r'\bimport\s+urllib\b', 'urllib — HTTP client'),
+    (r'\bfrom\s+urllib', 'urllib — HTTP client'),
+    # 文件系统破坏
+    (r'\bshutil\.rmtree\s*\(', 'shutil.rmtree() — recursive delete'),
+    (r'\bos\.remove\s*\(', 'os.remove() — file deletion (use pipeline scripts)'),
+    (r'\bos\.rmdir\s*\(', 'os.rmdir() — directory deletion'),
+    # 读取系统敏感路径
+    (r'open\s*\(\s*[\'"]/', 'open() reading absolute path (potential data leak)'),
+    # 退出/信号
+    (r'\bos\.kill\s*\(', 'os.kill() — process termination'),
+    (r'\bsys\.exit\s*\(', 'sys.exit() — premature process termination'),
+]
+
+
+def check_sandbox(code):
+    """扫描场景源码中的危险 Python 调用。"""
+    violations = []
+    for pattern, description in SANDBOX_PATTERNS:
+        if re.search(pattern, code):
+            violations.append(f"SANDBOX violation: {description}")
+    return violations
+
+
 def main():
     if len(sys.argv) < 3:
         print("Usage: api-gate.py <scene_file> <sourcemap_path>", file=sys.stderr)
@@ -130,12 +157,26 @@ def main():
         print(f"FATAL: Scene file not found: {scene_file}", file=sys.stderr)
         sys.exit(2)
 
-    blacklist = load_blacklist(sourcemap_path)
-    violations = check_scene(scene_file, blacklist)
+    # 读取场景源码
+    try:
+        with open(scene_file, 'r', encoding='utf-8') as f:
+            code = f.read()
+    except OSError as e:
+        print(f"FATAL: Cannot read scene: {e}", file=sys.stderr)
+        sys.exit(2)
 
-    if violations:
+    blacklist = load_blacklist(sourcemap_path)
+    all_violations = []
+
+    # 1. BLACKLIST 导入检查
+    all_violations.extend(check_scene_content(code, blacklist))
+
+    # 2. Sandbox 危险调用检查
+    all_violations.extend(check_sandbox(code))
+
+    if all_violations:
         print("API_GATE_VIOLATIONS:")
-        for v in violations:
+        for v in all_violations:
             print(f"  - {v}")
         print(f"\nFix: consult {sourcemap_path} WHITELIST for safe alternatives.",
               file=sys.stderr)

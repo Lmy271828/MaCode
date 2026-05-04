@@ -44,16 +44,25 @@ if [[ ${#ALLOWED_COMMANDS[@]} -eq 0 ]]; then
     )
 fi
 
-# 默认阻塞模式
+# 默认阻塞模式（与 project.yaml 保持同步）
 if [[ ${#BLOCKED_PATTERNS[@]} -eq 0 ]]; then
     BLOCKED_PATTERNS=(
         'rm -rf /'
         'rm -rf ~'
         'curl|wget'
         'eval|exec|bash -c'
-        'pip install'
-        'npm install'
+        'pip install|pip3 install'
+        'npm install|npm i '
         'sudo|su -'
+        '> /dev/sda'
+        'dd if='
+        'cat .macode|cat .claude|cat .git/config'
+        '\.macode/|\.claude/|\.git/config'
+        'git push --force|git push -f|git push --delete'
+        'git reset --hard'
+        'git clean -f'
+        'subprocess\.|os\.system\(|os\.popen\(|socket\.|requests\.|urllib\.'
+        'shutil\.rmtree|shutil\.move|__import__\('
     )
 fi
 
@@ -69,64 +78,46 @@ for pattern in "${BLOCKED_PATTERNS[@]}"; do
 done
 
 # 检查命令白名单
-# 提取所有看起来像命令的词（不在引号内、不是参数）
-# 简化版本：提取所有独立单词，排除明显的参数和路径
-WORDS=$(echo "$COMMAND" | tr ';|&<>(){}$`' '\n' | tr -s ' ' '\n' | sed 's/^ *//;s/ *$//')
+# 策略：按管道/分隔符拆分，每段取第一个词作为主命令，其余是参数
+# 主命令必须在白名单中；参数不检查
+SEGMENTS=$(echo "$COMMAND" | sed 's/[;&|]\+/\n/g')
 
-for word in $WORDS; do
-    # 跳过空字符串、参数、路径、变量
-    if [[ -z "$word" ]]; then
-        continue
-    fi
-    # 跳过以 - 开头的选项
-    if [[ "$word" == -* ]]; then
-        continue
-    fi
-    # 跳过路径
-    if [[ "$word" == */* ]]; then
-        continue
-    fi
-    # 跳过文件/URL（包含 . 但不是赋值）
-    if [[ "$word" == *.* ]] && [[ "$word" != *=* ]]; then
-        continue
-    fi
-    # 跳过变量
-    if [[ "$word" == \$* ]]; then
-        continue
-    fi
-    # 跳过数字
-    if [[ "$word" =~ ^[0-9]+$ ]]; then
-        continue
-    fi
-    # 跳过字符串常量（简单判断）
-    if [[ "$word" == \"* ]] || [[ "$word" == \'* ]] || [[ "$word" == *\" ]] || [[ "$word" == *\' ]]; then
-        continue
-    fi
-    # 跳过已知的 shell 关键字和结构
-    case "$word" in
+while IFS= read -r segment; do
+    segment=$(echo "$segment" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    [[ -z "$segment" ]] && continue
+
+    # 取第一个词作为命令
+    cmd_word=$(echo "$segment" | awk '{print $1}')
+
+    # 跳过空词、shell 关键字
+    [[ -z "$cmd_word" ]] && continue
+    case "$cmd_word" in
         if|then|else|elif|fi|for|while|do|done|case|esac|in|\
-        shift|exit|return|continue|break|source|.)
-            continue
-            ;;
+        shift|exit|return|continue|break|source|.|cd|pwd|echo|export|\
+        alias|set|unset|help|type|which|timeout)
+            continue ;;
     esac
 
-    # 检查是否在白名单中
+    # 跳过赋值语句
+    [[ "$cmd_word" == *=* ]] && continue
+    # 跳过选项
+    [[ "$cmd_word" == -* ]] && continue
+    # 跳过路径
+    [[ "$cmd_word" == */* ]] && continue
+
+    # 检查白名单
     FOUND=false
     for allowed in "${ALLOWED_COMMANDS[@]}"; do
-        if [[ "$word" == "$allowed" ]]; then
+        if [[ "$cmd_word" == "$allowed" ]]; then
             FOUND=true
             break
         fi
     done
 
     if [[ "$FOUND" == false ]]; then
-        # 检查是否是赋值语句（KEY=value）
-        if [[ "$word" == *=* ]]; then
-            continue
-        fi
-        ERRORS+=("Command not in whitelist: '$word'")
+        ERRORS+=("Command not in whitelist: '$cmd_word'")
     fi
-done
+done <<< "$SEGMENTS"
 
 # 输出结果
 if [[ ${#ERRORS[@]} -gt 0 ]]; then

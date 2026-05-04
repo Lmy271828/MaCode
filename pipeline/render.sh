@@ -94,6 +94,65 @@ if [[ ! -f "$ENGINE_SCRIPT" ]]; then
     exit 1
 fi
 
+# ── Manifest 校验 ─────────────────────────────────────
+validate_manifest() {
+    local m="$1"
+    local errors=0
+
+    # 必填字段检查
+    for field in engine duration fps resolution; do
+        if ! grep -q "\"$field\"" "$m" 2>/dev/null; then
+            echo "  ✗ Missing required field: $field" >&2
+            errors=$((errors + 1))
+        fi
+    done
+
+    # engine 值校验（sed 提取，兼容无 jq 环境）
+    local engine_val
+    engine_val=$(sed -n 's/.*"engine"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$m" 2>/dev/null || true)
+    if [[ -n "$engine_val" ]] && [[ "$engine_val" != "manim" && "$engine_val" != "motion_canvas" ]]; then
+        echo "  ✗ Unsupported engine: '$engine_val' (use manim or motion_canvas)" >&2
+        errors=$((errors + 1))
+    fi
+
+    # duration: 必须是正数
+    local dur_val
+    dur_val=$(sed -n 's/.*"duration"[[:space:]]*:[[:space:]]*\([0-9.]*\).*/\1/p' "$m" 2>/dev/null || echo "")
+    if [[ -z "$dur_val" ]]; then
+        echo "  ✗ duration is required" >&2
+        errors=$((errors + 1))
+    elif [[ "$dur_val" == "0" ]]; then
+        echo "  ✗ duration must be > 0" >&2
+        errors=$((errors + 1))
+    fi
+
+    # fps: 必须是正整数
+    local fps_val
+    fps_val=$(sed -n 's/.*"fps"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p' "$m" 2>/dev/null || echo "")
+    if [[ -z "$fps_val" || "$fps_val" -le 0 ]]; then
+        echo "  ✗ fps must be a positive integer, got: '$fps_val'" >&2
+        errors=$((errors + 1))
+    fi
+
+    # resolution: 必须是 [width, height] 数组
+    local res_val
+    res_val=$(sed -n 's/.*"resolution"[[:space:]]*:[[:space:]]*\[[[:space:]]*\([0-9]*\)[[:space:]]*,[[:space:]]*\([0-9]*\)[[:space:]]*\].*/\1x\2/p' "$m" 2>/dev/null || true)
+    if [[ -z "$res_val" ]]; then
+        echo "  ✗ resolution must be [width, height]" >&2
+        errors=$((errors + 1))
+    fi
+
+    return $errors
+}
+
+echo "[validate] Checking manifest..."
+if ! validate_manifest "$MANIFEST"; then
+    echo "[validate] FAILED. Fix manifest.json before rendering." >&2
+    exit 1
+fi
+echo "[validate] OK"
+# ──────────────────────────────────────────────────────
+
 # ── API-Gate: 代码审查门 ────────────────────────────
 SOURCEMAP="engines/${ENGINE}/SOURCEMAP.md"
 if [[ -f "$SOURCEMAP" && -x "$PROJECT_ROOT/bin/api-gate.py" ]]; then

@@ -49,9 +49,26 @@ else
     PYTHON="python3"
 fi
 
+# 读取渲染超时（默认 600 秒）
+MAX_TIME=600
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+if [[ -f "$PROJECT_ROOT/project.yaml" ]]; then
+    if command -v python3 >/dev/null 2>&1; then
+        MAX_TIME=$(python3 -c "
+try:
+    import yaml
+    with open('$PROJECT_ROOT/project.yaml') as f:
+        c = yaml.safe_load(f)
+    print(c.get('agent',{}).get('resource_limits',{}).get('max_render_time_sec',600))
+except: print(600)
+" 2>/dev/null || echo 600)
+    fi
+fi
+
 # manim 默认输出到 media/images/<module_name>/
 # 我们需要把帧移到指定输出目录
-"$PYTHON" -m manim \
+timeout --foreground "$MAX_TIME" "$PYTHON" -m manim \
     --format png \
     --fps "$FPS" \
     --media_dir "$OUTPUT_DIR/.media" \
@@ -59,7 +76,11 @@ fi
     2>&1 | tee "$OUTPUT_DIR/render.log"
 
 MANIM_EXIT=${PIPESTATUS[0]}
-if [[ $MANIM_EXIT -ne 0 ]]; then
+if [[ $MANIM_EXIT -eq 124 ]]; then
+    echo "[manim] TIMEOUT: rendering exceeded ${MAX_TIME}s limit" >&2
+    echo "[fix]       Simplify the scene or increase max_render_time_sec in project.yaml" >&2
+    exit 124
+elif [[ $MANIM_EXIT -ne 0 ]]; then
     echo "[manim] FAILED (exit $MANIM_EXIT). Analyzing error..." >&2
     SOURCEMAP="$(dirname "$(dirname "${BASH_SOURCE[0]}")")/SOURCEMAP.md"
     if [[ -f "$SOURCEMAP" ]]; then

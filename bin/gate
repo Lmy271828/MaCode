@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# bin/gate
+# 安全门包装器：每个 Agent 命令在进入 bash 执行前必须通过 safety-gate.sh 检查。
+#
+# 用法: gate <command_string>
+#   返回 0 → 命令通过，可安全执行
+#   返回 1 → 被拦截，拒绝执行
+
+COMMAND="${1:-}"
+if [[ -z "$COMMAND" ]]; then
+    exit 0
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# 内置命令直接放行（非破坏性 shell 操作）
+case "$COMMAND" in
+    cd|cd\ *|pwd|echo*|export\ *|alias*|set\ *|unset\ *|help|type\ *|which\ *)
+        exit 0
+        ;;
+esac
+
+# 空命令/注释放行
+if [[ "$COMMAND" =~ ^[[:space:]]*# ]] || [[ -z "${COMMAND// }" ]]; then
+    exit 0
+fi
+
+# 调用 safety-gate.sh 进行白名单/黑名单检查
+if [[ -x "$SCRIPT_DIR/safety-gate.sh" ]]; then
+    if bash "$SCRIPT_DIR/safety-gate.sh" "$COMMAND" 2>/dev/null; then
+        exit 0
+    else
+        echo "BLOCKED by safety-gate" >&2
+        exit 1
+    fi
+fi
+
+exit 0

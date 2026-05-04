@@ -41,28 +41,38 @@ agent:
     - rm
     - mkdir
     - touch
-    - python3
-    - node
-    - npm
-    - npx
-    - bash
     - echo
     - tee
     - tail
     - head
     - wc
+    - sort
+    - uniq
+    - xargs
+    - chmod
+    - dirname
+    - basename
+    - pwd
+    - date
+    - printf
 
   blocked_patterns:
     - "rm -rf /"
     - "rm -rf ~"
     - "curl|wget"
     - "eval|exec|bash -c"
-    - "pip install"
-    - "npm install"
+    - "pip install|pip3 install"
+    - "npm install|npm i "
     - "sudo|su -"
-    - "\.+\./"
     - "> /dev/sda"
     - "dd if="
+    - "cat .macode|cat .claude|cat .git/config"
+    - "\.macode/|\.claude/|\.git/config"
+    - "git push --force|git push -f|git push --delete"
+    - "git reset --hard"
+    - "git clean -f"
+    - "subprocess\.|os\.system\(|os\.popen\(|socket\.|requests\.|urllib\."
+    - "shutil\.rmtree|shutil\.move|__import__\("
 
   resource_limits:
     max_frames_per_scene: 10000

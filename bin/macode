@@ -32,10 +32,16 @@ case "$CMD" in
     render)
         SCENE_DIR="${2:-}"
         if [[ -z "$SCENE_DIR" ]]; then
-            echo "Usage: macode render <scene_dir>" >&2
+            echo "Usage: macode render <scene_dir> [--no-git]" >&2
             exit 1
         fi
-        bash "$PROJECT_ROOT/pipeline/render.sh" "$SCENE_DIR"
+        # 检查是否需要 Git 原子包装
+        if [[ "${3:-}" != "--no-git" ]] && git rev-parse --git-dir >/dev/null 2>&1; then
+            bash "$PROJECT_ROOT/bin/agent-run.sh" "$SCENE_DIR" \
+                bash "$PROJECT_ROOT/pipeline/render.sh" "$SCENE_DIR"
+        else
+            bash "$PROJECT_ROOT/pipeline/render.sh" "$SCENE_DIR"
+        fi
         ;;
 
     render-all)
