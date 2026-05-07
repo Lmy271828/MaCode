@@ -11,6 +11,11 @@ defaults:
   resolution: [1920, 1080]
   fps: 30
 
+# 引擎选择说明：
+# - manim:         ManimCE, 批处理渲染, 适合最终输出
+# - manimgl:       ManimGL, 实时交互预览, 适合开发迭代
+# - motion_canvas: Motion Canvas, 浏览器热重载
+
 # Agent 安全策略
 agent:
   context_bootstrap:

@@ -1,0 +1,14 @@
+{
+  "engine": "manim",
+  "template": "Scene",
+  "duration": 8,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "assets": [],
+  "dependencies": ["utils.pattern_helper", "utils.timeline_helper"],
+  "meta": {
+    "title": "Pattern + Timeline 辅助工具演示",
+    "author": "agent",
+    "tags": ["demo", "pattern", "timeline", "utils"]
+  }
+}

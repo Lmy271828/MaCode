@@ -1,0 +1,5 @@
+# MaCode Python dependencies
+# Locked versions for reproducible builds.
+# Update with: uv pip install -p .venv -r requirements.txt
+
+manim==0.20.1

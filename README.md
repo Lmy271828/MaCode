@@ -43,16 +43,20 @@ bin/render-all.sh --parallel 4
 
 ```text
 macode/
-├── .macode/                # Agent 运行时配置（API Key、模型）
+├── .macode/                # Agent 运行时状态（保留目录，不再存放 API Key）
 ├── .agent/                 # Agent 工作区（临时帧、缓存、日志）
 │   ├── tmp/{scene}/        # 帧序列、渲染输出
 │   ├── cache/              # 帧级缓存（按内容哈希寻址）
 │   └── log/                # 全局渲染日志
 ├── engines/                # 渲染引擎适配层
-│   ├── manim/              #   ManimCE（Python）
+│   ├── manim/              #   ManimCE（Python，默认 batch 引擎）
 │   │   ├── SOURCEMAP.md    #     源码地图（Agent 的 API 导航）
 │   │   ├── scripts/        #     render.sh, inspect.sh, validate_sourcemap.sh
-│   │   └── src/            #     适配层模板与工具
+│   │   └── src/            #     适配层模板与工具（scene_base, latex_helper, ffmpeg_builder...）
+│   ├── manimgl/            #   ManimGL（Python，interactive 预览引擎）
+│   │   ├── SOURCEMAP.md
+│   │   ├── scripts/
+│   │   └── src/
 │   └── motion_canvas/      #   Motion Canvas（TypeScript）
 │       ├── SOURCEMAP.md
 │       ├── scripts/
@@ -73,7 +77,7 @@ macode/
 │   ├── thumbnail.sh        #   关键帧提取
 │   └── cache.sh            #   帧级缓存
 ├── bin/                    # 全局工具脚本
-│   ├── setup.sh             #   项目初始化（权限 + 依赖 + API 配置）
+│   ├── setup.sh             #   项目初始化（权限 + 依赖 + 引擎环境）
 │   ├── agent                #   Coding Agent 入口（配置检查 + 系统提示）
 │   ├── agent-shell          #   Agent 安全 shell（safety-gate 拦截）
 │   ├── macode               #   主入口 CLI（render / status / inspect）
@@ -123,21 +127,6 @@ Agent 通过 `macode inspect --grep <keyword>` 查询，渲染前 `api-gate.py` 
 
 ## 配置
 
-### Agent API 配置（`.macode/settings.json`）
-
-```json
-{
-  "provider": "kimi-for-coding",
-  "env": {
-    "ANTHROPIC_API_KEY": "sk-...",
-    "ANTHROPIC_BASE_URL": "https://api.kimi.com/coding"
-  },
-  "model": "kimi-for-coding"
-}
-```
-
-`agent-shell` 启动时自动加载并导出环境变量。
-
 ### 项目配置（`project.yaml`）
 
 ```yaml
@@ -175,12 +164,20 @@ pipeline/concat.sh scenes/*/output/final.mp4 output/lecture.mp4
 pipeline/add_audio.sh output/lecture.mp4 assets/bgm.mp3 output/final.mp4
 ```
 
-## 引擎
+## 引擎与环境管理
 
-| 引擎 | 语言 | 状态 | 适用场景 |
-|------|------|------|----------|
-| ManimCE | Python | **默认** | 3Blue1Brown 风格、LaTeX 公式、几何动画 |
-| Motion Canvas | TypeScript | 备选 | 热重载迭代、Web 原生导出 |
+| 引擎 | 语言 | 模式 | 状态 | 适用场景 |
+|------|------|------|------|----------|
+| ManimCE | Python | batch | **默认** | 3Blue1Brown 风格、LaTeX 公式、几何动画 |
+| ManimGL | Python | interactive | 预览 | Grant Sanderson 原版，实时 OpenGL 交互 |
+| Motion Canvas | TypeScript | batch | 备选 | 热重载迭代、Web 原生导出 |
+
+### 环境隔离原则
+
+- **Python**：由 `uv` 统一管理，在项目根目录创建 `.venv/` 虚拟环境。ManimCE 及所有 Python 依赖仅安装于此，绝不使用全局 `pip` 或 `conda`。
+- **Node.js**：Motion Canvas 通过 `npx` 调用，`npm install` 将依赖安装到项目本地 `node_modules/`，不污染全局 npm。
+- `bin/setup.sh` 会自动下载 `uv`、创建 `.venv`（ManimCE）和 `.venv-manimgl`（ManimGL）、安装 `manim` / `manimgl`、执行 `npm install`，一步完成全部引擎配置。
+- **硬件自适应**：`bin/detect-hardware.sh` 自动检测 GPU / OpenGL / CUDA，生成 `.agent/hardware_profile.json`；`bin/select-backend.sh` 根据画像选择最优后端。
 
 迁移引擎只需修改 `manifest.json` 的 `engine` 字段并重写场景文件，管道脚本无需改动。
 
@@ -226,6 +223,8 @@ bin/agent --prompt  # 打印系统提示，复制给其他 LLM 使用
 | 3 | Agent Harness — Git 流控制 + 安全门 | ✅ |
 | 4 | 优化 — 缓存 + 并行 + 智能剪辑 | ✅ |
 | 5 | 安全加固 — Coding Agent 接入 | ✅ |
+| 6 | ManimGL + SOURCEMAP 硬化 + 语法防火墙 | ✅ |
+| 7 | WSL2 GPU 加速 — Mesa D3D12 直通 | ✅ |
 
 详见 [`progress.md`](progress.md)。
 

@@ -31,19 +31,6 @@ check_config() {
     echo -e "${BOLD}MaCode Coding Agent — Configuration Check${RESET}"
     echo ""
 
-    # API 配置
-    if [[ -f ".macode/settings.json" ]]; then
-        PROVIDER=$(python3 -c "import json; print(json.load(open('.macode/settings.json')).get('provider','?'))" 2>/dev/null || \
-                   python -c "import json; print(json.load(open('.macode/settings.json')).get('provider','?'))" 2>/dev/null || echo "?")
-        MODEL=$(python3 -c "import json; print(json.load(open('.macode/settings.json')).get('model','?'))" 2>/dev/null || \
-                python -c "import json; print(json.load(open('.macode/settings.json')).get('model','?'))" 2>/dev/null || echo "?")
-        echo -e "  ${GREEN}✓${RESET} API config: provider=$PROVIDER, model=$MODEL"
-    else
-        echo -e "  ${RED}✗${RESET} .macode/settings.json not found — API calls will fail"
-        echo "    Run: bash bin/setup.sh"
-        ok=false
-    fi
-
     # 引擎
     ENGINE=$(grep -oP 'engine:\s*\K\S+' project.yaml 2>/dev/null || echo "manim")
     if [[ -f "engines/$ENGINE/SOURCEMAP.md" ]]; then

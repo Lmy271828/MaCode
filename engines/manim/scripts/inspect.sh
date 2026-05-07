@@ -3,17 +3,31 @@ set -euo pipefail
 
 # engines/manim/scripts/inspect.sh
 # 打印该引擎可用的模板与工具函数。
-# 优先从 SOURCEMAP.md 读取结构化信息，回退到动态查询。
+# 通过 sourcemap-read 消费 JSON，不再直接解析 Markdown。
 
-CONDA_PYTHON="$HOME/miniconda3/envs/math/bin/python"
-if [[ -x "$CONDA_PYTHON" ]]; then
-    PYTHON="$CONDA_PYTHON"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+VENV_PYTHON="$PROJECT_ROOT/.venv/bin/python"
+if [[ -x "$VENV_PYTHON" ]]; then
+    PYTHON="$VENV_PYTHON"
 else
     PYTHON="python3"
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCEMAP="$SCRIPT_DIR/../SOURCEMAP.md"
+
+# ── 确保 JSON 机器接口新鲜 ───────────────────────────
+if [[ -f "$SOURCEMAP" ]]; then
+    if ! python3 "$PROJECT_ROOT/bin/sourcemap-sync.py" --check manim >/dev/null 2>&1; then
+        python3 "$PROJECT_ROOT/bin/sourcemap-sync.py" manim >/dev/null 2>&1 || true
+    fi
+fi
+
+show_redirects() {
+    echo "--- REDIRECT: Common Pitfall Corrections ---"
+    bash "$PROJECT_ROOT/bin/sourcemap-read" manim redirect 2>/dev/null || echo "  (sourcemap-read failed)"
+    echo ""
+}
 
 echo "=== ManimCE Engine Inspection ==="
 echo ""
@@ -27,35 +41,21 @@ fi
 "$PYTHON" -m manim --version 2>&1 || echo "  (manim not available in current environment)"
 echo ""
 
-# ── WHITELIST (safe to explore) ───────────────────
+# ── WHITELIST / BLACKLIST / EXTENSION ────────────────
 if [[ -f "$SOURCEMAP" ]]; then
     echo "--- WHITELIST: Safe API paths ---"
-    awk '/^## WHITELIST/ {found=1; next} /^## / {if(found) exit} found && /^\|/ && !/ 标识 /' "$SOURCEMAP" | \
-        while IFS='|' read -r _ id path purpose priority; do
-            id=$(echo "$id" | xargs)
-            priority=$(echo "$priority" | xargs)
-            purpose=$(echo "$purpose" | xargs)
-            printf "  %-30s [%s]  %s\n" "$id" "$priority" "$purpose"
-        done
+    bash "$PROJECT_ROOT/bin/sourcemap-read" manim whitelist 2>/dev/null || echo "  (sourcemap-read failed)"
     echo ""
 
     echo "--- BLACKLIST: Do not touch ---"
-    awk '/^## BLACKLIST/ {found=1; next} /^## / {if(found) exit} found && /^\|/ && !/ 标识 /' "$SOURCEMAP" | \
-        while IFS='|' read -r _ id path reason; do
-            id=$(echo "$id" | xargs)
-            reason=$(echo "$reason" | xargs)
-            printf "  %-30s  %s\n" "$id" "$reason"
-        done
+    bash "$PROJECT_ROOT/bin/sourcemap-read" manim blacklist 2>/dev/null || echo "  (sourcemap-read failed)"
     echo ""
 
     echo "--- EXTENSION: Future work ---"
-    awk '/^## EXTENSION/ {found=1; next} /^## / {if(found) exit} found && /^\|/ && !/ 标识 /' "$SOURCEMAP" | \
-        while IFS='|' read -r _ id desc status; do
-            id=$(echo "$id" | xargs)
-            status=$(echo "$status" | xargs)
-            desc=$(echo "$desc" | xargs)
-            printf "  %-30s [%-8s] %s\n" "$id" "$status" "$desc"
-        done
+    bash "$PROJECT_ROOT/bin/sourcemap-read" manim extension 2>/dev/null || echo "  (sourcemap-read failed)"
+    echo ""
+
+    show_redirects
 else
     echo "  WARN: SOURCEMAP.md not found. Run: macode sourcemap init manim"
     echo ""

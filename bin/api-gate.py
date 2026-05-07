@@ -14,11 +14,50 @@
 import sys
 import re
 import os
+import json
+import subprocess
 
 
 def load_blacklist(sourcemap_path):
-    """解析 SOURCEMAP.md 的 BLACKLIST 表格，返回禁止的模块模式列表。"""
+    """解析 SOURCEMAP，返回禁止的模块模式列表。优先读取 JSON sourcemap，fallback 到 Markdown。"""
     patterns = []
+
+    # 推断引擎名，如 engines/manim/SOURCEMAP.md -> manim
+    engine = None
+    if sourcemap_path:
+        parts = sourcemap_path.replace('\\', '/').split('/')
+        if len(parts) >= 2 and parts[-1] == 'SOURCEMAP.md':
+            engine = parts[-2]
+
+    if engine:
+        json_path = f".agent/context/{engine}_sourcemap.json"
+        if not os.path.exists(json_path):
+            # 尝试自动同步生成 JSON
+            try:
+                subprocess.run(
+                    ["python3", "bin/sourcemap-sync.py", engine],
+                    check=False,
+                    capture_output=True,
+                )
+            except Exception:
+                pass
+
+        if os.path.exists(json_path):
+            try:
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                for item in data.get("blacklist", []):
+                    path_raw = item.get("path_raw", "") if isinstance(item, dict) else ""
+                    if path_raw:
+                        module = _path_to_module(path_raw)
+                        if module:
+                            patterns.append((path_raw, module))
+                return patterns
+            except (json.JSONDecodeError, OSError, KeyError, TypeError) as e:
+                print(f"WARN: Failed to load JSON sourcemap: {e}", file=sys.stderr)
+                # fallback to markdown below
+
+    # Fallback: 旧的 Markdown 解析逻辑
     try:
         with open(sourcemap_path, 'r', encoding='utf-8') as f:
             content = f.read()
@@ -136,12 +175,55 @@ SANDBOX_PATTERNS = [
 ]
 
 
+# ── Syntax Gate: hand-written raw nested syntax ──────────────
+# Agents should not write these raw patterns; use utils helpers instead
+SYNTAX_REDIRECTS = [
+    # ffmpeg filtergraph strings
+    (r'-vf\s*"', "hand-written ffmpeg video filtergraph", "use utils.ffmpeg_builder"),
+    (r'-af\s*"', "hand-written ffmpeg audio filter", "use utils.ffmpeg_builder"),
+    (r'-filter_complex\s*"', "hand-written ffmpeg complex filtergraph", "use utils.ffmpeg_builder"),
+
+    # LaTeX raw environments
+    (r'\\begin\{cases\}', "hand-written LaTeX cases environment", "use utils.latex_helper.cases()"),
+    (r'\\begin\{bmatrix\}|\\begin\{pmatrix\}|\\begin\{Bmatrix\}', "hand-written LaTeX matrix", "use utils.latex_helper.matrix()"),
+    (r'\\begin\{align\*?\}', "hand-written LaTeX align environment", "use utils.latex_helper.align_eqns()"),
+    (r'\\begin\{equation\*?\}', "hand-written LaTeX equation environment", "use utils.latex_helper.math() or ChineseMathTex()"),
+
+    # GLSL shader
+    (r'gl_Position|uniform\s+\w+|varying\s+\w+|attribute\s+\w+', "hand-written GLSL shader code", "use utils.shader_builder"),
+    (r'#version\s+\d+', "hand-written GLSL version directive", "use utils.shader_builder"),
+
+    # Complex regex
+    (r're\.compile\s*\(\s*["\'][^"\']{60,}["\']', "hand-written complex regex", "use utils.pattern_helper"),
+    (r're\.match\s*\(\s*["\'][^"\']{60,}["\']', "hand-written complex regex", "use utils.pattern_helper"),
+    (r're\.search\s*\(\s*["\'][^"\']{60,}["\']', "hand-written complex regex", "use utils.pattern_helper"),
+
+    # Bash dangerous patterns in Python strings
+    (r'ffmpeg.*?-i.*?-vf', "hand-written ffmpeg command string in Python", "use utils.ffmpeg_builder"),
+]
+
+
 def check_sandbox(code):
     """扫描场景源码中的危险 Python 调用。"""
     violations = []
     for pattern, description in SANDBOX_PATTERNS:
         if re.search(pattern, code):
             violations.append(f"SANDBOX violation: {description}")
+    return violations
+
+
+def check_syntax_gate(code, scene_file):
+    """扫描场景源码中的手写原始语法模式。返回 (description, line_number, recommendation) 列表。"""
+    violations = []
+    seen_lines = set()
+    for line_no, line in enumerate(code.splitlines(), start=1):
+        for pattern, description, recommendation in SYNTAX_REDIRECTS:
+            if re.search(pattern, line):
+                if line_no in seen_lines:
+                    break  # 不重复报告同一行
+                seen_lines.add(line_no)
+                violations.append((description, line_no, recommendation))
+                break  # 一行只报第一个匹配的 pattern
     return violations
 
 
@@ -174,12 +256,22 @@ def main():
     # 2. Sandbox 危险调用检查
     all_violations.extend(check_sandbox(code))
 
-    if all_violations:
-        print("API_GATE_VIOLATIONS:")
-        for v in all_violations:
-            print(f"  - {v}")
-        print(f"\nFix: consult {sourcemap_path} WHITELIST for safe alternatives.",
-              file=sys.stderr)
+    # 3. Syntax Gate 手写原始语法检查
+    syntax_violations = check_syntax_gate(code, scene_file)
+
+    if syntax_violations:
+        for description, line_no, recommendation in syntax_violations:
+            print(f"SYNTAX_GATE_REDIRECT: {description}")
+            print(f"Location: {scene_file}:{line_no}")
+            print(f"Recommendation: {recommendation}")
+
+    if all_violations or syntax_violations:
+        if all_violations:
+            print("API_GATE_VIOLATIONS:")
+            for v in all_violations:
+                print(f"  - {v}")
+            print(f"\nFix: consult {sourcemap_path} WHITELIST for safe alternatives.",
+                  file=sys.stderr)
         sys.exit(1)
     else:
         print("API_GATE_OK")

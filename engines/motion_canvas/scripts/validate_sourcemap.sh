@@ -35,6 +35,7 @@ echo "[WHITELIST]"
 while IFS='|' read -r _ id path purpose priority; do
     id=$(echo "$id" | xargs)
     [[ -z "$id" || "$id" == "标识" ]] && continue
+    [[ "$id" =~ ^-+$ ]] && continue  # 跳过 Markdown 表格分隔线
 
     path_expr=$(echo "$path" | sed -n 's/.*`\(.*\)`.*/\1/p')
     if [[ -z "$path_expr" ]]; then
@@ -78,6 +79,7 @@ echo "[BLACKLIST]"
 while IFS='|' read -r _ id path reason; do
     id=$(echo "$id" | xargs)
     [[ -z "$id" || "$id" == "标识" ]] && continue
+    [[ "$id" =~ ^-+$ ]] && continue  # 跳过 Markdown 表格分隔线
 
     path_expr=$(echo "$path" | sed -n 's/.*`\(.*\)`.*/\1/p')
     if [[ -z "$path_expr" ]]; then
@@ -111,6 +113,7 @@ echo "[EXTENSION]"
 while IFS='|' read -r _ id desc status; do
     id=$(echo "$id" | xargs)
     [[ -z "$id" || "$id" == "标识" ]] && continue
+    [[ "$id" =~ ^-+$ ]] && continue  # 跳过 Markdown 表格分隔线
     status=$(echo "$status" | xargs)
     echo "  · $id: [$status] $(echo "$desc" | xargs)"
     SKIP=$((SKIP + 1))

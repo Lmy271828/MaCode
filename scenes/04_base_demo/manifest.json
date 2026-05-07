@@ -1,0 +1,14 @@
+{
+  "engine": "manim",
+  "template": "MaCodeScene",
+  "duration": 8,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "assets": [],
+  "dependencies": ["templates.scene_base"],
+  "meta": {
+    "title": "MaCodeScene 基类演示",
+    "author": "agent",
+    "tags": ["demo", "base-class", "camera"]
+  }
+}

@@ -14,6 +14,9 @@ if [[ -z "$SCENE_DIR" ]]; then
     exit 1
 fi
 
+# 定位项目根目录（提前定义，供 engine.conf 读取使用）
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 # 标准化路径（去除尾部斜杠）
 SCENE_DIR="${SCENE_DIR%/}"
 SCENE_NAME=$(basename "$SCENE_DIR")
@@ -31,9 +34,13 @@ if command -v jq >/dev/null 2>&1; then
     DURATION=$(jq -r '.duration // 3' "$MANIFEST")
     RESOLUTION=$(jq -r '.resolution // [1920, 1080]' "$MANIFEST")
 else
-    # Fallback: use Python for JSON parsing (always available in conda math env)
-    PYTHON="${HOME}/miniconda3/envs/math/bin/python"
-    if [[ ! -x "$PYTHON" ]]; then
+    # Fallback: use Python for JSON parsing
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+    VENV_PYTHON="$PROJECT_ROOT/.venv/bin/python"
+    if [[ -x "$VENV_PYTHON" ]]; then
+        PYTHON="$VENV_PYTHON"
+    else
         PYTHON="python3"
     fi
     ENGINE=$($PYTHON -c "import json,sys; print(json.load(open('$MANIFEST')).get('engine','manim'))")
@@ -42,22 +49,46 @@ else
     RESOLUTION=$($PYTHON -c "import json,sys; print(json.load(open('$MANIFEST')).get('resolution',[1920,1080]))")
 fi
 
-# 根据引擎确定场景文件扩展名和路径
-case "$ENGINE" in
-    manim)
-        SCENE_FILE="$SCENE_DIR/scene.py"
-        ;;
-    motion_canvas)
-        SCENE_FILE="$SCENE_DIR/scene.tsx"
-        ;;
-    *)
-        echo "Error: unsupported engine '$ENGINE'" >&2
-        exit 1
-        ;;
-esac
+# 从引擎自描述配置读取扩展名
+ENGINE_CONF="$PROJECT_ROOT/engines/$ENGINE/engine.conf"
+if [[ ! -f "$ENGINE_CONF" ]]; then
+    echo "Error: engine.conf not found for '$ENGINE'" >&2
+    echo "  Expected: $ENGINE_CONF" >&2
+    exit 1
+fi
 
-if [[ ! -f "$SCENE_FILE" ]]; then
-    echo "Error: scene file not found: $SCENE_FILE" >&2
+# 解析 engine.conf 获取支持的扩展名（fallback 用 Python YAML-like 解析）
+if command -v yq >/dev/null 2>&1; then
+    EXT_LIST=$(yq -r '.scene_extensions[]' "$ENGINE_CONF" 2>/dev/null)
+else
+    EXT_LIST=$(grep -oP 'scene_extensions:\s*\K.*' "$ENGINE_CONF" 2>/dev/null | tr -d '[]' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    if [[ -z "$EXT_LIST" ]]; then
+        # 更robust的逐行解析
+        EXT_LIST=$(awk '/scene_extensions:/{found=1; next} found && /^[[:space:]]*-/{print $2; next} found && /^[[:space:]]*[^#-]/{exit}' "$ENGINE_CONF" | tr -d '"' | tr -d "'")
+    fi
+fi
+
+# 读取引擎 mode（batch / interactive）
+ENGINE_MODE="batch"
+if command -v yq >/dev/null 2>&1; then
+    ENGINE_MODE=$(yq -r '.mode // "batch"' "$ENGINE_CONF" 2>/dev/null || echo "batch")
+else
+    ENGINE_MODE=$(grep -oP 'mode:\s*\K\S+' "$ENGINE_CONF" 2>/dev/null || echo "batch")
+fi
+
+# 查找第一个存在的场景文件
+SCENE_FILE=""
+for ext in $EXT_LIST; do
+    candidate="$SCENE_DIR/scene$ext"
+    if [[ -f "$candidate" ]]; then
+        SCENE_FILE="$candidate"
+        break
+    fi
+done
+
+if [[ -z "$SCENE_FILE" ]]; then
+    echo "Error: scene file not found in $SCENE_DIR" >&2
+    echo "  Tried extensions: $EXT_LIST (looking for scene<ext>)" >&2
     exit 1
 fi
 
@@ -84,9 +115,6 @@ echo "[$ENGINE] Scene: $SCENE_FILE"
 echo "[$ENGINE] Output: $FRAMES_DIR"
 echo "[$ENGINE] Settings: ${WIDTH}x${HEIGHT} @ ${FPS}fps for ${DURATION}s"
 
-# 定位项目根目录
-PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
 # 调用引擎渲染脚本
 ENGINE_SCRIPT="$PROJECT_ROOT/engines/$ENGINE/scripts/render.sh"
 if [[ ! -f "$ENGINE_SCRIPT" ]]; then
@@ -107,12 +135,19 @@ validate_manifest() {
         fi
     done
 
-    # engine 值校验（sed 提取，兼容无 jq 环境）
+    # engine 值校验：动态扫描 engines/ 目录
     local engine_val
     engine_val=$(sed -n 's/.*"engine"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$m" 2>/dev/null || true)
-    if [[ -n "$engine_val" ]] && [[ "$engine_val" != "manim" && "$engine_val" != "motion_canvas" ]]; then
-        echo "  ✗ Unsupported engine: '$engine_val' (use manim or motion_canvas)" >&2
-        errors=$((errors + 1))
+    if [[ -n "$engine_val" ]]; then
+        local engine_conf="$PROJECT_ROOT/engines/$engine_val/engine.conf"
+        if [[ ! -f "$engine_conf" ]]; then
+            echo "  ✗ Unsupported engine: '$engine_val'" >&2
+            echo "    Available engines:" >&2
+            for d in "$PROJECT_ROOT"/engines/*/; do
+                echo "      - $(basename "$d")" >&2
+            done
+            errors=$((errors + 1))
+        fi
     fi
 
     # duration: 必须是正数
@@ -181,10 +216,13 @@ fi
 # ──────────────────────────────────────────────────────
 
 # ── Resource Fuse Checks ──────────────────────────────────────
-FRAME_COUNT=$(find "$FRAMES_DIR" -name "*.png" | wc -l)
-if [[ "$FRAME_COUNT" -gt 10000 ]]; then
-    echo "FUSE: frame count $FRAME_COUNT exceeds limit 10000" >&2
-    exit 1
+# 帧数熔断仅对批处理引擎生效
+if [[ "$ENGINE_MODE" != "interactive" ]]; then
+    FRAME_COUNT=$(find "$FRAMES_DIR" -name "*.png" | wc -l)
+    if [[ "$FRAME_COUNT" -gt 10000 ]]; then
+        echo "FUSE: frame count $FRAME_COUNT exceeds limit 10000" >&2
+        exit 1
+    fi
 fi
 
 # 50 GB = 53687091200 bytes
@@ -196,16 +234,23 @@ if [[ "$DISK_BYTES" -gt 53687091200 ]]; then
 fi
 # ──────────────────────────────────────────────────────────────
 
-# 编码为 MP4
-bash "$PROJECT_ROOT/pipeline/concat.sh" "$FRAMES_DIR" "$OUTPUT_DIR/raw.mp4" >> "$LOG_FILE" 2>&1
+# 编码为 MP4（仅批处理引擎）
+if [[ "$ENGINE_MODE" == "interactive" ]]; then
+    echo "[$ENGINE] Interactive engine — skipping frame encoding."
+    echo "[$ENGINE] Preview complete. Use 'macode migrate' to export to batch engine for final render."
+    cp "$OUTPUT_DIR/raw.mp4" "$OUTPUT_DIR/final.mp4" 2>/dev/null || touch "$OUTPUT_DIR/final.mp4"
+else
+    # 编码为 MP4（传递 fps 确保帧率正确）
+    bash "$PROJECT_ROOT/pipeline/concat.sh" "$FRAMES_DIR" "$OUTPUT_DIR/raw.mp4" "$FPS" >> "$LOG_FILE" 2>&1
 
-# Phase 2: 仍然无音频，raw.mp4 即 final.mp4
-cp "$OUTPUT_DIR/raw.mp4" "$OUTPUT_DIR/final.mp4"
+    # Phase 2: 仍然无音频，raw.mp4 即 final.mp4
+    cp "$OUTPUT_DIR/raw.mp4" "$OUTPUT_DIR/final.mp4"
 
-# ── Phase 4.1: 缓存写入 ──────────────────────────────
-if [[ -x "$CACHE_SCRIPT" ]]; then
-    "$CACHE_SCRIPT" "$SCENE_DIR" populate "$OUTPUT_DIR" >> "$LOG_FILE" 2>&1 || true
+    # ── Phase 4.1: 缓存写入 ──────────────────────────────
+    if [[ -x "$CACHE_SCRIPT" ]]; then
+        "$CACHE_SCRIPT" "$SCENE_DIR" populate "$OUTPUT_DIR" >> "$LOG_FILE" 2>&1 || true
+    fi
+    # ──────────────────────────────────────────────────────
 fi
-# ──────────────────────────────────────────────────────
 
 echo "Done: $OUTPUT_DIR/final.mp4"

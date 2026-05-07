@@ -26,12 +26,17 @@ SCENE_NAME=$(basename "$SCENE_DIR")
 MANIFEST="$SCENE_DIR/manifest.json"
 CACHE_ROOT=".agent/cache"
 
-# 引擎场景文件可能为 .py 或 .tsx
-if [[ -f "$SCENE_DIR/scene.py" ]]; then
-    SCENE_FILE="$SCENE_DIR/scene.py"
-elif [[ -f "$SCENE_DIR/scene.tsx" ]]; then
-    SCENE_FILE="$SCENE_DIR/scene.tsx"
-else
+# 自动发现场景文件：查找 scene.<ext> 模式（支持任意引擎扩展名）
+SCENE_FILE=""
+for candidate in "$SCENE_DIR"/scene.*; do
+    # 排除目录和没有扩展名的匹配
+    if [[ -f "$candidate" && "$(basename "$candidate")" != "scene." ]]; then
+        SCENE_FILE="$candidate"
+        break
+    fi
+done
+
+if [[ -z "$SCENE_FILE" ]]; then
     echo "[cache] WARN: no scene file found in $SCENE_DIR, skipping cache" >&2
     exit 1
 fi

@@ -1,0 +1,14 @@
+{
+  "engine": "manim",
+  "template": "Scene",
+  "duration": 12,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "assets": [],
+  "dependencies": ["utils.latex_helper"],
+  "meta": {
+    "title": "LaTeX 辅助工具演示",
+    "author": "agent",
+    "tags": ["demo", "latex", "math"]
+  }
+}

@@ -41,13 +41,38 @@ mkdir -p "$OUTPUT_DIR"
 
 echo "[manim] Rendering $SCENE_PY -> $OUTPUT_DIR"
 
-# 定位 conda math 环境的 Python
-CONDA_PYTHON="$HOME/miniconda3/envs/math/bin/python"
-if [[ -x "$CONDA_PYTHON" ]]; then
-    PYTHON="$CONDA_PYTHON"
+# 定位 Python：优先使用项目 .venv，回退系统 python3
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+VENV_PYTHON="$PROJECT_ROOT/.venv/bin/python"
+
+# ── Backend selection ──
+BACKEND="gpu"
+if [[ -f "$PROJECT_ROOT/.agent/hardware_profile.json" ]]; then
+    BACKEND=$(bash "$PROJECT_ROOT/bin/select-backend.sh" 2>/dev/null || echo "gpu")
+fi
+echo "[manim] Render backend: $BACKEND"
+
+if [[ "$BACKEND" == "d3d12" ]]; then
+    export GALLIUM_DRIVER=d3d12
+    export LIBGL_ALWAYS_SOFTWARE=0
+    export MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA
+    echo "[manim] D3D12 GPU acceleration (WSL2 DX12 passthrough)"
+elif [[ "$BACKEND" == "cpu" ]]; then
+    export LIBGL_ALWAYS_SOFTWARE=1
+    echo "[manim] Forcing software OpenGL (Mesa llvmpipe)"
+elif [[ "$BACKEND" == "headless" ]]; then
+    echo "[manim] HEADLESS mode. No OpenGL available."
+    # Generate placeholder frames logic here if needed
+fi
+if [[ -x "$VENV_PYTHON" ]]; then
+    PYTHON="$VENV_PYTHON"
 else
     PYTHON="python3"
 fi
+
+# 将引擎适配层加入 Python 路径，使场景可 import templates/utils
+ENGINE_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../src" && pwd)"
+export PYTHONPATH="${ENGINE_SRC}${PYTHONPATH:+:$PYTHONPATH}"
 
 # 读取渲染超时（默认 600 秒）
 MAX_TIME=600

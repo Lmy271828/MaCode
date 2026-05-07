@@ -37,13 +37,20 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 echo "[motion_canvas] Rendering $SCENE_TSX -> $OUTPUT_DIR"
 echo "[motion_canvas] Settings: ${WIDTH}x${HEIGHT} @ ${FPS}fps for ${DURATION}s"
 
-# 尝试使用 Node.js 渲染脚本
+# 尝试使用 Node.js 渲染脚本（npx 避免全局安装）
 cd "$PROJECT_ROOT"
 
-if command -v npx >/dev/null 2>&1; then
-    if npx tsx "$SCRIPT_DIR/render.mjs" "$SCENE_TSX" "$OUTPUT_DIR" "$FPS" "$DURATION" "$WIDTH" "$HEIGHT" 2>&1 | tee "$OUTPUT_DIR/render.log"; then
-        echo "[motion_canvas] Done. Frames in $OUTPUT_DIR"
-        exit 0
+if [[ ! -d "node_modules" ]]; then
+    echo "[motion_canvas] ERROR: node_modules not found. Run 'bash bin/setup.sh' first." >&2
+    echo "[motion_canvas] Motion Canvas requires npm install before rendering." >&2
+else
+    if command -v npx >/dev/null 2>&1; then
+        if npx tsx "$SCRIPT_DIR/render.mjs" "$SCENE_TSX" "$OUTPUT_DIR" "$FPS" "$DURATION" "$WIDTH" "$HEIGHT" 2>&1 | tee "$OUTPUT_DIR/render.log"; then
+            echo "[motion_canvas] Done. Frames in $OUTPUT_DIR"
+            exit 0
+        fi
+    else
+        echo "[motion_canvas] ERROR: npx not found. Install Node.js to use Motion Canvas." >&2
     fi
 fi
 
