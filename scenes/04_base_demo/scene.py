@@ -17,6 +17,11 @@ class BaseDemoScene(MaCodeScene):
     AUTO_INTRO = True
     AUTO_OUTRO = True
 
+    # @act:intro
+    # @time:0-1.1s
+    # @keyframes:[0, 0.8, 1.1]
+    # @description:淡入标题作为开场
+    # @checks:["title_visible", "no_overlap"]
     def intro(self):
         """淡入标题作为开场。"""
         title = Text("MaCodeScene 基类演示", font_size=48)
@@ -24,6 +29,11 @@ class BaseDemoScene(MaCodeScene):
         self.play(FadeIn(title), run_time=0.8)
         self.wait(0.3)
 
+    # @act:main
+    # @time:1.1-6.1s
+    # @keyframes:[1.1, 3.1, 4.6, 6.1]
+    # @description:创建几何体并测试相机聚焦与缩放
+    # @checks:["no_overlap", "camera_focused"]
     def construct(self):
         # 创建三个几何体，分散在不同位置
         circle = Circle(radius=1, color=BLUE, fill_opacity=0.7)
@@ -54,6 +64,11 @@ class BaseDemoScene(MaCodeScene):
         self.zoom_to_fit([circle, square, triangle], margin=1.0, run_time=1.5)
         self.wait(0.5)
 
+    # @act:outro
+    # @time:6.1-6.9s
+    # @keyframes:[6.1, 6.9]
+    # @description:淡出所有元素作为结尾
+    # @checks:["no_overlap"]
     def outro(self):
         """淡出所有元素作为结尾。"""
         self.play(FadeOut(*self.mobjects), run_time=0.8)

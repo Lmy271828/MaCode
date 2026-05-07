@@ -38,6 +38,71 @@ case "$CMD" in
         bash "$PROJECT_ROOT/pipeline/render.sh" "$SCENE_DIR"
         ;;
 
+    dev)
+        SCENE_DIR="${2:-}"
+        if [[ -z "$SCENE_DIR" ]]; then
+            echo "Usage: macode dev <scene_dir> [--act <act_id>]" >&2
+            exit 1
+        fi
+        shift 2
+        bash "$PROJECT_ROOT/bin/macode-dev.sh" "$SCENE_DIR" "$@"
+        ;;
+
+    check)
+        SCENE_DIR="${2:-}"
+        if [[ -z "$SCENE_DIR" ]]; then
+            echo "Usage: macode check <scene_dir> [--static|--frames]" >&2
+            exit 1
+        fi
+        shift 2
+        CHECK_TYPE="${1:-all}"
+        SCENE_NAME=$(basename "$SCENE_DIR")
+        mkdir -p "$PROJECT_ROOT/.agent/check_reports"
+        case "$CHECK_TYPE" in
+            --static)
+                python3 "$PROJECT_ROOT/bin/check-static.py" "$SCENE_DIR" | tee "$PROJECT_ROOT/.agent/check_reports/${SCENE_NAME}_static.json"
+                ;;
+            --frames)
+                python3 "$PROJECT_ROOT/bin/check-frames.py" "$SCENE_DIR" | tee "$PROJECT_ROOT/.agent/check_reports/${SCENE_NAME}_frames.json"
+                ;;
+            all|""|-*)
+                echo "=== Static check ==="
+                python3 "$PROJECT_ROOT/bin/check-static.py" "$SCENE_DIR" | tee "$PROJECT_ROOT/.agent/check_reports/${SCENE_NAME}_static.json"
+                echo ""
+                echo "=== Frame check ==="
+                python3 "$PROJECT_ROOT/bin/check-frames.py" "$SCENE_DIR" | tee "$PROJECT_ROOT/.agent/check_reports/${SCENE_NAME}_frames.json"
+                ;;
+        esac
+        ;;
+
+    report)
+        SCENE_DIR="${2:-}"
+        if [[ -z "$SCENE_DIR" ]]; then
+            echo "Usage: macode report <scene_dir> [--open]" >&2
+            exit 1
+        fi
+        shift 2
+        python3 "$PROJECT_ROOT/bin/report-generator.py" "$SCENE_DIR"
+        REPORT_FILE="$PROJECT_ROOT/.agent/reports/$(basename "$SCENE_DIR")/index.html"
+        if [[ "${1:-}" == "--open" && -f "$REPORT_FILE" ]]; then
+            echo "Opening $REPORT_FILE ..."
+            xdg-open "$REPORT_FILE" 2>/dev/null || open "$REPORT_FILE" 2>/dev/null || echo "Report: $REPORT_FILE"
+        else
+            echo "Report: $REPORT_FILE"
+        fi
+        ;;
+
+    timeline)
+        python3 "$PROJECT_ROOT/bin/timeline-generator.py"
+        REPORT_FILE="$PROJECT_ROOT/.agent/reports/timeline.html"
+        if [[ "${2:-}" == "--open" && -f "$REPORT_FILE" ]]; then
+            echo "Opening $REPORT_FILE ..."
+            xdg-open "$REPORT_FILE" 2>/dev/null || open "$REPORT_FILE" 2>/dev/null || echo "Timeline: $REPORT_FILE"
+        else
+            echo "Timeline: $REPORT_FILE"
+        fi
+        ;;
+
     render-all)
         bash "$PROJECT_ROOT/bin/render-all.sh"
         ;;
@@ -271,6 +336,15 @@ case "$CMD" in
         echo "Commands:"
         echo "  render <scene_dir>     Render a single scene"
         echo "  render-all             Render all scenes"
+        echo "  dev <scene_dir>        Interactive dev mode (watch + preview)"
+        echo "    --act <act_id>       Seek to specific act (manimgl only)"
+        echo "  check <scene_dir>      Run static + frame checks"
+        echo "    --static             Run only static check"
+        echo "    --frames             Run only frame check"
+        echo "  report <scene_dir>     Generate HTML report for scene"
+        echo "    --open               Open report in browser"
+        echo "  timeline               Generate project timeline (all scenes)"
+        echo "    --open               Open timeline in browser"
         echo "  status                 Show project status"
         echo "  undo                   Revert last Agent change"
         echo "  engine                 Show engine status & compatibility"

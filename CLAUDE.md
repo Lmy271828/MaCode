@@ -401,6 +401,30 @@ scenes/
 
 ---
 
+## 10. 人类介入协议
+
+MaCode 提供文件系统信号机制，人类可随时监控和介入。
+
+### Host Agent 义务（每次执行动作前）
+1. 检查 `.agent/signals/pause` — 存在则立即暂停
+2. 检查 `.agent/signals/abort` — 存在则优雅退出
+3. 检查 `.agent/signals/human_override.json` — 存在则遵守覆盖决策
+4. 检查 `.agent/signals/review_needed` — 存在则停止等待审核
+
+### Host Agent 权利
+1. 渲染完成后自动运行 check，生成报告
+2. 生成 HTML 画面报告到 `.agent/reports/`
+3. 发现严重问题时创建 `review_needed` 请求人类审核
+4. 读取 `@human:` 注释并优先处理
+
+### 人类权利
+1. 随时 `touch .agent/signals/pause` 暂停 Agent
+2. 随时直接编辑 `scenes/` 下的文件
+3. 随时用浏览器打开 `.agent/reports/*.html` 查看画面
+4. 随时 `rm .agent/signals/review_needed` 让 Agent 继续
+
+---
+
 *文档版本：v0.2*  
 *设计原则：UNIX Philosophy + Claude Code "Bash is All You Need"*  
 *状态：Phase 0-3 完成，Phase 4 进行中*
