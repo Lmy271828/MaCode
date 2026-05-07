@@ -218,7 +218,7 @@ bin/agent --check   # 检查项目配置
 bin/agent --prompt  # 打印系统提示，复制给 LLM 使用
 
 # 可选：进入带 safety-gate 的交互式 shell
-bin/agent-shell
+bin/human-tools/agent-shell
 ```
 
 ## 开发阶段

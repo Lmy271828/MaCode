@@ -216,8 +216,8 @@ SOURCEMAP 是每个引擎目录下的结构化黑白名单文档（`engines/{nam
 **Agent 工作流中的 SOURCEMAP**：
 
 ```bash
-# 1. 启动时自动加载（agent-shell 内置）
-bin/agent-shell
+# 1. 启动时自动加载（macode CLI 内置）
+bin/macode sourcemap sync
 # → 校验 engines/{engine}/SOURCEMAP.md 存在且版本匹配
 # → 提取 P0/P1 API 到 .agent/context/engine_api.txt
 # → 提取 BLACKLIST 到 .agent/context/engine_blacklist.txt
@@ -274,8 +274,8 @@ bin/api-gate.py scenes/02_fourier/scene.py engines/manim/SOURCEMAP.md
 ### 5.2 Git 原子操作（agent-run.sh，可选）
 
 ```bash
-# 可选包装器，Host Agent 可决定是否使用
-bin/agent-run.sh "pipeline/render.sh scenes/02_fourier/"
+# 可选包装器（bin/human-tools/agent-run.sh），人类用户可决定是否使用
+bash bin/human-tools/agent-run.sh "pipeline/render.sh scenes/02_fourier/"
 # → git stash + checkout -b agent/task → 执行命令 → commit/merge 或 rollback
 ```
 
@@ -294,7 +294,7 @@ bin/agent-run.sh "pipeline/render.sh scenes/02_fourier/"
 
 ```bash
 # 仅用于人类用户本地开发，不作用于 Host Agent
-bin/agent-shell   # 进入带 safety-gate 的交互式 shell
+bin/human-tools/agent-shell   # 进入带 safety-gate 的交互式 shell
 # READLINE Enter-key 拦截危险命令
 ```
 

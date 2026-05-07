@@ -102,7 +102,7 @@ gate() {
     [[ "$cmd" =~ ^[[:space:]]*# ]] && return 0
     [[ -z "${cmd// }" ]] && return 0
     # 调用安全门
-    if bash bin/safety-gate.sh "$cmd" 2>/dev/null; then
+    if bash "$PROJECT_ROOT/bin/human-tools/safety-gate.sh" "$cmd" 2>/dev/null; then
         return 0
     else
         return 1
