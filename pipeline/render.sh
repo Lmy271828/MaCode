@@ -7,10 +7,20 @@ set -euo pipefail
 # 用法: pipeline/render.sh <scene_dir>
 #   scene_dir - 场景目录，如 scenes/01_test/
 
-SCENE_DIR="${1:-}"
+# 解析参数
+JSON_OUTPUT=false
+SCENE_DIR=""
+
+for arg in "$@"; do
+    if [[ "$arg" == "--json" ]]; then
+        JSON_OUTPUT=true
+    elif [[ -z "$SCENE_DIR" && "$arg" != --* ]]; then
+        SCENE_DIR="$arg"
+    fi
+done
 
 if [[ -z "$SCENE_DIR" ]]; then
-    echo "Usage: $0 <scene_dir>" >&2
+    echo "Usage: $0 [--json] <scene_dir>" >&2
     exit 1
 fi
 
@@ -253,4 +263,25 @@ else
     # ──────────────────────────────────────────────────────
 fi
 
-echo "Done: $OUTPUT_DIR/final.mp4"
+# ── 输出 ─────────────────────────────────────────────────
+if [[ "$JSON_OUTPUT" == true ]]; then
+    FRAME_COUNT=$(find "$FRAMES_DIR" -name "*.png" 2>/dev/null | wc -l)
+    FINAL_SIZE=$(stat -c%s "$OUTPUT_DIR/final.mp4" 2>/dev/null || echo 0)
+    python3 -c "
+import json, sys
+print(json.dumps({
+    'scene': '$SCENE_NAME',
+    'engine': '$ENGINE',
+    'output': '$OUTPUT_DIR/final.mp4',
+    'frames_dir': '$FRAMES_DIR',
+    'frame_count': $FRAME_COUNT,
+    'duration': $DURATION,
+    'fps': $FPS,
+    'resolution': [$WIDTH, $HEIGHT],
+    'final_size_bytes': $FINAL_SIZE,
+    'log': '$LOG_FILE'
+}, indent=2))
+"
+else
+    echo "Done: $OUTPUT_DIR/final.mp4"
+fi

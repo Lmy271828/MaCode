@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
 # bin/agent-shell
-# Agent 默认 shell 入口，预装 PATH 与别名。
+# 人类用户可选的交互式 shell（非 Host Agent 入口）。
+# 预装 PATH、别名和 safety-gate 本地保护。
+# Host Agent（Claude Code / Cursor 等）不应使用此入口，直接调用 CLI 即可。
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -146,9 +148,12 @@ RCEOF
     echo "echo '[gate] Command gate active — all commands checked against safety-gate.sh'"
 } >> "$RCFILE"
 
-echo "=== MaCode Agent Shell ==="
+echo "=== MaCode Optional Shell (human users only) ==="
 echo "Project: $PROJECT_ROOT"
 echo "Gate: enabled (safety-gate.sh)"
+echo ""
+echo "NOTE: This shell is for human convenience only."
+echo "      Host Agents (Claude Code / Cursor / Kimi) should call CLI tools directly."
 echo ""
 echo "Quick commands:"
 echo "  render <scene_dir>     Render a scene"

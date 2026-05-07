@@ -2,19 +2,19 @@
 set -euo pipefail
 
 # bin/agent
-# MaCode Coding Agent 入口。
-# 校验配置 → 注入系统提示 → 启动安全 agent-shell。
+# MaCode 项目配置检查与系统提示生成工具。
+# 供人类用户或 Host Agent 调用，检查环境 readiness。
 #
 # 用法:
-#   bin/agent                 交互模式：进入 agent-shell
-#   bin/agent --prompt        仅输出系统提示（调试用）
-#   bin/agent --check         检查配置但不启动
+#   bin/agent --check         检查项目配置（引擎、安全门、api-gate、Git）
+#   bin/agent --prompt        输出系统提示（供复制给其他 LLM）
+#   bin/agent --help          显示帮助
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-MODE="${1:-shell}"
+MODE="${1:-help}"
 
 # ── 颜色 ────────────────────────────────────────────
 BOLD='\033[1m'
@@ -163,25 +163,15 @@ case "$MODE" in
         check_config
         generate_prompt
         ;;
-    shell|*)
-        echo -e "${BOLD}${CYAN}╔══════════════════════════════════════╗${RESET}"
-        echo -e "${BOLD}${CYAN}║     MaCode Coding Agent v0.1.0      ║${RESET}"
-        echo -e "${BOLD}${CYAN}╚══════════════════════════════════════╝${RESET}"
+    help|*)
+        echo "MaCode Agent — 配置检查与提示生成工具"
         echo ""
-
-        check_config
+        echo "用法:"
+        echo "  bin/agent --check    检查项目配置"
+        echo "  bin/agent --prompt   输出生成系统提示"
         echo ""
-
-        echo -e "${BOLD}Agent 能力摘要:${RESET}"
-        echo "  · 场景编写:  ManimCE Python / Motion Canvas TypeScript"
-        echo "  · 渲染管道:  macode render → api-gate → cache → timeout → ffmpeg"
-        echo "  · API 发现:  macode inspect → SOURCEMAP WHITELIST"
-        echo "  · 安全防护:  safety-gate 白名单 + api-gate 沙箱 + Git 原子回滚"
-        echo "  · 后处理:    ffmpeg 拼接 / 音频合成 / 压缩 / 剪辑"
-        echo ""
-
-        echo -e "${BOLD}启动 agent-shell...${RESET}"
-        echo ""
-        exec bash "$SCRIPT_DIR/agent-shell"
+        echo "注意: MaCode 不再提供 agent-shell 入口。"
+        echo "      Host Agent（Claude Code / Cursor 等）直接调用 CLI 工具即可。"
+        echo "      人类用户如需交互式 shell，可运行: bash bin/agent-shell"
         ;;
 esac

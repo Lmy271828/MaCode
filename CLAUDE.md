@@ -8,13 +8,14 @@
 
 ## 1. 项目愿景
 
-MaCode 是一个 Claude Code 式的数学动画 Agent 工作流系统。它不封装高级 API，而是提供一个**透明的、可被 `ls / cat / grep` 完全理解的文件系统环境**，让 Agent 通过 Bash 命令探索、组合、修复数学动画的每一个环节。
+MaCode 是一个 UNIX 原生的数学动画工具集（Harness）。它不封装高级 API，而是提供一套**可被任何 Host Agent（Claude Code、Cursor、Kimi 等）直接调用的 CLI 工具**，通过标准 Bash 命令完成数学动画的渲染、剪辑、压缩等全部环节。
 
 核心目标：
 - **引擎无关**：场景定义与引擎实现解耦。今天用 ManimCE，明天可迁移到 Motion Canvas，只需修改一行 `manifest.json`。
-- **管道透明**：渲染、剪辑、压缩的每一步都是可见的文件转换，Agent 随时可以 `ls .agent/tmp/frames/` 检查中间状态。
-- **状态可逆**：所有 Agent 行为通过 Git 流控制实现原子化与可回滚，错误是廉价的。
-- **音频统一**：所有音频处理（合成、拼接、淡入淡出、压缩）由 `ffmpeg` 完成，不引入额外依赖。
+- **管道透明**：渲染、剪辑、压缩的每一步都是可见的文件转换，Host Agent 随时可以 `ls .agent/tmp/frames/` 检查中间状态。
+- **状态可逆**：所有变更通过 Git 控制，错误是廉价的。
+- **音频统一**：所有音频处理由 `ffmpeg` 完成，不引入额外依赖。
+- **Host Agent 零侵入**：MaCode 不试图控制 Host Agent 的执行环境，只提供可被直接调用的独立 CLI。
 
 ---
 
@@ -150,78 +151,57 @@ macode/
 
 ---
 
-## 4. Agent 工作流（Bash-First）
+## 4. Host Agent 使用指南（直接调用 CLI）
 
-### 4.1 引擎发现协议
-Agent 不依赖外部 API 文档，通过文件系统自学：
+MaCode 的每个工具都是**独立的 CLI**，可被 Host Agent 的标准 Bash 工具直接调用。无需进入任何自定义 shell。
+
+### 4.1 工具发现
 
 ```bash
-# 查询当前项目默认引擎
-cat project.yaml | yq '.default_engine'
+# 查看项目配置
+cat project.yaml
 
-# 发现可用模板
-grep "^class " engines/manim/src/templates/*.py
+# 查看硬件画像（JSON，机器可读）
+cat .agent/hardware_profile.json | jq .
 
-# 探索引擎源码实现（学习内部机制）
-find $(python -c "import manim; print(manim.__path__[0]") -name "*.py" \
-  | xargs grep -l "def interpolate"
+# 查看可用引擎
+ls engines/
 
-# 查看引擎提供了哪些脚本
-ls engines/manim/scripts/
+# 查看引擎配置
+cat engines/manim/engine.conf
 ```
 
-### 4.2 场景契约（manifest.json）
-Agent 不直接调用引擎 API，而是生成符合契约的文件：
+### 4.2 场景编写 → 渲染（标准工作流）
 
-```json
-{
-  "engine": "manim",
-  "template": "CameraScene",
-  "duration": 10,
-  "fps": 30,
-  "resolution": [1920, 1080],
-  "assets": ["assets/formula.tex", "assets/voiceover.mp3"],
-  "dependencies": ["scenes/00_title/manifest.json"],
-  "meta": {
-    "title": "傅里叶级数展开",
-    "author": "agent",
-    "tags": ["fourier", "calculus"]
-  }
-}
-```
-
-### 4.3 渲染管道调用
 ```bash
-# 渲染单个场景
+# 1. 编写场景源码和契约
+#    scenes/02_fourier/manifest.json  +  scenes/02_fourier/scene.py
+
+# 2. 渲染（自动通过 api-gate + 缓存检查）
 pipeline/render.sh scenes/02_fourier/
+# 输出: .agent/tmp/02_fourier/final.mp4
 
-# 内部展开为引擎特定命令
-# → engines/manim/scripts/render.sh scenes/02_fourier/scene.py .agent/tmp/02_fourier/
-# → ffmpeg -f image2 -i .agent/tmp/02_fourier/frames/frame_%04d.png ...
-# → pipeline/add_audio.sh .agent/tmp/02_fourier/raw.mp4 scenes/02_fourier/assets/voiceover.mp3 .agent/tmp/02_fourier/final.mp4
+# 3. 若渲染失败，查看日志
+tail -50 .agent/log/*.log
+
+# 4. 预览
+pipeline/preview.sh .agent/tmp/02_fourier/final.mp4
 ```
 
-### 4.4 后处理（ffmpeg 原生）
+### 4.3 批量渲染与后处理
+
 ```bash
-# 场景拼接（基于 manifest 依赖顺序）
-cat > /tmp/concat_list.txt <<EOF
-file 'scenes/00_title/output/final.mp4'
-file 'scenes/01_intro/output/final.mp4'
-file 'scenes/02_fourier/output/final.mp4'
-EOF
-ffmpeg -f concat -safe 0 -i /tmp/concat_list.txt -c copy output/lecture.mp4
+# 批量渲染所有场景
+bin/render-all.sh
 
-# 音频淡入淡出（ffmpeg filtergraph）
-ffmpeg -i input.mp4 -af "afade=t=in:ss=0:d=0.5,afade=t=out:st=9.5:d=0.5" output.mp4
+# 多场景拼接
+pipeline/concat.sh scenes/*/output/final.mp4 output/lecture.mp4
 
-# 压缩（用于预览）
-ffmpeg -i output/lecture.mp4 -vcodec libx264 -crf 28 -preset fast -vf "scale=1280:-2" output/lecture_preview.mp4
+# 音频合成
+pipeline/add_audio.sh output/lecture.mp4 assets/bgm.mp3 output/final.mp4
 
-# 生成测试音（替代 SoX synth）
-ffmpeg -f lavfi -i "sine=frequency=1000:duration=1" -acodec pcm_s16le ding.wav
-
-# 生成静音填充
-ffmpeg -f lavfi -i anullsrc=r=48000:cl=stereo -t 5 -acodec pcm_s16le silence_5s.wav
+# 压缩（社交媒体版本）
+pipeline/compress.sh output/final.mp4 output/final_small.mp4
 ```
 
 ### 4.5 SOURCEMAP 协议 —— Agent 的安全地图
@@ -276,81 +256,50 @@ engines/{name}/scripts/validate_sourcemap.sh
 
 ---
 
-## 5. 安全模型：Git 核心 + 四层硬壳
+## 5. 安全模型：分层防御（Host Agent 自主 + MaCode 辅助）
 
-在显式指定工具边界（`manim` + `ffmpeg` + 白名单命令）后，纵深防御收敛为以下四层：
+MaCode 不强制控制 Host Agent，而是提供**可选的安全工具**，由 Host Agent 决定是否调用。
 
-### 5.1 Layer 0: 工具白名单（命令拦截）
-Agent 只能调用预声明的工具，不能执行任意 bash：
-
-```yaml
-# project.yaml —— 安全策略片段
-agent:
-  allowed_commands:
-    - manim
-    - ffmpeg
-    - ffprobe
-    - jq
-    - yq
-    - git
-    - find
-    - grep
-    - sed
-    - awk
-    - just
-    - du
-    - df
-    - cat
-    - ls
-    - cp
-    - mv
-    - rm
-  blocked_patterns:
-    - "rm -rf /"
-    - "curl|wget"
-    - "eval|exec|bash -c"
-    - "pip install"
-    - "npm install"
-  resource_limits:
-    max_frames_per_scene: 10000
-    max_disk_gb: 50
-    max_render_time_sec: 600
-```
-
-### 5.2 Layer 1: Git 流控制（核心防御）
-所有 Agent 行为原子化、可回滚：
+### 5.1 渲染前静态检查（api-gate.py）
 
 ```bash
-# bin/agent-run.sh —— harness 自动执行（Agent 无感知）
-git stash push -m "pre-task"
-git checkout -b agent/${TASK_ID}
-# → 运行 Agent 命令
-# → 成功：git commit + merge --no-ff
-# → 失败：git checkout - + git branch -D（自动回滚）
+# 独立校验工具，Host Agent 可在渲染前调用
+bin/api-gate.py scenes/02_fourier/scene.py engines/manim/SOURCEMAP.md
+# → 检查 BLACKLIST 导入 + sandbox 危险调用
+# → 退出码 0 = 通过，1 = 拦截（输出具体违规位置）
 ```
 
-**关键设计**：
-- 按"渲染任务"批量 commit，不按文件修改频繁提交。
-- 渲染实验使用临时 branch，确认后 merge，废弃则直接删除 branch。
-- Git 只管理代码 / 配置，帧 / 视频等大文件通过 `.gitignore` 排除，必要时用 Git LFS。
+`pipeline/render.sh` 已内置自动调用，但 Host Agent 也可在编码阶段手动预检。
 
-### 5.3 Layer 2: 资源熔断（外部守护）
+### 5.2 Git 原子操作（agent-run.sh，可选）
+
 ```bash
-# 渲染前检查（harness 预置）
-frames=$(find .agent/tmp/ -name "*.png" | wc -l)
-if [ $frames -gt 10000 ]; then
-  echo "FUSE: 帧数超限，停止渲染" >&2
-  exit 1
-fi
+# 可选包装器，Host Agent 可决定是否使用
+bin/agent-run.sh "pipeline/render.sh scenes/02_fourier/"
+# → git stash + checkout -b agent/task → 执行命令 → commit/merge 或 rollback
 ```
 
-### 5.4 Layer 3: 规则引擎（系统提示）
-Agent 系统提示中明确约束：
-- 禁止修改 `engines/` 目录（只读）。
-- 禁止删除 `.git` 目录。
-- 禁止跳出项目根目录执行命令。
-- 优先使用 `inspect.sh` 了解引擎能力，不假设 API 存在。
-- 音频处理必须使用 `ffmpeg`，禁止引入 `sox` 或其他音频工具。
+**注意**：Host Agent 也可直接使用自己的 Git 工具，不强制使用 `agent-run.sh`。
+
+### 5.3 资源熔断（render.sh 内置）
+
+```bash
+# pipeline/render.sh 内置熔断，无需 Host Agent 干预
+# - 帧数上限：10000
+# - 磁盘上限：50GB
+# - 渲染超时：600s（读取 project.yaml）
+```
+
+### 5.4 本地开发保护（safety-gate.sh，人类用户可选）
+
+```bash
+# 仅用于人类用户本地开发，不作用于 Host Agent
+bin/agent-shell   # 进入带 safety-gate 的交互式 shell
+# READLINE Enter-key 拦截危险命令
+```
+
+**Host Agent 无需使用 safety-gate**——它有自己的安全策略。
+
 
 ---
 
@@ -414,26 +363,41 @@ scenes/
 
 ---
 
-## 9. Agent 系统提示模板（参考）
+## 9. CLI 工具速查表（Host Agent 参考）
 
-> 你是一个数学动画工程师，工作在一个 bash-first 的 harness 中。
->
-> **你的工作流：**
-> 1. 读取 `project.yaml` 了解项目配置与安全策略。
-> 2. 读取目标场景的 `scenes/*/manifest.json` 理解需求。
-> 3. 使用 `engines/<engine>/scripts/inspect.sh` 查看可用构建块（基于 SOURCEMAP.md）。
-> 4. 使用 `macode inspect --grep <keyword>` 查询 SOURCEMAP WHITELIST 确认 API 存在。
-> 5. 生成场景源码到 `scenes/` 目录，确保符合 `manifest.json` 契约。
-> 6. **禁止导入 SOURCEMAP BLACKLIST 中的模块**（如 `manimlib`、`manim._config`）。
-> 7. 调用 `pipeline/render.sh <scene_dir>` 触发渲染（自动通过 api-gate 审查）。
-> 8. 若 api-gate 拦截，按提示修复违规导入后重试。
-> 9. 若渲染失败，阅读 `.agent/log/` 中的日志和 SOURCEMAP 定向诊断，针对性修复。
-> 10. 后处理通过 `pipeline/` 中的脚本调用 `ffmpeg` 完成。
-> 11. 音频处理统一使用 `ffmpeg`，禁止引入 `sox` 或其他音频工具。
->
-> **可迁移原则**：场景逻辑应尽可能表达在 `manifest.json` 中，具体实现文件（`.py`/`.tsx`）只是引擎的"视图层"。
->
-> **安全约束**：你只能调用 `project.yaml` 中 `allowed_commands` 白名单内的命令。禁止修改 `engines/` 目录（SOURCEMAP.md 为只读）。禁止执行网络下载。所有破坏性操作前确保 Git 状态干净。
+| 工具 | 用途 | 典型调用 | 输出 |
+|------|------|----------|------|
+| `pipeline/render.sh <scene_dir>` | 渲染场景 | `pipeline/render.sh scenes/01_test/` | `.agent/tmp/{scene}/final.mp4` |
+| `bin/render-all.sh` | 批量渲染 | `bin/render-all.sh --parallel 4` | 所有场景的 `final.mp4` |
+| `bin/macode status` | 项目状态 | `bin/macode status` | 文本摘要 |
+| `bin/macode inspect --grep <re>` | 查询 API | `bin/macode inspect --grep "Circle\|MathTex"` | 匹配的 WHITELIST 条目 |
+| `bin/api-gate.py <scene.py> <SOURCEMAP>` | 代码审查 | `bin/api-gate.py scenes/01_test/scene.py engines/manim/SOURCEMAP.md` | 退出码 0/1 + 违规列表 |
+| `bin/detect-hardware.sh` | 硬件检测 | `bash bin/detect-hardware.sh` | `.agent/hardware_profile.json` |
+| `bin/select-backend.sh` | 后端选择 | `bash bin/select-backend.sh` | `gpu` / `d3d12` / `cpu` / `headless` |
+| `pipeline/concat.sh <frames_dir> <out.mp4> [fps]` | 帧序列编码 | `pipeline/concat.sh .agent/tmp/01_test/frames/ out.mp4 30` | MP4 文件 |
+| `pipeline/add_audio.sh <video> <audio> <out>` | 音轨合成 | `pipeline/add_audio.sh out.mp4 bgm.mp3 final.mp4` | MP4 文件 |
+| `pipeline/compress.sh <in> <out>` | 视频压缩 | `pipeline/compress.sh final.mp4 small.mp4` | MP4 文件 |
+| `pipeline/preview.sh <mp4>` | 快速预览 | `pipeline/preview.sh final.mp4` | 降分辨率预览文件 |
+| `engines/*/scripts/inspect.sh` | 引擎能力查询 | `engines/manim/scripts/inspect.sh` | 可用模板/API 列表 |
+
+### 退出码约定
+
+| 退出码 | 含义 |
+|--------|------|
+| 0 | 成功 |
+| 1 | 通用错误 / api-gate 拦截 |
+| 124 | 渲染超时（timeout 触发）|
+
+### Host Agent 工作流建议
+
+1. 读取 `project.yaml` 了解配置
+2. 读取目标 `scenes/*/manifest.json` 理解需求
+3. 使用 `macode inspect --grep <keyword>` 或 `engines/*/scripts/inspect.sh` 查询 API
+4. 编写场景源码（`scene.py` + `manifest.json`）
+5. 可选：预检 `bin/api-gate.py` 确认无违规导入
+6. 调用 `pipeline/render.sh <scene_dir>` 渲染
+7. 若失败：`tail .agent/log/*.log` 查看诊断
+8. 后处理：`pipeline/*.sh` 拼接 / 音频 / 压缩
 
 ---
 

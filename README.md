@@ -17,11 +17,11 @@ MaCode 是一个 Bash-First 的数学动画 Agent 工作流系统。它不封装
 # 克隆后首次：初始化权限、目录、依赖检查、配置 API
 bash bin/setup.sh
 
-# 启动 Coding Agent（配置检查 + 系统提示 + 安全 shell）
-bin/agent
+# 检查项目环境
+bin/agent --check
 
-# 或直接进入 Agent 环境
-bin/agent-shell
+# 查看项目状态
+bin/macode status
 
 # 查看项目状态
 macode status
@@ -78,11 +78,11 @@ macode/
 │   └── cache.sh            #   帧级缓存
 ├── bin/                    # 全局工具脚本
 │   ├── setup.sh             #   项目初始化（权限 + 依赖 + 引擎环境）
-│   ├── agent                #   Coding Agent 入口（配置检查 + 系统提示）
-│   ├── agent-shell          #   Agent 安全 shell（safety-gate 拦截）
+│   ├── agent                #   配置检查 + 系统提示生成
+│   ├── agent-shell          #   人类用户可选交互式 shell（非 Host Agent 入口）
 │   ├── macode               #   主入口 CLI（render / status / inspect）
-│   ├── agent-run.sh         #   Git 原子操作包装器
-│   ├── safety-gate.sh       #   命令白名单 / 黑名单拦截器
+│   ├── agent-run.sh         #   可选 Git 原子操作包装器
+│   ├── safety-gate.sh       #   本地开发命令白名单（人类用户可选）
 │   ├── gate                 #   安全门包装器
 │   ├── api-gate.py          #   BLACKLIST 导入 + sandbox 危险调用扫描
 │   ├── render-all.sh        #   批量渲染（支持 --parallel）
@@ -139,8 +139,8 @@ defaults:
 ## 工作流示例
 
 ```bash
-# 1. 进入 Agent 环境
-bin/agent-shell
+# 1. 查看项目配置
+bin/agent --check
 
 # 2. 查看 ManimCE 引擎提供了什么
 engines/manim/scripts/inspect.sh
@@ -186,31 +186,39 @@ pipeline/add_audio.sh output/lecture.mp4 assets/bgm.mp3 output/final.mp4
 渲染前自动执行五层防御：
 
 ```
-Agent 命令
-  → safety-gate.sh (命令白名单 + blocked_patterns)
-  → agent-run.sh  (Git 原子操作：失败自动回滚)
-  → manifest.json 校验 (必填字段 + 引擎枚举 + 类型检查)
-  → api-gate.py   (BLACKLIST 导入拦截 + 16 项 sandbox 危险调用扫描)
-  → timeout 600s  (渲染超时熔断，帧数上限 10000，磁盘上限 50GB)
+Host Agent 调用
+  → 可选: bin/api-gate.py   (渲染前静态检查：BLACKLIST 导入 + sandbox 扫描)
+  → pipeline/render.sh      (manifest 校验 → 引擎渲染 → api-gate → 缓存 → timeout)
+  → 内置熔断: 帧数上限 10000 / 磁盘上限 50GB / 渲染超时 600s
   → ffmpeg 编码
+  → 输出: .agent/tmp/{scene}/final.mp4
 ```
 
-## 两种使用方式
+## 使用方式
 
-### Claude Code 直接使用（推荐）
+### 任意 Host Agent 直接使用（推荐）
+
+MaCode 的所有工具都是独立 CLI，可被任何 Coding Agent（Claude Code、Cursor、Kimi 等）直接调用：
 
 ```bash
 cd MaCode/
-claude    # Claude Code 自动读 CLAUDE.md，理解全部工作流
+
+# Host Agent 直接调用标准工具
+pipeline/render.sh scenes/01_test/
+bin/macode inspect --grep "Circle"
+bin/detect-hardware.sh
 ```
 
-Claude Code 本身就是 Coding Agent，它读取 `CLAUDE.md` → `project.yaml` → `SOURCEMAP.md`，理解架构后自动执行 bash 命令完成任务。
+Host Agent 读取 `CLAUDE.md` → `project.yaml` → `SOURCEMAP.md` 理解架构后，通过标准 Bash 工具调用 CLI，无需进入任何自定义 shell。
 
-### 手动 / 其他 LLM
+### 人类用户
 
 ```bash
-bin/agent           # 进入安全 agent-shell（命令经过 safety-gate）
-bin/agent --prompt  # 打印系统提示，复制给其他 LLM 使用
+bin/agent --check   # 检查项目配置
+bin/agent --prompt  # 打印系统提示，复制给 LLM 使用
+
+# 可选：进入带 safety-gate 的交互式 shell
+bin/agent-shell
 ```
 
 ## 开发阶段

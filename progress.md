@@ -566,3 +566,64 @@ MaCode 的七条初心与本次全部修改的对照：
 *路线图版本：v0.4*  
 *哲学：Make it work → Make it right → Make it fast*  
 *当前阶段：Phase 7 完成，WSL2 D3D12 GPU 加速就绪 —— 2026-05-07*
+
+
+---
+
+## v0.5.0：架构重构 — 从"控制 Agent"到"服务 Agent"
+
+### 问题发现
+
+MaCode 当前设计假设 Host Agent（Claude Code）会进入 `agent-shell`，接受 `safety-gate` 的命令拦截，并服从 `agent-run.sh` 的 Git 原子操作包装。但实践发现：
+
+- Claude Code 等现代 Coding Agent **不会放权给陌生的 bash 脚本**
+- `safety-gate.sh` 的 READLINE 拦截对 Claude Code 无效（它不通过 READLINE 输入命令）
+- `agent-shell` 的别名和 PATH 注入对 Claude Code 无效
+- progress.md 已记录：`safety-gate 和 agent-run 存在但从未被调用，属于死代码`
+
+**核心矛盾**：MaCode 试图"控制"Host Agent 的执行环境，但 Host Agent 的防御机制决定了它不会接受这种控制。
+
+### 范式转换：从"控制"到"服务"
+
+| 旧模式 | 新模式 |
+|--------|--------|
+| MaCode 控制 Agent 的执行环境 | MaCode 提供可被 Agent 直接调用的 CLI |
+| `agent-shell` 是主要入口 | `agent-shell` 降级为人类用户可选工具 |
+| `safety-gate` 强制拦截命令 | `safety-gate` 保留为本地开发保护 |
+| `agent-run.sh` 强制包装 Git | `agent-run.sh` 保留为可选辅助脚本 |
+| `CLAUDE.md` 是"系统提示" | `CLAUDE.md` 是"工具说明书" |
+
+### 实施内容
+
+- [x] **CLAUDE.md 重构**：从"系统提示"重写为"MaCode 工具说明书"，明确列出每个 CLI 的用途、参数、示例输出、退出码
+- [x] **`pipeline/render.sh --json`**：支持 JSON 输出渲染结果摘要（scene、engine、frame_count、final_size 等）
+- [x] **`bin/agent` 降级**：默认行为从"启动 agent-shell"改为"显示帮助信息"；`--check` 和 `--prompt` 保留为独立工具
+- [x] **`bin/agent-shell` 标注**：启动时明确提示"仅供人类用户使用，Host Agent 直接调用 CLI"
+- [x] **README.md 更新**：移除"进入 agent-shell"作为推荐工作流；推荐工作流改为 Host Agent 直接调用 CLI
+- [x] **安全模型降级**：从"四层硬壳强制控制"改为"分层可选辅助"；`api-gate.py` 保留为独立校验工具（`pipeline/render.sh` 已内置自动调用，Host Agent 也可手动预检）
+
+### 初心一致性
+
+| 初心 | 旧模式评估 | 新模式评估 |
+|------|-----------|-----------|
+| **Bash-First** | ⚠️ 试图包裹 Host Agent 的 bash | ✅ 标准 Bash 调用 |
+| **管道透明** | ✅ | ✅ |
+| **Agent 可理解** | ⚠️ 自定义 shell 增加认知负担 | ✅ `cat`/`grep` 即可理解 |
+| **UNIX 哲学** | ⚠️ `agent-shell` 是大包大揽 | ✅ 单一职责 CLI |
+
+### 决策记录
+
+| 日期 | 决策 | 理由 |
+|------|------|------|
+| 2026-05-07 | 放弃"控制 Agent"范式 | Host Agent（Claude Code）不会放权给陌生 bash 脚本；`safety-gate`/`agent-run` 属于死代码 |
+| 2026-05-07 | `agent-shell` 降级为人类可选工具 | Host Agent 不需要也不应进入自定义 shell；人类用户仍可 convenience 使用 |
+| 2026-05-07 | `CLAUDE.md` 从"系统提示"改为"工具说明书" | Host Agent 读取 `CLAUDE.md` 是为了了解可用工具，不是接受指令约束 |
+| 2026-05-07 | `pipeline/render.sh --json` | Host Agent 需要机器可读的输出以判断渲染结果和错误 |
+| 2026-05-07 | 不实现 MaCode 原生 Agent loop | 与 Host Agent 竞争，重复造轮子，严重违背"不要内建 IDE/Agent"初心 |
+| 2026-05-07 | 不立即实现 MCP Server | 当前结构化 CLI 已满足需求；MCP 作为 v0.6.0+ 可选高级接口保留 |
+
+---
+
+*路线图版本：v0.5*  
+*哲学：Make it work → Make it right → Make it fast*  
+*当前阶段：v0.5.0 — 架构重构完成，从"控制 Agent"到"服务 Agent" —— 2026-05-07*
