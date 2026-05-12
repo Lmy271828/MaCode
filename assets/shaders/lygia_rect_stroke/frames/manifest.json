@@ -1,0 +1,11 @@
+{
+  "source": "assets/shaders/lygia_rect_stroke",
+  "fps": 10.0,
+  "duration": 1.0,
+  "resolution": [
+    400,
+    300
+  ],
+  "frame_count": 10,
+  "frame_pattern": "frame_%04d.png"
+}

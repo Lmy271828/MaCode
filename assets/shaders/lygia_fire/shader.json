@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "metadata": {
+    "name": "lygia_fire",
+    "description": "LYGIA fire palette demo",
+    "author": "MaCode",
+    "source": "lygia"
+  },
+  "backend": {
+    "target": "cpu",
+    "glsl_version": "#version 330"
+  },
+  "glsl": {
+    "vertex": "vert.glsl",
+    "fragment": "frag.glsl",
+    "geometry": null
+  },
+  "uniforms": [
+    {
+      "name": "time",
+      "type": "float",
+      "default": 0.0,
+      "animation": {
+        "enabled": true,
+        "from": 0,
+        "to": 10,
+        "easing": "linear"
+      }
+    },
+    {
+      "name": "resolution",
+      "type": "vec2",
+      "default": [
+        1920,
+        1080
+      ],
+      "animation": {
+        "enabled": false
+      }
+    }
+  ],
+  "render": {
+    "fps": 30,
+    "duration": 3.0,
+    "resolution": [
+      400,
+      300
+    ],
+    "output_format": "png_sequence"
+  }
+}

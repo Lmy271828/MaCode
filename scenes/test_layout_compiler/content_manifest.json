@@ -1,0 +1,13 @@
+{
+  "title": "Layout Compiler E2E",
+  "content": [
+    {"type": "text", "text": "Hi", "importance": "high"},
+    {"type": "visual", "primitive": "Circle", "importance": "high"},
+    {"type": "visual", "primitive": "Square", "importance": "high"},
+    {"type": "visual", "primitive": "Dot", "importance": "high"},
+    {"type": "visual", "primitive": "Circle", "importance": "high"},
+    {"type": "visual", "primitive": "Line", "importance": "high"}
+  ],
+  "layout_profile": "lecture_3zones",
+  "narrative_profile": "definition_reveal"
+}

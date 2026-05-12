@@ -1,0 +1,14 @@
+{
+  "engine": "manim",
+  "template": "Scene",
+  "duration": 10,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "assets": ["assets/beat.mp3", "assets/beat_timeline.csv"],
+  "dependencies": [],
+  "meta": {
+    "title": "Audio Sync Demo",
+    "author": "agent",
+    "tags": ["audio", "sync", "demo"]
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "name": "lecture_3zones",
+  "description": "Classic lecture layout: title bar, main visual + annotation side-by-side, caption bar. Mirrors the 'Golden Layout' from visual-techniques.md with a dedicated annotation sidebar.",
+  "canvas": [1920, 1080],
+  "zones": {
+    "title": {
+      "rect": [0.00, 0.00, 1.00, 0.12],
+      "padding": [20, 10, 20, 10],
+      "max_objects": 2,
+      "allowed_types": ["Text", "Tex", "TexText", "MathTex"],
+      "importance": "context",
+      "align_default": "center"
+    },
+    "main_visual": {
+      "rect": [0.00, 0.12, 0.70, 0.60],
+      "padding": [30, 20, 30, 20],
+      "max_objects": 6,
+      "allowed_types": ["Mobject"],
+      "importance": "primary",
+      "align_default": "center"
+    },
+    "annotation": {
+      "rect": [0.70, 0.12, 0.30, 0.60],
+      "padding": [20, 15, 20, 15],
+      "max_objects": 3,
+      "allowed_types": ["Text", "Tex", "TexText", "MathTex", "Arrow", "Line"],
+      "importance": "secondary",
+      "align_default": "start"
+    },
+    "caption": {
+      "rect": [0.00, 0.72, 1.00, 0.28],
+      "padding": [20, 10, 20, 10],
+      "max_objects": 3,
+      "allowed_types": ["Text", "Tex", "TexText", "MathTex"],
+      "importance": "context",
+      "align_default": "center"
+    }
+  },
+  "constraints": {
+    "min_gutter": 20,
+    "min_margin": 40,
+    "primary_zone_must_have_visual": true,
+    "max_total_text_chars": 120
+  },
+  "meta": {
+    "source": "manim_skill/visual-techniques.md",
+    "version": "1.0"
+  }
+}

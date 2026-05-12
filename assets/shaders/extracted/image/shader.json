@@ -1,0 +1,89 @@
+{
+  "schema_version": "1.0",
+  "metadata": {
+    "name": "image",
+    "description": "Extracted from manimlib built-in shader: image",
+    "author": "manimlib",
+    "source": "manimgl_builtin",
+    "inserts": [
+      "emit_gl_Position.glsl"
+    ]
+  },
+  "backend": {
+    "target": "gpu",
+    "glsl_version": "#version 330"
+  },
+  "glsl": {
+    "vertex": "vert.glsl",
+    "fragment": "frag.glsl",
+    "geometry": null
+  },
+  "uniforms": [
+    {
+      "name": "Texture",
+      "type": "sampler2D",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "is_fixed_in_frame",
+      "type": "float",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "view",
+      "type": "mat4",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "focal_distance",
+      "type": "float",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "frame_rescale_factors",
+      "type": "vec3",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "clip_plane",
+      "type": "vec4",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "Texture",
+      "type": "sampler2D",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    }
+  ],
+  "render": {
+    "fps": 30,
+    "duration": 3.0,
+    "resolution": [
+      1920,
+      1080
+    ],
+    "output_format": "png_sequence"
+  },
+  "nodegraph": null
+}

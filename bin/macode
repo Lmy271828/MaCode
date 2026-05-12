@@ -22,7 +22,7 @@ DEFAULT_ENGINE="manim"
 if [[ -f "project.yaml" ]]; then
     if command -v yq >/dev/null 2>&1; then
         PROJECT_NAME=$(yq -r '.project.name // "MaCode"' project.yaml)
-        DEFAULT_ENGINE=$(yq -r '.defaults.engine // "manim"' project.yaml)
+        DEFAULT_ENGINE=$(yq -r '.defaults.engine // "manimgl"' project.yaml)
     fi
 fi
 
@@ -35,12 +35,141 @@ case "$CMD" in
             echo "Usage: macode render <scene_dir> [--no-git]" >&2
             exit 1
         fi
-        # 检查是否需要 Git 原子包装
-        if [[ "${3:-}" != "--no-git" ]] && git rev-parse --git-dir >/dev/null 2>&1; then
-            bash "$PROJECT_ROOT/bin/agent-run.sh" "$SCENE_DIR" \
-                bash "$PROJECT_ROOT/pipeline/render.sh" "$SCENE_DIR"
+
+        shift 2
+        bash "$PROJECT_ROOT/pipeline/render.sh" "$SCENE_DIR" "$@"
+        ;;
+
+    dev)
+        SCENE_DIR="${2:-}"
+        if [[ -z "$SCENE_DIR" ]]; then
+            echo "Usage: macode dev <scene_dir> [--segment <seg_id>] [--snapshot [time]] [--watch] [--port <n>]" >&2
+            exit 1
+        fi
+        shift 2
+        bash "$PROJECT_ROOT/bin/macode-dev.sh" "$SCENE_DIR" "$@"
+        ;;
+
+    check)
+        SCENE_DIR="${2:-}"
+        if [[ -z "$SCENE_DIR" ]]; then
+            echo "Usage: macode check <scene_dir> [--static|--frames]" >&2
+            exit 1
+        fi
+        shift 2
+        CHECK_TYPE="${1:-all}"
+        SCENE_NAME=$(basename "$SCENE_DIR")
+        mkdir -p "$PROJECT_ROOT/.agent/check_reports"
+        case "$CHECK_TYPE" in
+            --static)
+                python3 "$PROJECT_ROOT/bin/check-static.py" "$SCENE_DIR" --output "$PROJECT_ROOT/.agent/check_reports/${SCENE_NAME}_static.json"
+                ;;
+            --frames)
+                python3 "$PROJECT_ROOT/bin/check-frames.py" "$SCENE_DIR" --output "$PROJECT_ROOT/.agent/check_reports/${SCENE_NAME}_frames.json"
+                ;;
+            all|""|-*)
+                echo "=== Static check ==="
+                python3 "$PROJECT_ROOT/bin/check-static.py" "$SCENE_DIR" --output "$PROJECT_ROOT/.agent/check_reports/${SCENE_NAME}_static.json"
+                echo ""
+                echo "=== Frame check ==="
+                python3 "$PROJECT_ROOT/bin/check-frames.py" "$SCENE_DIR" --output "$PROJECT_ROOT/.agent/check_reports/${SCENE_NAME}_frames.json"
+                ;;
+        esac
+        ;;
+
+    composite|composite-unified)
+        SUB="${2:-}"
+        if [[ -z "$SUB" ]]; then
+            echo "Usage: macode composite <info|render|init|add-segment> [args]" >&2
+            exit 1
+        fi
+        case "$SUB" in
+            info)
+                SCENE_DIR="${3:-}"
+                if [[ -z "$SCENE_DIR" ]]; then
+                    echo "Usage: macode composite info <scene_dir>" >&2
+                    exit 1
+                fi
+                if [[ ! -f "$SCENE_DIR/manifest.json" ]]; then
+                    echo "Error: manifest.json not found in $SCENE_DIR" >&2
+                    exit 1
+                fi
+                python3 - "$SCENE_DIR" <<'PY'
+import json, os, sys
+scene_dir = sys.argv[1]
+with open(os.path.join(scene_dir, 'manifest.json')) as f:
+    manifest = json.load(f)
+print(f"Scene: {os.path.basename(os.path.normpath(scene_dir))}")
+print(f"Type: {manifest.get('type', 'scene')}")
+print("")
+print("Segments:")
+total = 0.0
+for seg in manifest.get('segments', []):
+    seg_path = seg.get('scene_dir') or seg.get('shot') or 'N/A'
+    trans = seg.get('transition')
+    trans_str = f" [transition: {trans['type']} {trans['duration']}s]" if trans else ""
+    print(f"  - {seg['id']}: {seg_path}{trans_str}")
+    dmanifest = os.path.join(scene_dir, seg_path, 'manifest.json')
+    if os.path.isfile(dmanifest):
+        with open(dmanifest) as f:
+            data = json.load(f)
+        dur = float(data.get('duration', 0))
+        print(f"    duration: {dur}s")
+        total += dur
+print("")
+print(f"Total (raw): {total:.2f}s")
+PY
+                ;;
+            render)
+                SCENE_DIR="${3:-}"
+                if [[ -z "$SCENE_DIR" ]]; then
+                    echo "Usage: macode composite render <scene_dir>" >&2
+                    exit 1
+                fi
+                shift 3
+                bash "$PROJECT_ROOT/pipeline/render.sh" "$SCENE_DIR" "$@"
+                ;;
+            init)
+                shift 2
+                python3 "$PROJECT_ROOT/bin/composite-init.py" init "$@"
+                ;;
+            add-segment)
+                shift 2
+                python3 "$PROJECT_ROOT/bin/composite-init.py" add-segment "$@"
+                ;;
+            *)
+                echo "Unknown composite subcommand: $SUB" >&2
+                echo "Usage: macode composite <info|render|init|add-segment> [args]" >&2
+                exit 1
+                ;;
+        esac
+        ;;
+
+    report)
+        SCENE_DIR="${2:-}"
+        if [[ -z "$SCENE_DIR" ]]; then
+            echo "Usage: macode report <scene_dir> [--open]" >&2
+            exit 1
+        fi
+        shift 2
+        python3 "$PROJECT_ROOT/bin/report-generator.py" "$SCENE_DIR"
+        REPORT_FILE="$PROJECT_ROOT/.agent/reports/$(basename "$SCENE_DIR")/index.html"
+        if [[ "${1:-}" == "--open" && -f "$REPORT_FILE" ]]; then
+            echo "Opening $REPORT_FILE ..."
+            xdg-open "$REPORT_FILE" 2>/dev/null || open "$REPORT_FILE" 2>/dev/null || echo "Report: $REPORT_FILE"
         else
-            bash "$PROJECT_ROOT/pipeline/render.sh" "$SCENE_DIR"
+            echo "Report: $REPORT_FILE"
+        fi
+        ;;
+
+    timeline)
+        python3 "$PROJECT_ROOT/bin/timeline-generator.py"
+        REPORT_FILE="$PROJECT_ROOT/.agent/reports/timeline.html"
+        if [[ "${2:-}" == "--open" && -f "$REPORT_FILE" ]]; then
+            echo "Opening $REPORT_FILE ..."
+            xdg-open "$REPORT_FILE" 2>/dev/null || open "$REPORT_FILE" 2>/dev/null || echo "Timeline: $REPORT_FILE"
+        else
+            echo "Timeline: $REPORT_FILE"
         fi
         ;;
 
@@ -117,7 +246,7 @@ case "$CMD" in
         ;;
 
     inspect)
-        # 查询 SOURCEMAP
+        # 查询 SOURCEMAP（统一通过 JSON 消费）
         # 用法: macode inspect [engine] [--grep <re>] [--level P0|P1|P2] [--blacklist]
         GREP=""
         LEVEL=""
@@ -138,38 +267,94 @@ case "$CMD" in
         done
 
         SOURCEMAP="engines/${ENGINE}/SOURCEMAP.md"
-
         if [[ ! -f "$SOURCEMAP" ]]; then
             echo "Error: SOURCEMAP.md not found for engine '$ENGINE'" >&2
             echo "Run: macode sourcemap init $ENGINE" >&2
             exit 1
         fi
 
+        # 确保 JSON 机器接口存在且新鲜
+        if ! python3 "$PROJECT_ROOT/bin/sourcemap-sync.py" --check "$ENGINE" >/dev/null 2>&1; then
+            echo "[macode] Syncing SOURCEMAP to JSON..." >&2
+            if ! python3 "$PROJECT_ROOT/bin/sourcemap-sync.py" "$ENGINE" >/dev/null 2>&1; then
+                echo "Error: Failed to sync SOURCEMAP for '$ENGINE'" >&2
+                exit 1
+            fi
+        fi
+
+        # 构建 sourcemap-read 参数
+        READ_ARGS=()
+        [[ -n "$GREP" ]] && READ_ARGS+=("--grep" "$GREP")
+        [[ -n "$LEVEL" ]] && READ_ARGS+=("--level" "$LEVEL")
+        [[ "$FORMAT" == "json" ]] && READ_ARGS+=("--format" "json")
+
         if $BLACKLIST_ONLY; then
             echo "=== BLACKLIST ($ENGINE) ==="
-            awk '/^## BLACKLIST/{found=1; next} /^## /{if(found) exit} found && /^\|/ && !/ 标识 /' "$SOURCEMAP" | \
-                while IFS='|' read -r _ id path reason; do
-                    id=$(echo "$id" | xargs)
-                    reason=$(echo "$reason" | xargs)
-                    printf "  %-30s %s\n" "$id" "$reason"
-                done
+            bash "$PROJECT_ROOT/bin/sourcemap-read" "$ENGINE" blacklist "${READ_ARGS[@]}"
         else
             echo "=== WHITELIST ($ENGINE) ==="
-            awk '/^## WHITELIST/{found=1; next} /^## /{if(found) exit} found && /^\|/ && !/ 标识 /' "$SOURCEMAP" | {
-                if [[ -n "$GREP" ]]; then
-                    grep -iE "$GREP"
-                elif [[ -n "$LEVEL" ]]; then
-                    grep -E "\[$LEVEL\]"
-                else
-                    cat
+            bash "$PROJECT_ROOT/bin/sourcemap-read" "$ENGINE" whitelist "${READ_ARGS[@]}"
+
+            # Show redirects when grep keywords match common pitfalls
+            if [[ -n "$GREP" ]]; then
+                GREP_LOWER="${GREP,,}"
+                if [[ "$GREP_LOWER" =~ fade|filtergraph|cases|matrix|shader|regex|ffmpeg|amix|gl_position|align ]]; then
+                    echo ""
+                    echo "--- REDIRECT: You may be writing raw syntax ---"
+                    bash "$PROJECT_ROOT/bin/sourcemap-read" "$ENGINE" redirect --grep "$GREP" 2>/dev/null || true
                 fi
-            } | while IFS='|' read -r _ id path purpose priority; do
-                id=$(echo "$id" | xargs)
-                priority=$(echo "$priority" | xargs)
-                purpose=$(echo "$purpose" | xargs)
-                printf "  %-30s [%s] %s\n" "$id" "$priority" "$purpose"
-            done
+            fi
         fi
+        ;;
+
+    engine)
+        # 显示所有引擎的状态（版本、兼容声明、SOURCEMAP 新鲜度）
+        echo "=== Engine Status ==="
+        echo ""
+        for engine_dir in "$PROJECT_ROOT"/engines/*/; do
+            engine_name=$(basename "$engine_dir")
+            conf="$engine_dir/engine.conf"
+            sourcemap="$engine_dir/SOURCEMAP.md"
+            if [[ ! -f "$conf" ]]; then
+                continue
+            fi
+
+            echo "--- $engine_name ---"
+
+            # 实际安装版本
+            version_cmd=$(grep "^version_cmd:" "$conf" | sed 's/^version_cmd:[[:space:]]*//;s/^"//;s/"$//' | head -1)
+            # 解码 engine.conf 中转义的双引号（\" → "）
+            version_cmd="${version_cmd//\\\"/\"}"
+            if [[ -n "$version_cmd" ]]; then
+                installed=$(eval "$version_cmd" 2>/dev/null || echo "unknown")
+                echo "  Installed: v$installed"
+            fi
+
+            # SOURCEMAP 声明版本
+            if [[ -f "$sourcemap" ]]; then
+                map_ver=$(grep "引擎版本" "$sourcemap" 2>/dev/null | head -1 | sed 's/.*引擎版本:[[:space:]]*//' | xargs)
+                adapter_ver=$(grep "适配层版本" "$sourcemap" 2>/dev/null | head -1 | sed 's/.*适配层版本:[[:space:]]*//' | xargs)
+                echo "  Sourcemap: v$map_ver | Adapter: $adapter_ver"
+            fi
+
+            # 兼容声明（预留接口）
+            compat=$(grep -A1 "engine_semver:" "$conf" 2>/dev/null | tail -1 | sed 's/^[[:space:]]*- //;s/^[[:space:]]*//' | xargs)
+            if [[ -n "$compat" ]]; then
+                echo "  Compatibility: $compat"
+            fi
+
+            # SOURCEMAP JSON 新鲜度
+            if [[ -f ".agent/context/${engine_name}_sourcemap.json" ]]; then
+                if python3 "$PROJECT_ROOT/bin/sourcemap-sync.py" --check "$engine_name" >/dev/null 2>&1; then
+                    echo "  JSON sync: ✓ fresh"
+                else
+                    echo "  JSON sync: ✗ stale (run: macode sourcemap validate $engine_name)"
+                fi
+            else
+                echo "  JSON sync: ✗ missing (run: sourcemap-sync.py $engine_name)"
+            fi
+            echo ""
+        done
         ;;
 
     sourcemap)
@@ -182,6 +367,12 @@ case "$CMD" in
                 echo "SOURCEMAP location: engines/$ENGINE/SOURCEMAP.md"
                 ;;
             validate)
+                # 先 lint，再验证路径
+                echo "[macode] Linting SOURCEMAP..."
+                if ! python3 "$PROJECT_ROOT/bin/sourcemap-lint.py" "$PROJECT_ROOT/engines/$ENGINE/SOURCEMAP.md"; then
+                    exit 1
+                fi
+                echo "[macode] Validating paths..."
                 bash "$PROJECT_ROOT/engines/$ENGINE/scripts/validate_sourcemap.sh"
                 ;;
             help|*)
@@ -192,21 +383,284 @@ case "$CMD" in
         esac
         ;;
 
-    help|*)
-        echo "MaCode — Math Animation Harness"
-        echo ""
-        echo "Usage: macode <command> [args]"
-        echo ""
-        echo "Commands:"
-        echo "  render <scene_dir>     Render a single scene"
-        echo "  render-all             Render all scenes"
-        echo "  status                 Show project status"
-        echo "  undo                   Revert last Agent change"
-        echo "  inspect [--grep <re>]  Query SOURCEMAP WHITELIST"
-        echo "    --blacklist           Show BLACKLIST instead"
-        echo "    --level P0|P1|P2     Filter by priority"
-        echo "  sourcemap <init|validate> [engine]"
-        echo "                         Manage SOURCEMAP.md"
-        echo "  help                   Show this help"
+    shader)
+        SUB="${2:-help}"
+        case "$SUB" in
+            list)
+                REGISTRY="$PROJECT_ROOT/assets/shaders/_registry.json"
+                if [[ -f "$REGISTRY" ]]; then
+                    echo "Available shader assets (Layer 2):"
+                    python3 -c "
+import json, sys
+with open('$REGISTRY') as f:
+    reg = json.load(f)
+for s in reg.get('assets', []):
+    cat = s.get('category', 'unknown')
+    typ = s.get('type', 'unknown')
+    print(f\"  {s['id']:<30} [{cat}/{typ}]  {s.get('description', '')}\")
+"
+                else
+                    echo "No shader registry found. Expected: $REGISTRY" >&2
+                    exit 1
+                fi
+                ;;
+            render)
+                SHADER_DIR="${3:-}"
+                if [[ -z "$SHADER_DIR" ]]; then
+                    echo "Usage: macode shader render <shader_dir> [--fps <n>] [--duration <sec>] [--resolution <WxH>]" >&2
+                    exit 1
+                fi
+                shift 3
+                python3 "$PROJECT_ROOT/bin/shader-render.py" "$SHADER_DIR" "$@"
+                ;;
+            extract)
+                SHADER_NAME="${3:-}"
+                OUTPUT_DIR="${4:-}"
+                if [[ -z "$SHADER_NAME" || -z "$OUTPUT_DIR" ]]; then
+                    echo "Usage: macode shader extract <builtin_name> <output_dir>" >&2
+                    echo "  Example: macode shader extract quadratic_bezier/fill assets/shaders/extracted/qb_fill/" >&2
+                    exit 1
+                fi
+                PYTHONPATH="$PROJECT_ROOT/engines/manimgl/src:$PYTHONPATH" \
+                    python3 -c "
+from utils.shader_extractor import extract_builtin_shader, save_shader_asset
+import sys
+try:
+    data = extract_builtin_shader('$SHADER_NAME')
+    save_shader_asset(data, '$OUTPUT_DIR')
+    print(f'Extracted {data[\"name\"]} → $OUTPUT_DIR')
+except Exception as e:
+    print(f'Error: {e}', file=sys.stderr)
+    sys.exit(1)
+"
+                ;;
+            help|*)
+                echo "Usage: macode shader <list|render|extract> [args]"
+                echo "  list                          List available shader assets"
+                echo "  render <shader_dir> [opts]    Compile Layer 2 asset to Layer 1 PNG frames"
+                echo "    --fps <n>                   Override fps"
+                echo "    --duration <sec>            Override duration"
+                echo "    --resolution <WxH>          Override resolution"
+                echo "  extract <name> <out_dir>      Extract built-in manimlib shader"
+                ;;
+        esac
+        ;;
+
+    mc)
+        SUB="${2:-help}"
+        case "$SUB" in
+            serve)
+                SCENE_DIR="${3:-}"
+                if [[ -z "$SCENE_DIR" ]]; then
+                    echo "Usage: macode mc serve <scene_dir> [port]" >&2
+                    exit 1
+                fi
+                shift 3
+                node "$PROJECT_ROOT/engines/motion_canvas/scripts/serve.mjs" "$SCENE_DIR" "$@"
+                ;;
+            stop)
+                SCENE_DIR="${3:-}"
+                if [[ -z "$SCENE_DIR" ]]; then
+                    echo "Usage: macode mc stop <scene_dir>" >&2
+                    exit 1
+                fi
+                node "$PROJECT_ROOT/engines/motion_canvas/scripts/stop.mjs" "$SCENE_DIR"
+                ;;
+            help|*)
+                echo "Usage: macode mc <serve|stop> [args]"
+                echo "  serve <scene_dir> [port]    Start Motion Canvas dev server"
+                echo "  stop <scene_dir>            Stop Motion Canvas dev server"
+                ;;
+        esac
+        ;;
+
+    review)
+        shift 1
+        bash "$PROJECT_ROOT/bin/macode-review" "$@"
+        ;;
+
+    cleanup)
+        shift 1
+        python3 "$PROJECT_ROOT/bin/cleanup-stale.py" "$@"
+        ;;
+
+    dry-run)
+        SCENE_FILE="${2:-}"
+        if [[ -z "$SCENE_FILE" ]]; then
+            echo "Usage: macode dry-run <scene_file> [engine]" >&2
+            exit 1
+        fi
+        shift 2
+        python3 "$PROJECT_ROOT/bin/dry-run.py" "$SCENE_FILE" "$@"
+        ;;
+
+    test)
+        shift 1
+        # Default: run all tests
+        RUN_UNIT=0
+        RUN_INTEGRATION=0
+        RUN_SMOKE=0
+        RUN_LINT=0
+        PASS_THROUGH_ARGS=()
+
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --unit)
+                    RUN_UNIT=1
+                    shift
+                    ;;
+                --integration)
+                    RUN_INTEGRATION=1
+                    shift
+                    ;;
+                --smoke)
+                    RUN_SMOKE=1
+                    shift
+                    ;;
+                --lint)
+                    RUN_LINT=1
+                    shift
+                    ;;
+                --all)
+                    RUN_UNIT=1
+                    RUN_INTEGRATION=1
+                    RUN_SMOKE=1
+                    RUN_LINT=1
+                    shift
+                    ;;
+                --verbose|-k|--fail-fast)
+                    PASS_THROUGH_ARGS+=("$1")
+                    shift
+                    ;;
+                *)
+                    # Backward compatibility: positional suite name
+                    if [[ "$1" == "unit" ]]; then
+                        RUN_UNIT=1
+                    elif [[ "$1" == "integration" ]]; then
+                        RUN_INTEGRATION=1
+                    elif [[ "$1" == "smoke" ]]; then
+                        RUN_SMOKE=1
+                    elif [[ "$1" == "all" ]]; then
+                        RUN_UNIT=1
+                        RUN_INTEGRATION=1
+                        RUN_SMOKE=1
+                    else
+                        PASS_THROUGH_ARGS+=("$1")
+                    fi
+                    shift
+                    ;;
+            esac
+        done
+
+        # If no specific suite selected, run all tests (but not lint)
+        if [[ "$RUN_UNIT" -eq 0 && "$RUN_INTEGRATION" -eq 0 && "$RUN_SMOKE" -eq 0 && "$RUN_LINT" -eq 0 ]]; then
+            RUN_UNIT=1
+            RUN_INTEGRATION=1
+            RUN_SMOKE=1
+        fi
+
+        FAILED=0
+
+        if [[ "$RUN_LINT" -eq 1 ]]; then
+            echo "[macode test] Running lint..."
+            if command -v ruff >/dev/null 2>&1; then
+                ruff check "$PROJECT_ROOT/bin" "$PROJECT_ROOT/pipeline" "$PROJECT_ROOT/engines" "$PROJECT_ROOT/tests" || FAILED=1
+            else
+                echo "[macode test] ruff not installed, skipping lint" >&2
+            fi
+        fi
+
+        if [[ "$RUN_UNIT" -eq 1 ]]; then
+            echo "[macode test] Running unit tests..."
+            pytest "$PROJECT_ROOT/tests/unit/" -v "${PASS_THROUGH_ARGS[@]}" || FAILED=1
+        fi
+
+        if [[ "$RUN_INTEGRATION" -eq 1 ]]; then
+            echo "[macode test] Running integration tests..."
+            bash "$PROJECT_ROOT/tests/integration/runner.sh" "${PASS_THROUGH_ARGS[@]}" || FAILED=1
+        fi
+
+        if [[ "$RUN_SMOKE" -eq 1 ]]; then
+            echo "[macode test] Running smoke tests..."
+            bash "$PROJECT_ROOT/tests/smoke/runner.sh" "${PASS_THROUGH_ARGS[@]}" || FAILED=1
+        fi
+
+        exit "$FAILED"
+        ;;
+
+    help|--help|-h|*)
+        cat <<'EOF'
+MaCode — Math Animation Harness
+
+Usage: macode <command> [args]
+
+Commands:
+  render <scene_dir>              Render a single scene
+  render-all                      Render all scenes
+  composite <info|render|init|add-segment> [args]
+                                  Composite scene operations
+                                  (composite-unified auto-routed by manifest type)
+  dev <scene_dir>                 Interactive dev mode (watch + preview)
+    --segment <seg_id>            Seek to specific segment (manimgl only)
+    --snapshot [time]             Capture a single preview frame (Motion Canvas)
+    --watch                       Watch file changes and auto-snapshot
+    --port <n>                    Vite dev server port (default: 4567)
+  check <scene_dir>               Run static + frame checks
+    --static                      Run only static check
+    --frames                      Run only frame check
+  report <scene_dir>              Generate HTML report for scene
+    --open                        Open report in browser
+  timeline                        Generate project timeline (all scenes)
+    --open                        Open timeline in browser
+  shader <list|render|extract>    Manage shader assets (Layer 2 → Layer 1)
+    list                          List available shader assets
+    render <dir> [opts]           Compile shader to PNG frames
+    extract <name> <out_dir>      Extract built-in manimlib shader
+  mc <serve|stop> [args]          Motion Canvas dev server management
+    serve <scene_dir> [port]      Start dev server
+    stop <scene_dir>              Stop dev server
+  review <list|approve|reject|override|log> [args]
+                                  Human review queue for per-scene deliverables
+    list                          List all per-scene review states
+    approve <scene>               Approve a scene (mark done)
+    reject <scene> --reason <msg> Reject with reason
+    override <scene> --action <action> --instruction <msg>
+                                  Human override (retry/modify/stop)
+    log <scene>                   Read frame_feedback.jsonl history
+  cleanup [--dry-run]              Clean dead-PID states and expired claims
+  dry-run <scene_file> [engine]    Fast pre-render validation (syntax, imports, LaTeX)
+  test [suite|flags] [options]
+                                   Run test suite
+    --unit                         Fast pure-function tests (pytest)
+    --integration                  Tool-chain combination tests
+    --smoke                        End-to-end render tests
+    --lint                         Static analysis (ruff)
+    --all                          Run lint + unit + integration + smoke
+    unit                           (legacy) Same as --unit
+    integration                    (legacy) Same as --integration
+    smoke                          (legacy) Same as --smoke
+    all                            (legacy) Same as --all (without lint)
+    --verbose                      Show all test output
+    -k <pattern>                   Run only matching tests
+    --fail-fast                    Stop on first failure
+  status                          Show project status
+  undo                            Revert last Agent change
+  engine                          Show engine status & compatibility
+  inspect [engine]                Query SOURCEMAP WHITELIST
+    --grep <re>                   Filter by keyword regex
+    --blacklist                   Show BLACKLIST instead
+    --level P0|P1|P2              Filter by priority
+    --format text|json            Output format (default: text)
+  sourcemap <init|validate> [engine]
+                                  Manage SOURCEMAP.md
+  help                            Show this help
+
+Examples:
+  macode render scenes/01_test
+  macode dev scenes/01_test --watch --port 3000
+  macode check scenes/04_base_demo --static
+  macode shader render assets/shaders/noise_heatmap/ --fps 30 --duration 3
+  macode mc serve scenes/02_shader_mc
+EOF
         ;;
 esac

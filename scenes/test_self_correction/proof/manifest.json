@@ -1,0 +1,28 @@
+{
+  "engine": "manim",
+  "template": "MaCodeScene",
+  "duration": 3.0,
+  "fps": 30,
+  "resolution": [
+    1920,
+    1080
+  ],
+  "segments": [
+    {
+      "id": "proof",
+      "file": "scene.py",
+      "line_start": 1,
+      "line_end": 35,
+      "time_range": [
+        0.0,
+        3.0
+      ],
+      "keyframes": [
+        0.0,
+        2.0,
+        3.0
+      ],
+      "description": "Geometric proof with squares and triangles"
+    }
+  ]
+}

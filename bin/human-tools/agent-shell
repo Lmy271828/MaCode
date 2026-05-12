@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+
+# bin/agent-shell
+# 人类用户可选的交互式 shell（非 Host Agent 入口）。
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    cat <<'EOF'
+Usage: agent-shell [--help]
+
+Interactive shell for human users with pre-configured PATH, aliases and safety-gate.
+Host Agents should call CLI tools directly instead of using this shell.
+EOF
+    exit 0
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# ────────────────────────────────────────────────────────────
+
+# 预装 PATH（包含项目 bin 和 uv 缓存）
+export PATH="$PROJECT_ROOT/bin:$PROJECT_ROOT/.venv/bin:$PROJECT_ROOT/.agent/bin:$PROJECT_ROOT/pipeline:$PROJECT_ROOT/engines/manim/scripts:$PATH"
+
+# 激活项目 .venv（如果存在）
+if [[ -f "$PROJECT_ROOT/.venv/bin/activate" ]]; then
+    source "$PROJECT_ROOT/.venv/bin/activate" >/dev/null 2>&1 || true
+    export VIRTUAL_ENV="$PROJECT_ROOT/.venv"
+fi
+
+# ── SOURCEMAP Bootstrap ───────────────────────────────────────
+ENGINE=$(grep -oP 'defaults:\s*\n\s*engine:\s*\K\S+' project.yaml 2>/dev/null || echo "manimgl")
+SOURCEMAP="engines/${ENGINE}/SOURCEMAP.md"
+
+if [[ -f "$SOURCEMAP" ]]; then
+    MAP_VER=$(grep "引擎版本" "$SOURCEMAP" 2>/dev/null | head -1 | sed 's/.*引擎版本:[[:space:]]*//' | xargs)
+
+    # 检测版本新鲜度
+    ENGINE_CONF="engines/${ENGINE}/engine.conf"
+    if [[ -f "$ENGINE_CONF" ]]; then
+        VERSION_CMD=$(grep -oP 'version_cmd:\s*"\K[^"]+' "$ENGINE_CONF" 2>/dev/null || echo "")
+        if [[ -n "$VERSION_CMD" ]]; then
+            ENG_VER=$(eval "$VERSION_CMD" 2>/dev/null || echo "unknown")
+        else
+            ENG_VER="unknown"
+        fi
+    else
+        ENG_VER="unknown"
+    fi
+
+    if [[ "$ENG_VER" != "$MAP_VER" && "$ENG_VER" != "unknown" ]]; then
+        echo "WARN: SOURCEMAP may be outdated (map: v$MAP_VER, engine: v$ENG_VER)" >&2
+    fi
+
+    # 确保 JSON 机器接口存在且新鲜
+    mkdir -p .agent/context
+    if ! python3 "$PROJECT_ROOT/bin/sourcemap-sync.py" --check "$ENGINE" >/dev/null 2>&1; then
+        python3 "$PROJECT_ROOT/bin/sourcemap-sync.py" "$ENGINE" >/dev/null 2>&1 || true
+    fi
+
+    JSON_FILE=".agent/context/${ENGINE}_sourcemap.json"
+    if [[ -f "$JSON_FILE" ]]; then
+        # 从 JSON 提取 WHITELIST P0/P1
+        python3 -c "
+import json
+with open('$JSON_FILE') as f:
+    data = json.load(f)
+for item in data.get('whitelist', []):
+    if item.get('priority') in ('P0', 'P1'):
+        print(f\"{item['id']:<30} {item.get('purpose', '')}\")
+" > .agent/context/engine_api.txt
+
+        # 从 JSON 提取 BLACKLIST
+        python3 -c "
+import json
+with open('$JSON_FILE') as f:
+    data = json.load(f)
+for item in data.get('blacklist', []):
+    print(f\"{item['id']:<30} {item.get('reason', '')}\")
+" > .agent/context/engine_blacklist.txt
+    fi
+
+    export MACODE_ENGINE="$ENGINE"
+    export MACODE_SOURCEMAP="$SOURCEMAP"
+    export MACODE_CONTEXT=".agent/context"
+else
+    echo "WARN: SOURCEMAP.md not found for engine '$ENGINE'" >&2
+    echo "  Run: macode sourcemap init $ENGINE" >&2
+fi
+# ──────────────────────────────────────────────────────────────
+
+# ── 生成 Agent rcfile ───────────────────────────────────
+# 将当前所有环境变量、别名、函数注入到新 bash 的 rcfile
+# 这样 exec bash --rcfile 后不会丢失任何设置
+RCFILE=".agent/context/agent_rc.sh"
+mkdir -p .agent/context
+
+cat > "$RCFILE" << 'RCEOF'
+# ── Command gate ────────────────────────────────────
+gate() {
+    local cmd="$1"
+    if [[ -z "$cmd" ]]; then
+        return 0
+    fi
+    # 内置命令放行
+    case "$cmd" in
+        cd|cd\ *|pwd|echo*|export\ *|alias*|set\ *|unset\ *|help|type\ *|which\ *|gate\ *|exit*|exec\ *)
+            return 0
+            ;;
+    esac
+    [[ "$cmd" =~ ^[[:space:]]*# ]] && return 0
+    [[ -z "${cmd// }" ]] && return 0
+    # 调用安全门
+    if bash "$PROJECT_ROOT/bin/human-tools/safety-gate.sh" "$cmd" 2>/dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# READLINE Enter-key interception
+_gate_enter() {
+    local cmd="$READLINE_LINE"
+    if ! gate "$cmd"; then
+        READLINE_LINE=""
+        READLINE_POINT=0
+    fi
+}
+bind -x '"\C-m": _gate_enter'
+bind '"\C-m": accept-line'
+RCEOF
+
+# 追加环境变量
+{
+    echo ""
+    echo "# ── Exported environment ───────────────────────────"
+    echo "export PATH=\"$PATH\""
+    echo "export MACODE_ENGINE=\"${MACODE_ENGINE:-}\""
+    echo "export MACODE_SOURCEMAP=\"${MACODE_SOURCEMAP:-}\""
+    echo "export MACODE_CONTEXT=\"${MACODE_CONTEXT:-}\""
+    echo "export PS1='[macode] \w\$ '"
+
+    echo ""
+    echo "# ── Aliases ────────────────────────────────────────"
+    echo "alias render='pipeline/render.sh'"
+    echo "alias render-all='bin/render-all.sh'"
+    echo "alias status='bin/macode status'"
+    echo "alias mc='bin/macode'"
+    echo "alias log='tail -n 50 .agent/log/*.log 2>/dev/null || echo \"No logs yet\"'"
+    echo "alias scenes='ls scenes/'"
+    echo "alias frames='find .agent/tmp -name \"*.png\" | wc -l'"
+    echo "alias inspect-manim='engines/manim/scripts/inspect.sh'"
+    echo "alias inspect-mc='engines/motion_canvas/scripts/inspect.sh'"
+
+    echo ""
+    echo "# ── Security notice ────────────────────────────────"
+    echo "echo '[gate] Command gate active — all commands checked against safety-gate.sh'"
+} >> "$RCFILE"
+
+echo "=== MaCode Optional Shell (human users only) ==="
+echo "Project: $PROJECT_ROOT"
+echo "Gate: enabled (safety-gate.sh)"
+echo ""
+echo "NOTE: This shell is for human convenience only."
+echo "      Host Agents (Claude Code / Cursor / Kimi) should call CLI tools directly."
+echo ""
+echo "Quick commands:"
+echo "  render <scene_dir>     Render a scene"
+echo "  render-all             Render all scenes"
+echo "  status                 Project status"
+echo "  mc render <scene>     Via macode CLI"
+echo "  log                    View latest logs"
+echo "  inspect-manim          List Manim capabilities"
+echo "  inspect-mc             List Motion Canvas capabilities"
+echo ""
+
+cd "$PROJECT_ROOT"
+exec bash --rcfile "$RCFILE"

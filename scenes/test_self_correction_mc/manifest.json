@@ -1,0 +1,23 @@
+{
+  "type": "composite",
+  "engine": "motion_canvas",
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "segments": [
+    {
+      "id": "intro",
+      "scene_dir": "shots/00_intro",
+      "transition": {"type": "fade", "duration": 0.3}
+    },
+    {
+      "id": "proof",
+      "scene_dir": "shots/01_proof",
+      "transition": {"type": "fade", "duration": 0.3}
+    },
+    {
+      "id": "formula",
+      "scene_dir": "shots/02_formula",
+      "transition": {"type": "fade", "duration": 0.3}
+    }
+  ]
+}

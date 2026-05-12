@@ -4,13 +4,26 @@ set -euo pipefail
 # pipeline/smart-cut.sh
 # 基于 ffprobe silencedetect 自动剪辑视频中的静默/停顿段。
 # 无音频的视频直接 passthrough（不作剪辑）。
-#
-# 用法:
-#   pipeline/smart-cut.sh <input.mp4> [output.mp4] [noise_level] [min_duration]
-#     input.mp4      - 输入视频
-#     output.mp4     - 输出视频（默认：同目录 smartcut_<input>.mp4）
-#     noise_level    - 静默阈值 dB（默认: -30dB，越小越敏感）
-#     min_duration   - 最短静默时长 秒（默认: 0.5）
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    SCRIPT_NAME=$(basename "$0")
+    cat <<EOF
+Usage: $SCRIPT_NAME <input.mp4> [output.mp4] [noise_level] [min_duration]
+
+Auto-cut silent/pause segments from video based on audio silencedetect.
+
+Arguments:
+  <input.mp4>     Input video file path
+  [output.mp4]    Output video path (default: smartcut_<input>.mp4)
+  [noise_level]   Silence threshold in dB (default: -30dB)
+  [min_duration]  Minimum silence duration in seconds (default: 0.5)
+
+Examples:
+  $SCRIPT_NAME lecture.mp4
+  $SCRIPT_NAME lecture.mp4 trimmed.mp4 -40dB 1.0
+EOF
+    exit 0
+fi
 
 INPUT="${1:-}"
 OUTPUT="${2:-}"

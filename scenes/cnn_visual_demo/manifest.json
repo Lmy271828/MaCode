@@ -1,0 +1,58 @@
+{
+  "type": "composite",
+  "segments": [
+    {
+      "id": "intro",
+      "scene_dir": "shots/00_intro",
+      "transition": {"type": "fade", "duration": 0.5}
+    },
+    {
+      "id": "motivation",
+      "scene_dir": "shots/01_motivation",
+      "transition": {"type": "fade", "duration": 0.5}
+    },
+    {
+      "id": "input",
+      "scene_dir": "shots/02_input",
+      "transition": {"type": "fade", "duration": 0.5}
+    },
+    {
+      "id": "main",
+      "scene_dir": "shots/01_main",
+      "transition": {"type": "fade", "duration": 0.5}
+    },
+    {
+      "id": "activation",
+      "scene_dir": "shots/04_activation",
+      "transition": {"type": "fade", "duration": 0.5}
+    },
+    {
+      "id": "pooling",
+      "scene_dir": "shots/05_pooling",
+      "transition": {"type": "fade", "duration": 0.5}
+    },
+    {
+      "id": "stacking",
+      "scene_dir": "shots/06_stacking",
+      "transition": {"type": "fade", "duration": 0.5}
+    },
+    {
+      "id": "fc",
+      "scene_dir": "shots/07_fc",
+      "transition": {"type": "fade", "duration": 0.5}
+    },
+    {
+      "id": "outro",
+      "scene_dir": "shots/02_outro"
+    }
+  ],
+  "params": {
+    "theme_color": "#1E90FF",
+    "title_text": "CNN 卷积神经网络视觉处理"
+  },
+  "meta": {
+    "title": "cnn_visual_demo",
+    "author": "agent",
+    "tags": ["intro-main-outro", "cnn", "deep-learning"]
+  }
+}

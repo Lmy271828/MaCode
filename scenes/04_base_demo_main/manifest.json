@@ -1,0 +1,15 @@
+{
+  "engine": "manim",
+  "duration": 5.0,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "assets": [],
+  "dependencies": [
+    "scenes/04_base_demo_intro/manifest.json"
+  ],
+  "meta": {
+    "title": "Base Demo - Main",
+    "author": "agent",
+    "tags": ["demo", "main", "composite"]
+  }
+}

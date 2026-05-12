@@ -1,0 +1,9 @@
+{
+  "duration": 25.0,
+  "fps": 30,
+  "resolution": [
+    1920,
+    1080
+  ],
+  "engine": "manimgl"
+}

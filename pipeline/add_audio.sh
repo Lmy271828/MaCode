@@ -3,11 +3,24 @@ set -euo pipefail
 
 # pipeline/add_audio.sh
 # 接收视频 + 音频文件，使用 ffmpeg 合成输出。
-#
-# 用法: add_audio.sh <video> <audio> <output>
-#   video   - 输入视频文件
-#   audio   - 输入音频文件
-#   output  - 输出视频文件
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    SCRIPT_NAME=$(basename "$0")
+    cat <<EOF
+Usage: $SCRIPT_NAME <video> <audio> <output>
+
+Mix external audio into a video file using ffmpeg (copy video, AAC audio).
+
+Arguments:
+  <video>   Input video file path
+  <audio>   Input audio file path
+  <output>  Output video file path
+
+Examples:
+  $SCRIPT_NAME video.mp4 music.mp4 output.mp4
+EOF
+    exit 0
+fi
 
 VIDEO="${1:-}"
 AUDIO="${2:-}"

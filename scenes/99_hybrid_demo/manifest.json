@@ -1,0 +1,22 @@
+{
+  "type": "composite",
+  "segments": [
+    {"id": "intro", "scene_dir": "shots/00_intro"},
+    {"id": "mc_part", "scene_dir": "shots/01_mc"}
+  ],
+  "overlays": [
+    {
+      "base_segment": "intro",
+      "foreground_segment": "mc_part",
+      "start": 0,
+      "x": "(W-w)/2",
+      "y": "(H-h)/2",
+      "blend": "overlay"
+    }
+  ],
+  "meta": {
+    "title": "Hybrid Engine Demo",
+    "author": "agent",
+    "tags": ["demo", "hybrid", "manim", "motion_canvas", "overlay"]
+  }
+}

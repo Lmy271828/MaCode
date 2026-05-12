@@ -3,12 +3,26 @@ set -euo pipefail
 
 # pipeline/fade.sh
 # 使用 ffmpeg afade / fade 实现音视频淡入淡出。
-#
-# 用法: fade.sh <input> <output> [fade_in_duration] [fade_out_duration]
-#   input            - 输入视频文件
-#   output           - 输出视频文件
-#   fade_in_duration  - 淡入时长（秒），默认 0.5
-#   fade_out_duration - 淡出时长（秒），默认 0.5
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    SCRIPT_NAME=$(basename "$0")
+    cat <<EOF
+Usage: $SCRIPT_NAME <input> <output> [fade_in_sec] [fade_out_sec]
+
+Apply audio/video fade-in and fade-out effects using ffmpeg.
+
+Arguments:
+  <input>          Input video file path
+  <output>         Output video file path
+  [fade_in_sec]    Fade-in duration in seconds (default: 0.5)
+  [fade_out_sec]   Fade-out duration in seconds (default: 0.5)
+
+Examples:
+  $SCRIPT_NAME input.mp4 output.mp4
+  $SCRIPT_NAME input.mp4 output.mp4 1.0 2.0
+EOF
+    exit 0
+fi
 
 INPUT="${1:-}"
 OUTPUT="${2:-}"

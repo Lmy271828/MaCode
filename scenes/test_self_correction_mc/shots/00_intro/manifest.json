@@ -1,0 +1,33 @@
+{
+  "engine": "motion_canvas",
+  "template": "makeScene2D",
+  "duration": 2.5,
+  "fps": 30,
+  "resolution": [
+    1920,
+    1080
+  ],
+  "assets": [],
+  "dependencies": [],
+  "meta": {
+    "title": "MC Intro"
+  },
+  "segments": [
+    {
+      "id": "intro",
+      "file": "scene.tsx",
+      "line_start": 1,
+      "line_end": 45,
+      "time_range": [
+        0.0,
+        2.5
+      ],
+      "keyframes": [
+        0.0,
+        1.5,
+        2.5
+      ],
+      "description": "Pythagorean theorem title card"
+    }
+  ]
+}

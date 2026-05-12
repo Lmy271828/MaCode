@@ -12,6 +12,26 @@ set -euo pipefail
 #   width       - 宽度（由场景控制）
 #   height      - 高度（由场景控制）
 
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    cat <<EOF
+Usage: $(basename "$0") <scene.py> <output_dir> [fps] [duration] [width] [height]
+
+接收 scene.py 路径和输出目录，调用 manim 输出 PNG 帧序列。
+
+Arguments:
+  <scene.py>    场景源码路径
+  <output_dir>  帧序列输出目录
+  [fps]         帧率 (default: 30)
+  [duration]    时长（秒，由场景控制）
+  [width]       宽度（由场景控制）
+  [height]      高度（由场景控制）
+
+Examples:
+  $(basename "$0") scenes/01_test/scene.py .agent/tmp/01_test/frames/
+EOF
+    exit 0
+fi
+
 SCENE_PY="${1:-}"
 OUTPUT_DIR="${2:-}"
 FPS="${3:-30}"
@@ -33,6 +53,33 @@ SCENE_NAME=$(basename "$SCENE_PY" .py)
 # 确保输出目录存在
 mkdir -p "$OUTPUT_DIR"
 
+# 提前获取项目根目录（状态写入需要）
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+
+# ── 状态/进度文件写入（标准 v1.0 格式）─────────────────
+PROGRESS_DIR="$PROJECT_ROOT/.agent/progress"
+mkdir -p "$PROGRESS_DIR"
+PROGRESS_PATH="$PROGRESS_DIR/${SCENE_NAME}.jsonl"
+STATE_DIR="$PROJECT_ROOT/.agent/tmp/$SCENE_NAME"
+mkdir -p "$STATE_DIR"
+
+write_progress() {
+    local phase="$1"
+    local status="$2"
+    local message="${3:-}"
+    "$PROJECT_ROOT/bin/progress-write.py" "$PROGRESS_PATH" "$phase" "$status" "$message" 2>/dev/null || true
+}
+
+write_state() {
+    local status="$1"
+    shift
+    "$PROJECT_ROOT/bin/state-write.py" "$STATE_DIR" "$status" --tool "render.sh" "$@" 2>/dev/null || true
+}
+
+write_progress "init" "running" "Manim render starting: ${SCENE_PY}"
+write_state "running" --task-id "$SCENE_NAME"
+# ─────────────────────────────────────────────────────
+
 # 使用 manim 渲染为 PNG 帧序列
 # -g 指定渲染质量（不使用，由场景控制）
 # --format png 输出帧序列
@@ -40,14 +87,39 @@ mkdir -p "$OUTPUT_DIR"
 # -o 指定输出文件名前缀
 
 echo "[manim] Rendering $SCENE_PY -> $OUTPUT_DIR"
+write_progress "render" "running" "Calling manim --format png"
 
-# 定位 conda math 环境的 Python
-CONDA_PYTHON="$HOME/miniconda3/envs/math/bin/python"
-if [[ -x "$CONDA_PYTHON" ]]; then
-    PYTHON="$CONDA_PYTHON"
+# 定位 Python：优先使用项目 .venv，回退系统 python3
+VENV_PYTHON="$PROJECT_ROOT/.venv/bin/python"
+
+# ── Backend selection ──
+BACKEND="gpu"
+if [[ -f "$PROJECT_ROOT/.agent/hardware_profile.json" ]]; then
+    BACKEND=$(bash "$PROJECT_ROOT/bin/select-backend.sh" 2>/dev/null || echo "gpu")
+fi
+echo "[manim] Render backend: $BACKEND"
+
+if [[ "$BACKEND" == "d3d12" ]]; then
+    export GALLIUM_DRIVER=d3d12
+    export LIBGL_ALWAYS_SOFTWARE=0
+    export MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA
+    echo "[manim] D3D12 GPU acceleration (WSL2 DX12 passthrough)"
+elif [[ "$BACKEND" == "cpu" ]]; then
+    export LIBGL_ALWAYS_SOFTWARE=1
+    echo "[manim] Forcing software OpenGL (Mesa llvmpipe)"
+elif [[ "$BACKEND" == "headless" ]]; then
+    echo "[manim] HEADLESS mode. No OpenGL available."
+    # Generate placeholder frames logic here if needed
+fi
+if [[ -x "$VENV_PYTHON" ]]; then
+    PYTHON="$VENV_PYTHON"
 else
     PYTHON="python3"
 fi
+
+# 将引擎适配层加入 Python 路径，使场景可 import templates/utils
+ENGINE_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../src" && pwd)"
+export PYTHONPATH="${ENGINE_SRC}${PYTHONPATH:+:$PYTHONPATH}"
 
 # 读取渲染超时（默认 600 秒）
 MAX_TIME=600
@@ -79,9 +151,13 @@ MANIM_EXIT=${PIPESTATUS[0]}
 if [[ $MANIM_EXIT -eq 124 ]]; then
     echo "[manim] TIMEOUT: rendering exceeded ${MAX_TIME}s limit" >&2
     echo "[fix]       Simplify the scene or increase max_render_time_sec in project.yaml" >&2
+    write_progress "render" "error" "Timeout after ${MAX_TIME}s"
+    write_state "timeout" 124 --error "Timeout after ${MAX_TIME}s"
     exit 124
 elif [[ $MANIM_EXIT -ne 0 ]]; then
     echo "[manim] FAILED (exit $MANIM_EXIT). Analyzing error..." >&2
+    write_progress "render" "error" "Manim exit code $MANIM_EXIT"
+    write_state "failed" "$MANIM_EXIT" --error "Manim exit code $MANIM_EXIT"
     SOURCEMAP="$(dirname "$(dirname "${BASH_SOURCE[0]}")")/SOURCEMAP.md"
     if [[ -f "$SOURCEMAP" ]]; then
         if grep -q "manimlib" "$OUTPUT_DIR/render.log" 2>/dev/null; then
@@ -118,4 +194,8 @@ if [[ -d "$MEDIA_DIR" ]]; then
     rm -rf "$OUTPUT_DIR/.media"
 fi
 
-echo "[manim] Done. Frames in $OUTPUT_DIR"
+# Count rendered frames
+FRAME_COUNT=$(find "$OUTPUT_DIR" -maxdepth 1 -name "frame_*.png" | wc -l)
+write_progress "cleanup" "completed" "Frames in $OUTPUT_DIR"
+write_state "completed" 0 --outputs "{\"framesRendered\": $FRAME_COUNT, \"outputDir\": \"$OUTPUT_DIR\", \"frameFormat\": \"png\"}"
+echo "[manim] Done. $FRAME_COUNT frames in $OUTPUT_DIR"

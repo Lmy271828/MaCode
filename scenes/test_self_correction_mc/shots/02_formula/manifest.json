@@ -1,0 +1,33 @@
+{
+  "engine": "motion_canvas",
+  "template": "makeScene2D",
+  "duration": 4.0,
+  "fps": 30,
+  "resolution": [
+    1920,
+    1080
+  ],
+  "assets": [],
+  "dependencies": [],
+  "meta": {
+    "title": "MC Formula"
+  },
+  "segments": [
+    {
+      "id": "formula",
+      "file": "scene.tsx",
+      "line_start": 1,
+      "line_end": 57,
+      "time_range": [
+        0.0,
+        4.0
+      ],
+      "keyframes": [
+        0.0,
+        2.0,
+        4.0
+      ],
+      "description": "Formula derivation step by step"
+    }
+  ]
+}

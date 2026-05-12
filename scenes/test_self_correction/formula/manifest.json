@@ -1,0 +1,28 @@
+{
+  "engine": "manim",
+  "template": "MaCodeScene",
+  "duration": 4.0,
+  "fps": 30,
+  "resolution": [
+    1920,
+    1080
+  ],
+  "segments": [
+    {
+      "id": "formula",
+      "file": "scene.py",
+      "line_start": 1,
+      "line_end": 40,
+      "time_range": [
+        0.0,
+        4.0
+      ],
+      "keyframes": [
+        0.0,
+        2.0,
+        4.0
+      ],
+      "description": "Formula derivation step by step"
+    }
+  ]
+}

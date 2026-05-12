@@ -1,0 +1,15 @@
+{
+  "engine": "manimgl",
+  "duration": 3,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "layout_profile": "lecture_3zones",
+  "narrative_profile": "definition_reveal",
+  "assets": [],
+  "dependencies": [],
+  "meta": {
+    "title": "Layout Compiler E2E Test",
+    "author": "agent",
+    "tags": ["test", "layout-compiler"]
+  }
+}

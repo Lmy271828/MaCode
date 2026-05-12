@@ -1,0 +1,219 @@
+{
+  "schema_version": "1.0",
+  "metadata": {
+    "name": "mandelbrot_fractal",
+    "description": "Extracted from manimlib built-in shader: mandelbrot_fractal",
+    "author": "manimlib",
+    "source": "manimgl_builtin",
+    "inserts": [
+      "complex_functions.glsl",
+      "emit_gl_Position.glsl",
+      "finalize_color.glsl"
+    ]
+  },
+  "backend": {
+    "target": "gpu",
+    "glsl_version": "#version 330"
+  },
+  "glsl": {
+    "vertex": "vert.glsl",
+    "fragment": "frag.glsl",
+    "geometry": null
+  },
+  "uniforms": [
+    {
+      "name": "scale_factor",
+      "type": "float",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "offset",
+      "type": "vec3",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "is_fixed_in_frame",
+      "type": "float",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "view",
+      "type": "mat4",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "focal_distance",
+      "type": "float",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "frame_rescale_factors",
+      "type": "vec3",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "clip_plane",
+      "type": "vec4",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "parameter",
+      "type": "vec2",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "opacity",
+      "type": "float",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "n_steps",
+      "type": "float",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "mandelbrot",
+      "type": "float",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "color0",
+      "type": "vec3",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "color1",
+      "type": "vec3",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "color2",
+      "type": "vec3",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "color3",
+      "type": "vec3",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "color4",
+      "type": "vec3",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "color5",
+      "type": "vec3",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "color6",
+      "type": "vec3",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "color7",
+      "type": "vec3",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "color8",
+      "type": "vec3",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "light_position",
+      "type": "vec3",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "camera_position",
+      "type": "vec3",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    },
+    {
+      "name": "shading",
+      "type": "vec3",
+      "default": 0.0,
+      "animation": {
+        "enabled": false
+      }
+    }
+  ],
+  "render": {
+    "fps": 30,
+    "duration": 3.0,
+    "resolution": [
+      1920,
+      1080
+    ],
+    "output_format": "png_sequence"
+  },
+  "nodegraph": null
+}

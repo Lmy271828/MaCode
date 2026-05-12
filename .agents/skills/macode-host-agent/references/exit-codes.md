@@ -1,0 +1,54 @@
+# MaCode CLI 退出码完整参考
+
+## 渲染管道（pipeline/render.sh, render-scene.py）
+
+| 退出码 | 含义 | 触发条件 | 处理建议 |
+|--------|------|----------|----------|
+| 0 | 成功 | 渲染完成，final.mp4 已生成 | 继续下一步 |
+| 1 | 通用错误 | api-gate 拦截、引擎渲染失败、manifest 无效 | 查看日志，修复后重试 |
+| 2 | retry | human_override.json action=retry | 按 instruction 修改后重试 |
+| 3 | awaiting_review | review_needed 存在且无 override | 人工审批后继续 |
+| 4 | claimed | scene 被其他 Agent 占用 | 等待 30s 或换 scene |
+| 5 | queued | 全局并发超限 (max_concurrent_scenes) | 等待 60s 重试 |
+
+## macode-run（统一进程生命周期管理器）
+
+| 退出码 | 含义 | 触发条件 |
+|--------|------|----------|
+| 0 | 成功 | 子进程正常退出 |
+| 非零 | 子进程退出码 | 原样传递 |
+| 124 | 超时 | `timeout` 命令触发（macode-run 内部使用 SIGTERM→SIGKILL） |
+
+## check-static.py / check-frames.py
+
+| 退出码 | 含义 |
+|--------|------|
+| 0 | 全部通过（status: pass） |
+| 1 | 发现问题（status: warning / error） |
+| 2 | 配置错误（manifest 缺失等） |
+
+## check-runner.py
+
+| 退出码 | 含义 |
+|--------|------|
+| 0 | 全部通过 |
+| 1 | 发现问题 |
+
+## api-gate.py
+
+| 退出码 | 含义 |
+|--------|------|
+| 0 | 通过 |
+| 1 | 发现 BLACKLIST 违规导入 |
+| 2 | 参数错误（缺少 scene_file 或 sourcemap） |
+
+## agent-run.sh（Git 包装器）
+
+| 退出码 | 含义 |
+|--------|------|
+| 0 | 命令成功，已 git commit |
+| 非零 | 命令失败，已 git checkout -- + git clean -fd 回滚 |
+
+## 复合退出码
+
+当命令通过管道执行时（如 `macode check | tee report.json`），退出码由最后一个命令决定。使用 `set -o pipefail` 可捕获管道中第一个失败命令的退出码。

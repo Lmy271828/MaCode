@@ -1,0 +1,28 @@
+{
+  "engine": "manim",
+  "template": "MaCodeScene",
+  "duration": 2.5,
+  "fps": 30,
+  "resolution": [
+    1920,
+    1080
+  ],
+  "segments": [
+    {
+      "id": "intro",
+      "file": "scene.py",
+      "line_start": 1,
+      "line_end": 23,
+      "time_range": [
+        0.0,
+        2.5
+      ],
+      "keyframes": [
+        0.0,
+        1.5,
+        2.5
+      ],
+      "description": "Pythagorean theorem title card"
+    }
+  ]
+}

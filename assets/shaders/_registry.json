@@ -1,0 +1,105 @@
+{
+  "schema_version": "1.0",
+  "description": "MaCode Shader Asset Registry – Layer 2 assets",
+  "categories": {
+    "builtin": "Extracted from manimlib/shaders/ (built-in effects)",
+    "lygia": "Patricio Gonzalez Vivo’s LYGIA library (Prosperity License)",
+    "custom": "User-created nodegraph shaders"
+  },
+  "assets": [
+    {
+      "id": "mandelbrot_fractal",
+      "category": "builtin",
+      "path": "assets/shaders/mandelbrot_fractal",
+      "type": "standalone",
+      "description": "Built-in Mandelbrot fractal shader (extracted from manimlib)"
+    },
+    {
+      "id": "image",
+      "category": "builtin",
+      "path": "assets/shaders/image",
+      "type": "standalone",
+      "description": "Built-in image texture shader (extracted from manimlib)"
+    },
+    {
+      "id": "lygia_circle_heatmap",
+      "category": "lygia",
+      "path": "assets/shaders/lygia_builder_test",
+      "type": "nodegraph",
+      "description": "LYGIA circle + heatmap palette demo (builder .lygia() API)",
+      "lygia": {
+        "license": "Prosperity-3.0.0",
+        "license_url": "https://prosperitylicense.com/versions/3.0.0",
+        "includes": [
+          "lygia/draw/circle.glsl",
+          "lygia/color/palette/heatmap.glsl"
+        ]
+      }
+    },
+    {
+      "id": "lygia_circle_heatmap_nodes",
+      "category": "lygia",
+      "path": "assets/shaders/lygia_nodes_test",
+      "type": "nodegraph",
+      "description": "LYGIA circle + heatmap via NODE_REGISTRY nodes (lygia_circle, lygia_heatmap)",
+      "lygia": {
+        "license": "Prosperity-3.0.0",
+        "license_url": "https://prosperitylicense.com/versions/3.0.0",
+        "includes": [
+          "lygia/draw/circle.glsl",
+          "lygia/color/palette/heatmap.glsl"
+        ]
+      }
+    },
+    {
+      "id": "lygia_fire",
+      "category": "lygia",
+      "path": "assets/shaders/lygia_fire",
+      "type": "standalone",
+      "description": "LYGIA fire palette demo",
+      "lygia": {
+        "license": "Prosperity-3.0.0",
+        "license_url": "https://prosperitylicense.com/versions/3.0.0",
+        "includes": [
+          "lygia/color/palette/fire.glsl"
+        ]
+      }
+    },
+    {
+      "id": "lygia_rect_stroke",
+      "category": "lygia",
+      "path": "assets/shaders/lygia_rect_stroke",
+      "type": "standalone",
+      "description": "LYGIA rect + stroke SDF demo",
+      "lygia": {
+        "license": "Prosperity-3.0.0",
+        "license_url": "https://prosperitylicense.com/versions/3.0.0",
+        "includes": [
+          "lygia/draw/rect.glsl",
+          "lygia/draw/stroke.glsl"
+        ]
+      }
+    },
+    {
+      "id": "lygia_checker_tile",
+      "category": "lygia",
+      "path": "assets/shaders/lygia_checker_tile",
+      "type": "standalone",
+      "description": "LYGIA checker tile pattern",
+      "lygia": {
+        "license": "Prosperity-3.0.0",
+        "license_url": "https://prosperitylicense.com/versions/3.0.0",
+        "includes": [
+          "lygia/space/checkerTile.glsl"
+        ]
+      }
+    },
+    {
+      "id": "noise_heatmap",
+      "category": "custom",
+      "path": "assets/shaders/noise_heatmap",
+      "type": "nodegraph",
+      "description": "Perlin noise + heatmap palette via MaCode Shader Builder nodegraph"
+    }
+  ]
+}

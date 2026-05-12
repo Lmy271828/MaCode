@@ -1,0 +1,25 @@
+{
+  "primitives": {
+    "Text": {"manimgl": "Text", "manim": "Text", "motion_canvas": "Txt"},
+    "Tex": {"manimgl": "Tex", "manim": "MathTex", "motion_canvas": "Latex"},
+    "Circle": {"manimgl": "Circle", "manim": "Circle", "motion_canvas": "Circle"},
+    "Square": {"manimgl": "Square", "manim": "Square", "motion_canvas": "Rect"},
+    "Rectangle": {"manimgl": "Rectangle", "manim": "Rectangle", "motion_canvas": "Rect"},
+    "NumberLine": {"manimgl": "NumberLine", "manim": "NumberLine", "motion_canvas": "Line"},
+    "Axes": {"manimgl": "Axes", "manim": "Axes", "motion_canvas": null},
+    "Arrow": {"manimgl": "Arrow", "manim": "Arrow", "motion_canvas": "Line"},
+    "Vector": {"manimgl": "Vector", "manim": "Arrow", "motion_canvas": "Line"},
+    "Line": {"manimgl": "Line", "manim": "Line", "motion_canvas": "Line"},
+    "Polygon": {"manimgl": "Polygon", "manim": "Polygon", "motion_canvas": null},
+    "Dot": {"manimgl": "Dot", "manim": "Dot", "motion_canvas": "Circle"}
+  },
+  "params_mapping": {
+    "NumberLine": {"x_range": "x_range", "y_range": "y_range"},
+    "Circle": {"radius": "radius", "color": "color"},
+    "Axes": {"x_range": "x_range", "y_range": "y_range"}
+  },
+  "meta": {
+    "version": "1.0",
+    "source": "visual-techniques.md + engine-adapters"
+  }
+}

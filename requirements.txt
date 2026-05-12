@@ -1,0 +1,21 @@
+# MaCode Python dependencies
+# Locked versions for reproducible builds.
+# Update with: uv pip install -p .venv -r requirements.txt
+
+# ManimCE (Community Edition) — 默认渲染引擎
+manim==0.20.1
+
+# 以下包被项目代码直接 import，需显式声明
+#（尽管它们也是 manim 的传递依赖，但独立声明可防止上游变更导致项目损坏）
+numpy>=1.26
+Pillow>=10.0
+
+# Shader Pipeline 直接依赖（moderngl headless runner）
+# moderngl 也是 manim 的传递依赖，显式声明确保 shader pipeline 独立可用
+moderngl>=5.0
+
+# 开发/测试依赖
+pytest>=7.0
+
+# 注：.venv-manimgl/（ManimGL 交互预览引擎）使用独立虚拟环境，
+#     由 bin/setup.sh 单独安装 manimgl，不通过本文件管理。

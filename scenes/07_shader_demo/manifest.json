@@ -1,0 +1,14 @@
+{
+  "engine": "manimgl",
+  "template": "Scene",
+  "duration": 3,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "assets": [],
+  "dependencies": ["utils.shader_builder", "utils.shader_backend"],
+  "meta": {
+    "title": "Shader Builder Demo",
+    "author": "agent",
+    "tags": ["demo", "shader", "glsl"]
+  }
+}

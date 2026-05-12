@@ -1,0 +1,13 @@
+{
+  "engine": "manim",
+  "duration": 0.8,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "assets": [],
+  "dependencies": [],
+  "meta": {
+    "title": "Composite Demo - Outro",
+    "author": "agent",
+    "tags": ["demo", "outro", "composite"]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "engine": "manimgl",
+  "template": "Scene",
+  "duration": 5,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "assets": [],
+  "dependencies": [],
+  "meta": {
+    "title": "NarrativeScene 叙事模式测试",
+    "author": "agent",
+    "tags": ["test", "narrative", "stage"]
+  }
+}

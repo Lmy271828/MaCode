@@ -1,0 +1,14 @@
+{
+  "engine": "manim",
+  "template": "Scene",
+  "duration": 3,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "assets": [],
+  "dependencies": ["utils.ffmpeg_builder", "utils.audio_builder"],
+  "meta": {
+    "title": "FFmpeg Builder 演示",
+    "author": "agent",
+    "tags": ["demo", "ffmpeg", "builder"]
+  }
+}

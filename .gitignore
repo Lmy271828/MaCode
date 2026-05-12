@@ -2,11 +2,12 @@
 # Claude Code local settings (development tool)
 .claude/settings.local.json
 
-# MaCode agent config (contains API keys)
-.macode/settings.json
-
 # Agent workspace (ephemeral)
 .agent/
+
+# Runtime lock files (auto-created)
+.agent/.git_lock
+.agent/.render_semaphore
 
 # Python virtual environments
 .venv/
@@ -31,3 +32,8 @@ output/
 
 # Windows Zone.Identifier files
 *:Zone.Identifier
+media/
+
+# Motion Canvas runtime-generated files
+engines/motion_canvas/project.ts
+engines/motion_canvas/capture.ts

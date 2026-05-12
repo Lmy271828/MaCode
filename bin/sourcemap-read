@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# bin/sourcemap-read
+# SOURCEMAP 的统一查询入口。消费 .agent/context/{engine}_sourcemap.json，不再直接解析 Markdown。
+#
+# 用法:
+#   sourcemap-read <engine> <section> [filters...]
+#
+# section: whitelist | blacklist | extension | redirect | meta
+#
+# filters (可选):
+#   --id <id>         按标识精确匹配
+#   --grep <pattern>  按用途/描述/原因正则过滤（不区分大小写）
+#   --level <P0|P1|P2>  仅 whitelist 有效，按优先级过滤
+#   --status <TODO|DOING|DONE|WONTFIX> 仅 extension 有效
+#   --format json     输出 JSON 而非文本
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    cat <<'EOF'
+Usage: sourcemap-read <engine> <section> [filters...]
+
+Query SOURCEMAP JSON for a given engine.
+
+Arguments:
+  <engine>     Engine name (e.g. manim, manimgl, motion_canvas)
+  <section>    whitelist | blacklist | extension | redirect | meta
+
+Filters:
+  --id <id>                    Exact match by identifier
+  --grep <pattern>             Regex filter on purpose/description/reason
+  --level P0|P1|P2             Only for whitelist, filter by priority
+  --status <TODO|DOING|DONE|WONTFIX>  Only for extension, filter by status
+  --format json                Output JSON instead of text
+
+Examples:
+  sourcemap-read manim whitelist --level P0
+  sourcemap-read manim blacklist --grep manimlib
+  sourcemap-read manim meta --format json
+EOF
+    exit 0
+fi
+
+ENGINE="${1:-}"
+SECTION="${2:-}"
+
+if [[ -z "$ENGINE" || -z "$SECTION" ]]; then
+    echo "Usage: $0 <engine> <whitelist|blacklist|extension|redirect|meta> [filters...]" >&2
+    exit 1
+fi
+
+JSON_FILE="$PROJECT_ROOT/.agent/context/${ENGINE}_sourcemap.json"
+
+if [[ ! -f "$JSON_FILE" ]]; then
+    echo "ERROR: $JSON_FILE not found. Run: python3 bin/sourcemap-sync.py $ENGINE" >&2
+    exit 1
+fi
+
+# 解析过滤参数
+ID_FILTER=""
+GREP_FILTER=""
+LEVEL_FILTER=""
+STATUS_FILTER=""
+FORMAT="text"
+
+shift 2
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --id)     ID_FILTER="$2"; shift 2 ;;
+        --grep)   GREP_FILTER="$2"; shift 2 ;;
+        --level)  LEVEL_FILTER="$2"; shift 2 ;;
+        --status) STATUS_FILTER="$2"; shift 2 ;;
+        --format) FORMAT="$2"; shift 2 ;;
+        *) shift ;;
+    esac
+done
+
+# 使用 jq 或 Python 消费 JSON
+if command -v jq >/dev/null 2>&1; then
+    JQ_AVAILABLE=1
+else
+    JQ_AVAILABLE=0
+fi
+
+# ── meta 段 ───────────────────────────────────────────
+if [[ "$SECTION" == "meta" ]]; then
+    if [[ "$JQ_AVAILABLE" -eq 1 ]]; then
+        jq -r '{engine, version, adapter_version, generated_at, source_md}' "$JSON_FILE"
+    else
+        python3 -c "
+import json
+with open('$JSON_FILE') as f:
+    d = json.load(f)
+print(json.dumps({k: d[k] for k in ('engine','version','adapter_version','generated_at','source_md')}, indent=2))
+"
+    fi
+    exit 0
+fi
+
+# ── whitelist / blacklist / extension / redirect ───────
+# 构建查询
+if [[ "$JQ_AVAILABLE" -eq 1 ]]; then
+    # 用 jq 过滤
+    JQ_FILTER=".${SECTION}[]"
+    [[ -n "$ID_FILTER" ]] && JQ_FILTER="$JQ_FILTER | select(.id == \"$ID_FILTER\")"
+    [[ -n "$GREP_FILTER" ]] && JQ_FILTER="$JQ_FILTER | select((.purpose? // .reason? // .desc?) | test(\"$GREP_FILTER\"; \"i\"))"
+    [[ -n "$LEVEL_FILTER" && "$SECTION" == "whitelist" ]] && JQ_FILTER="$JQ_FILTER | select(.priority == \"$LEVEL_FILTER\")"
+    [[ -n "$STATUS_FILTER" && "$SECTION" == "extension" ]] && JQ_FILTER="$JQ_FILTER | select(.status == \"$STATUS_FILTER\")"
+
+    if [[ "$FORMAT" == "json" ]]; then
+        jq --slurp "[$JQ_FILTER]" "$JSON_FILE"
+    else
+        jq -r "$JQ_FILTER | \
+            if .priority then \"\\(.id)\\t[\\(.priority)]\\t\\(.purpose)\\t\\(.path_raw)\" \
+            elif .reason then \"\\(.id)\\t\\(.reason)\\t\\(.path_raw)\" \
+            elif .pitfall then \"\\(.pitfall)\\t->\\t\\(.correct)\\t(\\(.reason))\" \
+            else \"\\(.id)\\t[\\(.status)]\\t\\(.desc)\" \
+            end" "$JSON_FILE"
+    fi
+else
+    # fallback: Python
+    python3 -c "
+import json, re, sys
+
+with open('$JSON_FILE') as f:
+    data = json.load(f)
+
+items = data.get('$SECTION', [])
+results = []
+
+for item in items:
+    if '$ID_FILTER' and item.get('id') != '$ID_FILTER':
+        continue
+    if '$GREP_FILTER':
+        text = item.get('purpose', '') + item.get('reason', '') + item.get('desc', '') + item.get('pitfall', '') + item.get('correct', '') + item.get('reason', '')
+        if not re.search('$GREP_FILTER', text, re.I):
+            continue
+    if '$LEVEL_FILTER' and item.get('priority') != '$LEVEL_FILTER':
+        continue
+    if '$STATUS_FILTER' and item.get('status') != '$STATUS_FILTER':
+        continue
+    results.append(item)
+
+if '$FORMAT' == 'json':
+    print(json.dumps(results, ensure_ascii=False, indent=2))
+else:
+    for r in results:
+        if 'priority' in r:
+            print(f\"{r['id']}\t[{r['priority']}]\t{r.get('purpose','')}\t{r.get('path_raw','')}\")
+        elif 'pitfall' in r:
+            print(f\"{r['pitfall']}\t->\t{r.get('correct','')}\t({r.get('reason','')})\")
+        elif 'reason' in r and 'path_raw' in r:
+            print(f\"{r['id']}\t{r.get('reason','')}\t{r.get('path_raw','')}\")
+        else:
+            print(f\"{r['id']}\t[{r.get('status','')}]\t{r.get('desc','')}\")
+"
+fi

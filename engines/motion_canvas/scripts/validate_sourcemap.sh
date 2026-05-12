@@ -6,6 +6,21 @@ set -euo pipefail
 #
 # 用法: validate_sourcemap.sh
 
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    cat <<EOF
+Usage: $(basename "$0")
+
+验证 SOURCEMAP.md 中 WHITELIST/BLACKLIST 路径的真实性。
+
+Arguments:
+  (无)
+
+Examples:
+  $(basename "$0")
+EOF
+    exit 0
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SOURCEMAP="$SCRIPT_DIR/../SOURCEMAP.md"
@@ -35,6 +50,7 @@ echo "[WHITELIST]"
 while IFS='|' read -r _ id path purpose priority; do
     id=$(echo "$id" | xargs)
     [[ -z "$id" || "$id" == "标识" ]] && continue
+    [[ "$id" =~ ^-+$ ]] && continue  # 跳过 Markdown 表格分隔线
 
     path_expr=$(echo "$path" | sed -n 's/.*`\(.*\)`.*/\1/p')
     if [[ -z "$path_expr" ]]; then
@@ -78,6 +94,7 @@ echo "[BLACKLIST]"
 while IFS='|' read -r _ id path reason; do
     id=$(echo "$id" | xargs)
     [[ -z "$id" || "$id" == "标识" ]] && continue
+    [[ "$id" =~ ^-+$ ]] && continue  # 跳过 Markdown 表格分隔线
 
     path_expr=$(echo "$path" | sed -n 's/.*`\(.*\)`.*/\1/p')
     if [[ -z "$path_expr" ]]; then
@@ -111,6 +128,7 @@ echo "[EXTENSION]"
 while IFS='|' read -r _ id desc status; do
     id=$(echo "$id" | xargs)
     [[ -z "$id" || "$id" == "标识" ]] && continue
+    [[ "$id" =~ ^-+$ ]] && continue  # 跳过 Markdown 表格分隔线
     status=$(echo "$status" | xargs)
     echo "  · $id: [$status] $(echo "$desc" | xargs)"
     SKIP=$((SKIP + 1))

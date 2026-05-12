@@ -1,0 +1,23 @@
+{
+  "type": "composite",
+  "engine": "manim",
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "segments": [
+    {
+      "id": "intro",
+      "scene_dir": "intro",
+      "transition": {"type": "fade", "duration": 0.3}
+    },
+    {
+      "id": "proof",
+      "scene_dir": "proof",
+      "transition": {"type": "fade", "duration": 0.3}
+    },
+    {
+      "id": "formula",
+      "scene_dir": "formula",
+      "transition": {"type": "fade", "duration": 0.3}
+    }
+  ]
+}

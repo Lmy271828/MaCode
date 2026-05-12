@@ -2,19 +2,37 @@
 set -euo pipefail
 
 # bin/agent
-# MaCode Coding Agent 入口。
-# 校验配置 → 注入系统提示 → 启动安全 agent-shell。
+# MaCode 项目配置检查与系统提示生成工具。
+# 供人类用户或 Host Agent 调用，检查环境 readiness。
 #
 # 用法:
-#   bin/agent                 交互模式：进入 agent-shell
-#   bin/agent --prompt        仅输出系统提示（调试用）
-#   bin/agent --check         检查配置但不启动
+#   bin/agent --check         检查项目配置（引擎、安全门、api-gate、Git）
+#   bin/agent --prompt        输出系统提示（供复制给其他 LLM）
+#   bin/agent --help          显示帮助
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-MODE="${1:-shell}"
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    cat <<'EOF'
+Usage: agent [--check|--prompt|--help]
+
+MaCode Agent — configuration check and prompt generator.
+
+Options:
+  --check    Check project configuration (engine, safety-gate, api-gate, Git)
+  --prompt   Output system prompt (for copying to other LLMs)
+  --help     Show this help
+
+Examples:
+  agent --check
+  agent --prompt
+EOF
+    exit 0
+fi
+
+MODE="${1:-help}"
 
 # ── 颜色 ────────────────────────────────────────────
 BOLD='\033[1m'
@@ -30,19 +48,6 @@ check_config() {
 
     echo -e "${BOLD}MaCode Coding Agent — Configuration Check${RESET}"
     echo ""
-
-    # API 配置
-    if [[ -f ".macode/settings.json" ]]; then
-        PROVIDER=$(python3 -c "import json; print(json.load(open('.macode/settings.json')).get('provider','?'))" 2>/dev/null || \
-                   python -c "import json; print(json.load(open('.macode/settings.json')).get('provider','?'))" 2>/dev/null || echo "?")
-        MODEL=$(python3 -c "import json; print(json.load(open('.macode/settings.json')).get('model','?'))" 2>/dev/null || \
-                python -c "import json; print(json.load(open('.macode/settings.json')).get('model','?'))" 2>/dev/null || echo "?")
-        echo -e "  ${GREEN}✓${RESET} API config: provider=$PROVIDER, model=$MODEL"
-    else
-        echo -e "  ${RED}✗${RESET} .macode/settings.json not found — API calls will fail"
-        echo "    Run: bash bin/setup.sh"
-        ok=false
-    fi
 
     # 引擎
     ENGINE=$(grep -oP 'engine:\s*\K\S+' project.yaml 2>/dev/null || echo "manim")
@@ -78,11 +83,11 @@ check_config() {
     echo ""
     if $ok; then
         echo -e "${GREEN}All checks passed. Agent ready.${RESET}"
+        return 0
     else
         echo -e "${RED}Fix issues above before starting agent.${RESET}"
+        return 1
     fi
-
-    return 0
 }
 
 # ── 生成系统提示 ──────────────────────────────────────
@@ -98,29 +103,39 @@ generate_prompt() {
 
     # 核心指令
     cat << 'PROMPT'
-你是一个数学动画工程师，工作在 MaCode —— 一个 UNIX 原生的数学动画 Harness 中。
+你是一个 MaCode Harness 使用者 Agent，负责编写数学动画场景源码并通过 CLI 完成渲染、检查、修复的完整循环。
 
 【环境】
-- 当前在 agent-shell 中，所有命令经过 safety-gate 白名单检查
 - 工作目录是 MaCode 项目根目录
 - 渲染引擎、管道脚本、SOURCEMAP 都已就绪
+- 多 Agent 并发协调通过文件系统 claim 协议实现
 
 【你的工作流】
 1. 读取 project.yaml 了解项目配置与安全策略
 2. 读取目标场景的 scenes/*/manifest.json 理解需求
 3. 使用 macode inspect --grep <keyword> 查询引擎 API（勿 grep -r 整个源码树）
 4. 编写场景源码到 scenes/<scene_name>/，创建 scene.py + manifest.json
-5. 调用 macode render scenes/<scene_name>/ 触发渲染（自动通过 api-gate + 缓存）
-6. 若 api-gate 拦截，阅读违规列表，用 WHITELIST API 替代
-7. 若渲染失败，tail .agent/log/ 查看日志和 SOURCEMAP 诊断
-8. 后处理通过 pipeline/*.sh 完成（ffmpeg 拼接、音频、压缩）
+5. 调用 macode check scenes/<scene_name>/ 运行静态检查
+6. 读取 .agent/check_reports/*_static.json，修复 issue（fix_confidence >= 0.8 自动修复）
+7. 调用 macode render scenes/<scene_name>/ 触发渲染（自动通过 api-gate + 缓存）
+8. 若 api-gate 拦截，阅读违规列表，用 WHITELIST API 替代
+9. 若渲染失败，tail .agent/log/ 查看日志和 SOURCEMAP 诊断
+10. 调用 macode check scenes/<scene_name>/ --frames 运行帧检查
+11. 修复 issue 后 git add scenes/<scene_name>/ && git commit
+12. 后处理通过 pipeline/*.sh 完成（ffmpeg 拼接、音频、压缩）
+
+【Multi-Agent 协调】
+- 设置 export MACODE_AGENT_ID="agent-$$" 标识自己
+- 渲染前 scene 自动 claim，冲突时 exit 4（claimed）或 exit 5（queued）
+- 通过 curl localhost:3456/api/state 监控其他 Agent
+- 定期运行 python3 bin/cleanup-stale.py 清理残留
 
 【安全约束】
 - 禁止导入 SOURCEMAP BLACKLIST 中的模块（manimlib、manim._config 等）
 - 禁止使用 subprocess / os.system / socket / requests 等危险调用
 - 禁止访问 .macode/ .claude/ .git/config
 - 禁止 git push --force / git reset --hard
-- 所有命令受 safety-gate 白名单限制
+- 禁止修改 engines/、bin/、pipeline/ 下的文件
 - 渲染超时 600 秒，帧数上限 10000
 
 【SOURCEMAP 使用】
@@ -129,10 +144,12 @@ generate_prompt() {
 - macode inspect --blacklist    查看禁止使用的模块
 
 【关键脚本】
-- macode render <dir>          渲染场景（含 api-gate + 缓存 + git 原子操作）
+- macode render <dir>          渲染场景（含 api-gate + 缓存 + claim）
+- macode check <dir>           静态检查（Layer 1）
+- macode check <dir> --frames  帧检查（Layer 2）
 - macode status                项目状态
 - pipeline/preview.sh <mp4>    快速预览
-- log                          查看最近日志
+- python3 bin/cleanup-stale.py 清理 dead-PID 和过期 claim
 PROMPT
 
     echo ""
@@ -173,28 +190,17 @@ case "$MODE" in
         check_config
         ;;
     --prompt)
-        check_config
         generate_prompt
         ;;
-    shell|*)
-        echo -e "${BOLD}${CYAN}╔══════════════════════════════════════╗${RESET}"
-        echo -e "${BOLD}${CYAN}║     MaCode Coding Agent v0.1.0      ║${RESET}"
-        echo -e "${BOLD}${CYAN}╚══════════════════════════════════════╝${RESET}"
+    help|*)
+        echo "MaCode Agent — 配置检查与提示生成工具"
         echo ""
-
-        check_config
+        echo "用法:"
+        echo "  bin/agent --check    检查项目配置"
+        echo "  bin/agent --prompt   输出生成系统提示"
         echo ""
-
-        echo -e "${BOLD}Agent 能力摘要:${RESET}"
-        echo "  · 场景编写:  ManimCE Python / Motion Canvas TypeScript"
-        echo "  · 渲染管道:  macode render → api-gate → cache → timeout → ffmpeg"
-        echo "  · API 发现:  macode inspect → SOURCEMAP WHITELIST"
-        echo "  · 安全防护:  safety-gate 白名单 + api-gate 沙箱 + Git 原子回滚"
-        echo "  · 后处理:    ffmpeg 拼接 / 音频合成 / 压缩 / 剪辑"
-        echo ""
-
-        echo -e "${BOLD}启动 agent-shell...${RESET}"
-        echo ""
-        exec bash "$SCRIPT_DIR/agent-shell"
+        echo "注意: MaCode 不再提供 agent-shell 入口。"
+        echo "      Host Agent（Claude Code / Cursor 等）直接调用 CLI 工具即可。"
+        echo "      人类用户如需交互式 shell，可运行: bash bin/human-tools/agent-shell"
         ;;
 esac

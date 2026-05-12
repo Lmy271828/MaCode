@@ -1,0 +1,14 @@
+{
+  "engine": "manim",
+  "template": "Scene",
+  "duration": 2,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "assets": [],
+  "dependencies": [],
+  "meta": {
+    "title": "Hybrid Demo - Manim Intro",
+    "author": "agent",
+    "tags": ["test", "manim", "hybrid"]
+  }
+}

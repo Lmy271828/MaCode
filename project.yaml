@@ -3,13 +3,18 @@
 
 project:
   name: MaCode
-  version: "0.1.0"
+  version: "0.8.0"
 
 # 默认渲染设置
 defaults:
-  engine: manim
+  engine: manimgl
   resolution: [1920, 1080]
   fps: 30
+
+# 引擎选择说明：
+# - manimgl:       ManimGL, 实时交互预览, 适合数学/3D 开发迭代 (默认 .py)
+# - motion_canvas: Motion Canvas, 浏览器 WebGL 热重载, 适合数据可视化/Shader (.tsx)
+# - manim:         ManimCE, 批处理渲染, 仅用于 CI/最终输出
 
 # Agent 安全策略
 agent:

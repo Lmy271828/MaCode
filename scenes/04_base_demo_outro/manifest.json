@@ -1,0 +1,15 @@
+{
+  "engine": "manim",
+  "duration": 0.8,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "assets": [],
+  "dependencies": [
+    "scenes/04_base_demo_main/manifest.json"
+  ],
+  "meta": {
+    "title": "Base Demo - Outro",
+    "author": "agent",
+    "tags": ["demo", "outro", "composite"]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "engine": "manim",
+  "duration": 5.0,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "assets": [],
+  "dependencies": [],
+  "meta": {
+    "title": "Composite Demo - Main",
+    "author": "agent",
+    "tags": ["demo", "main", "composite"]
+  }
+}

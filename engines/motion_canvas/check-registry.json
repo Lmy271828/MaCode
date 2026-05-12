@@ -1,0 +1,38 @@
+{
+  "version": "1.1",
+  "engine": "motion_canvas",
+  "description": "Check registry for Motion Canvas engine scenes (layout checks removed — now enforced by Layout Compiler)",
+  "layers": {
+    "layer1": {
+      "description": "Static analysis — no rendering required",
+      "checks": {
+        "segment_consistency": {
+          "name": "Segment Consistency",
+          "description": "Validate manifest↔source segment alignment",
+          "script": "bin/checks/segment_consistency.py",
+          "enabled_by_default": true
+        },
+        "duration_consistency": {
+          "name": "Duration Consistency",
+          "description": "A1/A2 time checks: duration mismatch and animation overlap",
+          "script": "bin/checks/duration_consistency.py",
+          "enabled_by_default": true
+        },
+        "formula_density": {
+          "name": "Formula Density",
+          "description": "Check formula pixel density per segment",
+          "script": "bin/checks/formula_density.py",
+          "enabled_by_default": false
+        }
+      }
+    },
+    "layer2": {
+      "description": "Rendered frame analysis (DEPRECATED — moved to Layout Compiler bounding-box guarantees)",
+      "checks": {}
+    },
+    "layer3": {
+      "description": "Full render / human review",
+      "checks": {}
+    }
+  }
+}

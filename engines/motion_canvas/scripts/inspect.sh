@@ -3,11 +3,39 @@ set -euo pipefail
 
 # engines/motion_canvas/scripts/inspect.sh
 # 打印该引擎可用的模板与工具函数。
-# 优先从 SOURCEMAP.md 读取结构化信息。
+# 通过 sourcemap-read 消费 JSON，不再直接解析 Markdown。
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    cat <<EOF
+Usage: $(basename "$0")
+
+打印 Motion Canvas 引擎可用的模板与工具函数（通过 SOURCEMAP）。
+
+Arguments:
+  (无)
+
+Examples:
+  $(basename "$0")
+EOF
+    exit 0
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SOURCEMAP="$SCRIPT_DIR/../SOURCEMAP.md"
+
+# ── 确保 JSON 机器接口新鲜 ───────────────────────────
+if [[ -f "$SOURCEMAP" ]]; then
+    if ! python3 "$PROJECT_ROOT/bin/sourcemap-sync.py" --check motion_canvas >/dev/null 2>&1; then
+        python3 "$PROJECT_ROOT/bin/sourcemap-sync.py" motion_canvas >/dev/null 2>&1 || true
+    fi
+fi
+
+show_redirects() {
+    echo "--- REDIRECT: Common Pitfall Corrections ---"
+    bash "$PROJECT_ROOT/bin/sourcemap-read" motion_canvas redirect 2>/dev/null || echo "  (sourcemap-read failed)"
+    echo ""
+}
 
 echo "=== Motion Canvas Engine Inspection ==="
 echo ""
@@ -24,35 +52,21 @@ if [[ -f "$PROJECT_ROOT/node_modules/@motion-canvas/core/package.json" ]]; then
 fi
 echo ""
 
-# ── WHITELIST ────────────────────────────────────────
+# ── WHITELIST / BLACKLIST / EXTENSION ────────────────
 if [[ -f "$SOURCEMAP" ]]; then
     echo "--- WHITELIST: Safe API paths ---"
-    awk '/^## WHITELIST/ {found=1; next} /^## / {if(found) exit} found && /^\|/ && !/ 标识 /' "$SOURCEMAP" | \
-        while IFS='|' read -r _ id path purpose priority; do
-            id=$(echo "$id" | xargs)
-            priority=$(echo "$priority" | xargs)
-            purpose=$(echo "$purpose" | xargs)
-            printf "  %-25s [%s]  %s\n" "$id" "$priority" "$purpose"
-        done
+    bash "$PROJECT_ROOT/bin/sourcemap-read" motion_canvas whitelist 2>/dev/null || echo "  (sourcemap-read failed)"
     echo ""
 
     echo "--- BLACKLIST: Do not touch ---"
-    awk '/^## BLACKLIST/ {found=1; next} /^## / {if(found) exit} found && /^\|/ && !/ 标识 /' "$SOURCEMAP" | \
-        while IFS='|' read -r _ id path reason; do
-            id=$(echo "$id" | xargs)
-            reason=$(echo "$reason" | xargs)
-            printf "  %-25s  %s\n" "$id" "$reason"
-        done
+    bash "$PROJECT_ROOT/bin/sourcemap-read" motion_canvas blacklist 2>/dev/null || echo "  (sourcemap-read failed)"
     echo ""
 
     echo "--- EXTENSION: Future work ---"
-    awk '/^## EXTENSION/ {found=1; next} /^## / {if(found) exit} found && /^\|/ && !/ 标识 /' "$SOURCEMAP" | \
-        while IFS='|' read -r _ id desc status; do
-            id=$(echo "$id" | xargs)
-            status=$(echo "$status" | xargs)
-            desc=$(echo "$desc" | xargs)
-            printf "  %-25s [%-8s] %s\n" "$id" "$status" "$desc"
-        done
+    bash "$PROJECT_ROOT/bin/sourcemap-read" motion_canvas extension 2>/dev/null || echo "  (sourcemap-read failed)"
+    echo ""
+
+    show_redirects
 else
     echo "  WARN: SOURCEMAP.md not found. Run: macode sourcemap init motion_canvas"
     echo ""

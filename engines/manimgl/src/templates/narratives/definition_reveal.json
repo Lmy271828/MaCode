@@ -1,0 +1,44 @@
+{
+  "name": "definition_reveal",
+  "description": "先出定义文字 → 再出几何解释 → 最后举例。对应 narrative-patterns.md 的 'Specific → General' 变体，用于概念首次引入场景。",
+  "source": "manim_skill/narrative-patterns.md + visual-techniques.md",
+  "stages": [
+    {
+      "id": "statement",
+      "zone": "title",
+      "type": "text",
+      "duration_hint": 2.0,
+      "must_be_first": true
+    },
+    {
+      "id": "visual",
+      "zone": "main_visual",
+      "type": "visual",
+      "duration_hint": 4.0,
+      "requires": ["statement"]
+    },
+    {
+      "id": "annotation",
+      "zone": "annotation",
+      "type": "text",
+      "duration_hint": 3.0,
+      "requires": ["visual"]
+    },
+    {
+      "id": "example",
+      "zone": "main_visual",
+      "type": "visual",
+      "duration_hint": 3.0,
+      "requires": ["annotation"]
+    }
+  ],
+  "rules": {
+    "primary_zone_first_visual_within": 3.0,
+    "max_text_chars_per_scene": 80,
+    "text_to_visual_ratio": "<= 0.4"
+  },
+  "meta": {
+    "version": "1.0",
+    "engine": "agnostic"
+  }
+}

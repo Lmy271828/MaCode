@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "macode-harness"
+version = "0.9.0"
+description = "MaCode Harness — multi-engine mathematical animation pipeline"
+requires-python = ">=3.12"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.15",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = [
+    ".venv",
+    ".venv-manimgl",
+    "node_modules",
+    "__pycache__",
+    "media",
+    "output",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # Pyflakes
+    "W",   # pycodestyle warnings
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501", # line-too-long (handled by formatter)
+    "SIM",  # flake8-simplify: stylistic suggestions, high churn for existing codebase
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Manim scenes & engine templates use star imports as standard practice
+"scenes/**/*.py" = ["F403", "F405"]
+"engines/**/*.py" = ["F403", "F405", "E402", "N806"]
+"assets/**/*.py" = ["N802", "N806", "B007"]
+# Scripts that mutate sys.path before importing project modules
+"bin/**/*.py" = ["E402", "N806"]
+"tests/**/*.py" = ["E402", "N806"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_functions = ["test_*"]
+
+[tool.mypy]
+python_version = "3.13"
+ignore_missing_imports = true
+check_untyped_defs = false
+warn_unused_ignores = true
+exclude = [
+    "^.venv",
+    "^.venv-manimgl",
+    "^node_modules",
+    "^media",
+    "^output",
+]

@@ -3,12 +3,26 @@ set -euo pipefail
 
 # pipeline/preview.sh
 # 降分辨率 / 抽帧快速预览，用于 Agent 迭代调试。
-#
-# 用法: preview.sh <input> <output> [scale] [fps]
-#   input  - 输入视频文件
-#   output - 输出视频文件
-#   scale  - 目标宽度（像素），默认 640
-#   fps    - 目标帧率，默认 10
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    SCRIPT_NAME=$(basename "$0")
+    cat <<EOF
+Usage: $SCRIPT_NAME <input> <output> [scale] [fps]
+
+Generate a low-resolution / low-fps preview video for quick debugging.
+
+Arguments:
+  <input>   Input video file path
+  <output>  Output preview video file path
+  [scale]   Target width in pixels (default: 640)
+  [fps]     Target frame rate (default: 10)
+
+Examples:
+  $SCRIPT_NAME input.mp4 preview.mp4
+  $SCRIPT_NAME input.mp4 preview.mp4 320 5
+EOF
+    exit 0
+fi
 
 INPUT="${1:-}"
 OUTPUT="${2:-}"

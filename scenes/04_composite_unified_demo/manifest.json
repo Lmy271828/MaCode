@@ -1,0 +1,16 @@
+{
+  "type": "composite-unified",
+  "engine": "manim",
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "segments": [
+    {"id": "intro", "scene_dir": "shots/00_intro"},
+    {"id": "main", "scene_dir": "shots/01_main"},
+    {"id": "outro", "scene_dir": "shots/02_outro"}
+  ],
+  "meta": {
+    "title": "Composite Unified Demo",
+    "author": "agent",
+    "tags": ["demo", "composite-unified"]
+  }
+}

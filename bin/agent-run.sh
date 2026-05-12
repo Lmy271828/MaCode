@@ -3,11 +3,26 @@ set -euo pipefail
 
 # bin/agent-run.sh
 # Git 原子操作包装器。
-#
-# 用法: agent-run.sh <scene_dir> <command> [args...]
-#   渲染场景前确保 git 状态干净可回滚。
-#   成功 → git commit（记录变更）
-#   失败 → git checkout -- + git clean -f（仅清理未追踪的渲染产物）
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    cat <<'EOF'
+Usage: agent-run.sh <scene_dir> <command> [args...]
+
+Git atomic-operation wrapper for scene rendering.
+Ensures clean git state before rendering.
+  Success → git commit (record changes)
+  Failure → git checkout -- + git clean -f (clean untracked artifacts)
+
+Arguments:
+  <scene_dir>   Scene directory, e.g. scenes/01_test/
+  <command>     Command to run (e.g. bash pipeline/render.sh)
+  [args...]     Additional arguments passed to <command>
+
+Examples:
+  agent-run.sh scenes/01_test bash pipeline/render.sh scenes/01_test
+EOF
+    exit 0
+fi
 
 SCENE="${1:-}"
 shift 2>/dev/null || true
@@ -19,6 +34,8 @@ fi
 
 COMMAND="$1"
 shift 2>/dev/null || true
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
     echo "[agent-run] Not a git repository, running without safety net"
@@ -48,8 +65,13 @@ if [[ $EXIT_CODE -eq 0 ]]; then
     if ! git diff --quiet -- "$SCENE" 2>/dev/null || \
        ! git diff --cached --quiet -- "$SCENE" 2>/dev/null || \
        [[ -n $(git ls-files --others --exclude-standard -- "$SCENE" 2>/dev/null) ]]; then
-        git add "$SCENE"
-        git commit -m "agent: render $SCENE_NAME — success" 2>/dev/null || true
+        GIT_LOCK_FILE="$PROJECT_ROOT/.agent/.git_lock"
+        mkdir -p "$(dirname "$GIT_LOCK_FILE")"
+        (
+            flock -x 200 || exit 1
+            git add "$SCENE"
+            git commit -m "agent: render $SCENE_NAME — success" 2>/dev/null || true
+        ) 200>"$GIT_LOCK_FILE"
     fi
 else
     echo "[agent-run] Failed (exit $EXIT_CODE). Rolling back scene changes..."

@@ -3,7 +3,16 @@ set -euo pipefail
 
 # bin/discover
 # 交互式项目结构探索助手。
-# Agent 迷路时调用，展示项目结构和可用操作。
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    cat <<'EOF'
+Usage: discover [--help]
+
+Interactive project structure explorer.
+Shows scenes, engines, pipelines, configs and quick actions.
+EOF
+    exit 0
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -33,7 +42,7 @@ find bin -maxdepth 1 -type f | sort | sed 's/^/   /'
 echo ""
 
 echo "📋 配置文件"
-for f in project.yaml CLAUDE.md progress.md; do
+for f in project.yaml AGENTS.md docs/progress.md; do
     if [[ -f "$f" ]]; then
         echo "   $f"
     fi

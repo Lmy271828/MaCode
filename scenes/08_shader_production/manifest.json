@@ -1,0 +1,9 @@
+{
+  "name": "shader_production",
+  "engine": "manim",
+  "type": "single",
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "duration": 5.0,
+  "description": "ShaderMobject production validation — embed Layer 1 shader frames in ManimCE scene"
+}

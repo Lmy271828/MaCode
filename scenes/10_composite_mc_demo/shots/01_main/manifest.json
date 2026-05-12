@@ -1,0 +1,12 @@
+{
+  "engine": "motion_canvas",
+  "template": "makeScene2D",
+  "duration": 2.5,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "assets": [],
+  "dependencies": [],
+  "meta": {
+    "title": "MC Main"
+  }
+}

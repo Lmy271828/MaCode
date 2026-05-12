@@ -1,0 +1,383 @@
+#!/usr/bin/env python3
+"""bin/macode-hash
+AST-only recursive import scanner for deterministic cache hashing.
+
+Algorithm:
+  1. Read manifest.json → get engine field
+  2. Add engines/{engine}/src/ to sys.path
+  3. Scan all .py files in scene_dir (same exclusions as cache-key.py)
+  4. For each .py file: AST-parse imports, resolve via importlib.util.find_spec
+  5. If origin is within PROJECT_ROOT and not excluded → recurse
+  6. Detect sys.path.insert / sys.path.append in AST
+  7. Hash all discovered dependency files (sorted) with SHA-256
+  8. Also hash manifest.json + scene input files (same as cache-key.py)
+  9. Combine all hashes, SHA-256, truncate to 32 hex chars
+
+CLI:
+    macode-hash <scene_dir> [--deps-json]
+
+Output:
+    Hex hash (stdout) or JSON with hash and dependencies list.
+Exit:
+    0 on success, 1 on error
+"""
+
+from __future__ import annotations
+
+import argparse
+import ast
+import hashlib
+import importlib.util
+import json
+import os
+import sys
+
+# Same exclusions as cache-key.py
+_EXCLUDE_SUFFIXES = frozenset({".log", ".tmp", ".swp", ".swo", ".bak", "~"})
+_EXCLUDE_DIRS = frozenset({".git", "__pycache__", ".pytest_cache", "node_modules", ".venv", ".agent"})
+_EXCLUDE_NAMES = frozenset({".cache_path", ".DS_Store", "Thumbs.db"})
+
+
+def is_excluded_file(name: str) -> bool:
+    """Exclude hidden files, editor backups, and known noise files."""
+    if name.startswith(".") or name.startswith("_"):
+        return True
+    if name in _EXCLUDE_NAMES:
+        return True
+    if any(name.endswith(suffix) for suffix in _EXCLUDE_SUFFIXES):
+        return True
+    return False
+
+
+def sha256_file(path: str) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def sha256_str(s: str) -> str:
+    return hashlib.sha256(s.encode()).hexdigest()
+
+
+def collect_scene_inputs(scene_dir: str) -> list[str]:
+    """Collect all files in the scene directory that affect rendering output."""
+    files: list[str] = []
+    try:
+        entries = sorted(os.listdir(scene_dir))
+    except OSError:
+        return files
+
+    for name in entries:
+        if is_excluded_file(name):
+            continue
+        fpath = os.path.join(scene_dir, name)
+        if os.path.isfile(fpath):
+            files.append(fpath)
+        elif os.path.isdir(fpath) and name not in _EXCLUDE_DIRS:
+            try:
+                sub_entries = sorted(os.listdir(fpath))
+            except OSError:
+                continue
+            for subname in sub_entries:
+                if is_excluded_file(subname):
+                    continue
+                subpath = os.path.join(fpath, subname)
+                if os.path.isfile(subpath):
+                    files.append(subpath)
+    return files
+
+
+def collect_shader_files(project_root: str, shader_ids: list[str]) -> list[str]:
+    """Find shader source files that affect rendering."""
+    files: list[str] = []
+    for sid in sorted(shader_ids):
+        shader_dir = os.path.join(project_root, "assets", "shaders", sid)
+        if not os.path.isdir(shader_dir):
+            continue
+        for name in sorted(os.listdir(shader_dir)):
+            if name.endswith((".glsl", ".json", ".py", ".ts", ".tsx", ".js", ".mjs")):
+                fpath = os.path.join(shader_dir, name)
+                if os.path.isfile(fpath):
+                    files.append(fpath)
+    return files
+
+
+def get_ast_imports(source_path: str) -> list[str]:
+    """Parse a Python file and return top-level import module names."""
+    modules: list[str] = []
+    try:
+        with open(source_path, encoding="utf-8") as f:
+            tree = ast.parse(f.read(), filename=source_path)
+    except (SyntaxError, OSError, UnicodeDecodeError):
+        return modules
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                modules.append(alias.name)
+        elif isinstance(node, ast.ImportFrom):
+            if node.module:
+                modules.append(node.module)
+            elif node.level and node.level > 0:
+                # relative import without module name
+                continue
+    return modules
+
+
+def get_sys_path_modifications(source_path: str) -> list[str]:
+    """Detect sys.path.insert / sys.path.append with string literals."""
+    paths: list[str] = []
+    try:
+        with open(source_path, encoding="utf-8") as f:
+            tree = ast.parse(f.read(), filename=source_path)
+    except (SyntaxError, OSError, UnicodeDecodeError):
+        return paths
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        # Check for sys.path.insert or sys.path.append
+        is_path_insert = False
+        is_path_append = False
+        if isinstance(func, ast.Attribute):
+            if isinstance(func.value, ast.Attribute):
+                if (
+                    isinstance(func.value.value, ast.Name)
+                    and func.value.value.id == "sys"
+                    and func.value.attr == "path"
+                ):
+                    if func.attr == "insert":
+                        is_path_insert = True
+                    elif func.attr == "append":
+                        is_path_append = True
+
+        if not (is_path_insert or is_path_append):
+            continue
+
+        # Extract path argument
+        args = node.args
+        if is_path_insert and len(args) >= 2:
+            path_arg = args[1]
+        elif is_path_append and len(args) >= 1:
+            path_arg = args[0]
+        else:
+            continue
+
+        path_str = _extract_path_string(path_arg, source_path)
+        if path_str:
+            paths.append(path_str)
+
+    return paths
+
+
+def _extract_path_string(node: ast.AST, source_path: str) -> str | None:
+    """Extract a string path from an AST node, handling Path(__file__).parent chains."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+
+    elif isinstance(node, ast.JoinedStr):
+        return None  # f-strings are too complex
+    elif isinstance(node, ast.Call):
+        # Handle str(Path(__file__).parent / "foo")
+        if isinstance(node.func, ast.Name) and node.func.id == "str" and len(node.args) == 1:
+            return _extract_path_string(node.args[0], source_path)
+        # Handle Path(__file__).parent / "foo" / "bar"
+        if isinstance(node.func, ast.Attribute) and node.func.attr in ("parent", "resolve"):
+            # Try to resolve Path(__file__).parent chains
+            base = _resolve_path_chain(node.func.value, source_path)
+            if base:
+                return base
+        return None
+    elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.Div):
+        # Handle Path(__file__).parent / "foo"
+        left = _extract_path_string(node.left, source_path)
+        right = _extract_path_string(node.right, source_path)
+        if left and right:
+            return os.path.join(left, right)
+    elif isinstance(node, ast.Attribute) and node.attr in ("parent", "resolve"):
+        # Handle Path(__file__).parent (as the left side of a / operation)
+        base = _resolve_path_chain(node.value, source_path)
+        if base:
+            return base
+    return None
+
+
+def _resolve_path_chain(node: ast.AST, source_path: str) -> str | None:
+    """Resolve a chain of Path() calls to an absolute path."""
+    if isinstance(node, ast.Call):
+        if isinstance(node.func, ast.Name) and node.func.id == "Path":
+            if len(node.args) == 1:
+                arg = node.args[0]
+                if isinstance(arg, ast.Name) and arg.id == "__file__":
+                    return os.path.dirname(os.path.abspath(source_path))
+                elif isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                    return os.path.abspath(arg.value)
+        elif isinstance(node.func, ast.Attribute):
+            if node.func.attr in ("parent", "resolve"):
+                base = _resolve_path_chain(node.func.value, source_path)
+                if base:
+                    if node.func.attr == "parent":
+                        return os.path.dirname(base)
+                    else:
+                        return base
+    return None
+
+
+def resolve_module_to_file(module_name: str, sys_path: list[str]) -> str | None:
+    """Resolve a module name to its source file using importlib."""
+    # Temporarily override sys.path for resolution
+    original_path = sys.path[:]
+    try:
+        # Prepend our custom paths
+        for p in reversed(sys_path):
+            if p not in sys.path:
+                sys.path.insert(0, p)
+        spec = importlib.util.find_spec(module_name)
+        if spec is None or spec.origin is None:
+            return None
+        origin = spec.origin
+        # Only return .py files (not compiled or namespace packages)
+        if origin.endswith(".py"):
+            return os.path.abspath(origin)
+        return None
+    except (ModuleNotFoundError, ValueError, ImportError):
+        return None
+    finally:
+        sys.path[:] = original_path
+
+
+def scan_import_dependencies(
+    start_files: list[str],
+    project_root: str,
+    extra_sys_path: list[str],
+) -> set[str]:
+    """Recursively scan Python imports starting from start_files.
+
+    Returns a set of absolute paths to Python files within PROJECT_ROOT.
+    """
+    visited: set[str] = set()
+    queue: list[str] = list(start_files)
+    discovered_paths: set[str] = set()
+
+    while queue:
+        current = queue.pop(0)
+        abs_current = os.path.abspath(current)
+        if abs_current in visited:
+            continue
+        visited.add(abs_current)
+
+        # Only process files within project_root
+        if not abs_current.startswith(os.path.abspath(project_root)):
+            continue
+
+        discovered_paths.add(abs_current)
+
+        # Detect sys.path modifications in this file
+        local_sys_path = list(extra_sys_path)
+        for mod_path in get_sys_path_modifications(abs_current):
+            if os.path.isdir(mod_path):
+                local_sys_path.append(mod_path)
+
+        # Resolve imports
+        for module_name in get_ast_imports(abs_current):
+            resolved = resolve_module_to_file(module_name, local_sys_path)
+            if resolved and resolved not in visited:
+                # Only include if within project_root
+                if resolved.startswith(os.path.abspath(project_root)):
+                    queue.append(resolved)
+
+    return discovered_paths
+
+
+def compute_hash(scene_dir: str, project_root: str) -> tuple[str, list[str]]:
+    """Compute the deterministic hash for a scene directory.
+
+    Returns (hash_str, sorted_dependencies_list).
+    """
+    scene_dir = os.path.abspath(scene_dir)
+    project_root = os.path.abspath(project_root)
+
+    manifest_path = os.path.join(scene_dir, "manifest.json")
+    if not os.path.isfile(manifest_path):
+        raise FileNotFoundError(f"manifest.json not found in {scene_dir}")
+
+    with open(manifest_path, encoding="utf-8") as f:
+        manifest = json.load(f)
+
+    engine = manifest.get("engine", "manim")
+
+    # Build sys.path with engine src
+    extra_sys_path: list[str] = []
+    engine_src = os.path.join(project_root, "engines", engine, "src")
+    if os.path.isdir(engine_src):
+        extra_sys_path.append(engine_src)
+
+    # Collect all .py files in scene_dir
+    scene_py_files: list[str] = []
+    for fpath in collect_scene_inputs(scene_dir):
+        if fpath.endswith(".py"):
+            scene_py_files.append(fpath)
+
+    # Recursively scan imports
+    dep_files = scan_import_dependencies(scene_py_files, project_root, extra_sys_path)
+
+    # Build hash list
+    hashes: list[str] = []
+
+    # 1. Manifest hash
+    hashes.append(sha256_file(manifest_path))
+
+    # 2. Scene input files (same as cache-key.py)
+    for fpath in sorted(collect_scene_inputs(scene_dir)):
+        hashes.append(sha256_file(fpath))
+
+    # 3. Shader dependencies
+    shader_ids = manifest.get("shaders", [])
+    if shader_ids:
+        for fpath in collect_shader_files(project_root, shader_ids):
+            hashes.append(sha256_file(fpath))
+        hashes.append(sha256_str("shaders:" + ",".join(sorted(shader_ids))))
+
+    # 4. Recursively discovered dependency files (sorted)
+    for fpath in sorted(dep_files):
+        if fpath != manifest_path:  # Avoid double-hashing manifest
+            hashes.append(sha256_file(fpath))
+
+    # Combine
+    combined = hashlib.sha256("\n".join(hashes).encode()).hexdigest()
+    return combined[:32], sorted(dep_files)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Compute deterministic hash for a scene directory including import dependencies.",
+        usage="%(prog)s <scene_dir> [--deps-json]",
+    )
+    parser.add_argument("scene_dir", help="Scene directory path")
+    parser.add_argument("--deps-json", action="store_true", help="Output JSON with hash and dependencies")
+    args = parser.parse_args()
+
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    try:
+        hash_str, deps = compute_hash(args.scene_dir, project_root)
+    except FileNotFoundError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+    if args.deps_json:
+        print(json.dumps({"hash": hash_str, "dependencies": deps}, indent=2))
+    else:
+        print(hash_str)
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

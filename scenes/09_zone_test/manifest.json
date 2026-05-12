@@ -1,0 +1,14 @@
+{
+  "engine": "manimgl",
+  "template": "Scene",
+  "duration": 3,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "assets": [],
+  "dependencies": [],
+  "meta": {
+    "title": "ZoneScene 约束系统测试",
+    "author": "agent",
+    "tags": ["test", "zone", "layout"]
+  }
+}

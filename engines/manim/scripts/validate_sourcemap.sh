@@ -6,7 +6,23 @@ set -euo pipefail
 #
 # 用法: validate_sourcemap.sh
 
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    cat <<EOF
+Usage: $(basename "$0")
+
+验证 SOURCEMAP.md 中 WHITELIST/BLACKLIST 路径的真实性。
+
+Arguments:
+  (无)
+
+Examples:
+  $(basename "$0")
+EOF
+    exit 0
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SOURCEMAP="$SCRIPT_DIR/../SOURCEMAP.md"
 
 if [[ ! -f "$SOURCEMAP" ]]; then
@@ -35,6 +51,7 @@ echo "[WHITELIST]"
 while IFS='|' read -r _ id path purpose priority; do
     id=$(echo "$id" | xargs)
     [[ -z "$id" || "$id" == "标识" ]] && continue
+    [[ "$id" =~ ^-+$ ]] && continue  # 跳过 Markdown 表格分隔线
 
     path_expr=$(echo "$path" | sed -n 's/.*`\(.*\)`.*/\1/p')
     if [[ -z "$path_expr" ]]; then
@@ -43,10 +60,30 @@ while IFS='|' read -r _ id path purpose priority; do
         continue
     fi
 
-    # eval 动态路径
-    resolved=$(eval echo "$path_expr" 2>/dev/null) || true
+    # 安全解析动态路径（替代 eval）
+    resolved=""
+    if [[ "$path_expr" == *'$(python -c "'* ]]; then
+        # 提取 $(python -c "...") 内部的代码
+        py_code=$(echo "$path_expr" | sed -n 's/.*\$(python -c "\([^"]*\)").*/\1/p')
+        if [[ -n "$py_code" ]]; then
+            py_result=$(python3 -c "$py_code" 2>/dev/null || true)
+            suffix=$(echo "$path_expr" | sed 's/.*\$(python -c "[^"]*")//')
+            resolved="${py_result}${suffix}"
+        fi
+    elif [[ "$path_expr" == *'$(.venv/bin/python -c "'* ]]; then
+        py_code=$(echo "$path_expr" | sed -n 's/.*\$(\.venv\/bin\/python -c "\([^"]*\)").*/\1/p')
+        if [[ -n "$py_code" ]]; then
+            py_result=$("$PROJECT_ROOT/.venv/bin/python" -c "$py_code" 2>/dev/null || true)
+            suffix=$(echo "$path_expr" | sed 's/.*\$(\.venv\/bin\/python -c "[^"]*")//')
+            resolved="${py_result}${suffix}"
+        fi
+    else
+        # 静态路径（如 import path 或相对路径）
+        resolved="$path_expr"
+    fi
+
     if [[ -z "$resolved" ]]; then
-        echo "  ~ $id: eval empty for '$path_expr' (engine not installed?)"
+        echo "  ~ $id: resolved empty for '$path_expr' (engine not installed?)"
         SKIP=$((SKIP + 1))
         continue
     fi
@@ -73,6 +110,7 @@ echo "[BLACKLIST]"
 while IFS='|' read -r _ id path reason; do
     id=$(echo "$id" | xargs)
     [[ -z "$id" || "$id" == "标识" ]] && continue
+    [[ "$id" =~ ^-+$ ]] && continue  # 跳过 Markdown 表格分隔线
 
     path_expr=$(echo "$path" | sed -n 's/.*`\(.*\)`.*/\1/p')
     if [[ -z "$path_expr" ]]; then
@@ -81,7 +119,26 @@ while IFS='|' read -r _ id path reason; do
         continue
     fi
 
-    resolved=$(eval echo "$path_expr" 2>/dev/null) || true
+    # 安全解析动态路径
+    resolved=""
+    if [[ "$path_expr" == *'$(python -c "'* ]]; then
+        py_code=$(echo "$path_expr" | sed -n 's/.*\$(python -c "\([^"]*\)").*/\1/p')
+        if [[ -n "$py_code" ]]; then
+            py_result=$(python3 -c "$py_code" 2>/dev/null || true)
+            suffix=$(echo "$path_expr" | sed 's/.*\$(python -c "[^"]*")//')
+            resolved="${py_result}${suffix}"
+        fi
+    elif [[ "$path_expr" == *'$(.venv/bin/python -c "'* ]]; then
+        py_code=$(echo "$path_expr" | sed -n 's/.*\$(\.venv\/bin\/python -c "\([^"]*\)").*/\1/p')
+        if [[ -n "$py_code" ]]; then
+            py_result=$("$PROJECT_ROOT/.venv/bin/python" -c "$py_code" 2>/dev/null || true)
+            suffix=$(echo "$path_expr" | sed 's/.*\$(\.venv\/bin\/python -c "[^"]*")//')
+            resolved="${py_result}${suffix}"
+        fi
+    else
+        resolved="$path_expr"
+    fi
+
     if [[ -z "$resolved" ]]; then
         echo "  ○ $id: '$path_expr' (import path or not installed)"
         SKIP=$((SKIP + 1))
@@ -101,6 +158,7 @@ echo "[EXTENSION]"
 while IFS='|' read -r _ id desc status; do
     id=$(echo "$id" | xargs)
     [[ -z "$id" || "$id" == "标识" ]] && continue
+    [[ "$id" =~ ^-+$ ]] && continue  # 跳过 Markdown 表格分隔线
     status=$(echo "$status" | xargs)
     echo "  · $id: [$status] $(echo "$desc" | xargs)"
     SKIP=$((SKIP + 1))

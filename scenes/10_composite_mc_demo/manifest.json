@@ -1,0 +1,17 @@
+{
+  "type": "composite",
+  "engine": "motion_canvas",
+  "segments": [
+    {"id": "intro", "scene_dir": "shots/00_intro"},
+    {"id": "main", "scene_dir": "shots/01_main"}
+  ],
+  "params": {
+    "theme_color": "#58c4dc",
+    "title_text": "MC Composite Demo"
+  },
+  "meta": {
+    "title": "Motion Canvas Composite Demo",
+    "author": "agent",
+    "tags": ["demo", "composite", "motion_canvas"]
+  }
+}

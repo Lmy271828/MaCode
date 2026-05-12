@@ -3,13 +3,28 @@ set -euo pipefail
 
 # bin/render-all.sh
 # 批量渲染 scenes/ 目录下所有场景。
-# Phase 4.2: 支持场景级并行渲染（--parallel [N]），自动处理依赖拓扑排序。
-#
-# 用法:
-#   render-all.sh                          # 串行渲染所有场景
-#   render-all.sh --parallel               # 并行渲染（默认 max_concurrent_scenes）
-#   render-all.sh --parallel 4             # 最多 4 个并行
-#   render-all.sh 01_                      # 只渲染匹配前缀的场景
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    cat <<'EOF'
+Usage: render-all.sh [--parallel [N]] [scene_prefix]
+
+Batch-render all scenes under scenes/.
+
+Arguments:
+  [scene_prefix]       Only render scenes matching prefix (e.g. 01_)
+
+Options:
+  --parallel [N]       Parallel rendering with up to N concurrent scenes
+                       (default: max_concurrent_scenes from project.yaml, else 4)
+
+Examples:
+  render-all.sh
+  render-all.sh --parallel
+  render-all.sh --parallel 4
+  render-all.sh 01_
+EOF
+    exit 0
+fi
 
 PARALLEL=false
 MAX_JOBS=4

@@ -3,11 +3,25 @@ set -euo pipefail
 
 # pipeline/compress.sh
 # CRF 28 快速压缩，用于生成社交媒体版本。
-#
-# 用法: compress.sh <input> <output> [crf]
-#   input  - 输入视频文件
-#   output - 输出视频文件
-#   crf    - CRF 值（默认 28，范围 0-51，越大文件越小）
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    SCRIPT_NAME=$(basename "$0")
+    cat <<EOF
+Usage: $SCRIPT_NAME <input> <output> [crf]
+
+Fast compress video with CRF for social media sharing.
+
+Arguments:
+  <input>   Input video file path
+  <output>  Output video file path
+  [crf]     CRF value 0-51, larger = smaller file (default: 28)
+
+Examples:
+  $SCRIPT_NAME input.mp4 output.mp4
+  $SCRIPT_NAME input.mp4 output.mp4 23
+EOF
+    exit 0
+fi
 
 INPUT="${1:-}"
 OUTPUT="${2:-}"

@@ -3,15 +3,26 @@ set -euo pipefail
 
 # pipeline/thumbnail.sh
 # 从视频中提取关键帧/缩略图，使用 ffmpeg 精确 seek。
-#
-# 用法:
-#   pipeline/thumbnail.sh <input.mp4> [output_dir] [mode]
-#
-#   mode:
-#     mid              - 提取正中间一帧（默认）
-#     N                - 均匀提取 N 帧（如 "5" = 5 帧）
-#     time=MM:SS       - 提取指定时间点的一帧
-#     interval=N       - 每 N 秒提取一帧（如 "interval=10"）
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    SCRIPT_NAME=$(basename "$0")
+    cat <<EOF
+Usage: $SCRIPT_NAME <input.mp4> [output_dir] [mode]
+
+Extract key frames or thumbnails from a video using ffmpeg seek.
+
+Arguments:
+  <input.mp4>   Input video file path
+  [output_dir]  Directory to save thumbnails (default: same as input)
+  [mode]        mid | N | time=MM:SS | interval=N (default: mid)
+
+Examples:
+  $SCRIPT_NAME video.mp4
+  $SCRIPT_NAME video.mp4 thumbs/ 5
+  $SCRIPT_NAME video.mp4 thumbs/ time=01:30
+EOF
+    exit 0
+fi
 
 INPUT="${1:-}"
 OUTPUT_DIR="${2:-}"

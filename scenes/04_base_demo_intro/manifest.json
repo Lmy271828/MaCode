@@ -1,0 +1,13 @@
+{
+  "engine": "manim",
+  "duration": 1.1,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "assets": [],
+  "dependencies": [],
+  "meta": {
+    "title": "Base Demo - Intro",
+    "author": "agent",
+    "tags": ["demo", "intro", "composite"]
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "name": "wrong_to_right",
+  "description": "先展示常见误解/朴素方法 → 展示为何失败 → 逐步修正 → 得到正确理解。对应 narrative-patterns.md 的 'Wrong → Less Wrong → Right'，用于纠偏和深化理解。",
+  "source": "manim_skill/narrative-patterns.md + visual-techniques.md",
+  "stages": [
+    {
+      "id": "wrong",
+      "zone": "title",
+      "type": "text",
+      "duration_hint": 2.0,
+      "must_be_first": true
+    },
+    {
+      "id": "failure",
+      "zone": "main_visual",
+      "type": "visual",
+      "duration_hint": 3.5,
+      "requires": ["wrong"]
+    },
+    {
+      "id": "refinement",
+      "zone": "annotation",
+      "type": "text",
+      "duration_hint": 3.0,
+      "requires": ["failure"]
+    },
+    {
+      "id": "correct",
+      "zone": "main_visual",
+      "type": "visual",
+      "duration_hint": 4.0,
+      "requires": ["refinement"]
+    }
+  ],
+  "rules": {
+    "primary_zone_first_visual_within": 2.0,
+    "max_text_chars_per_scene": 100,
+    "text_to_visual_ratio": "<= 0.35"
+  },
+  "meta": {
+    "version": "1.0",
+    "engine": "agnostic"
+  }
+}

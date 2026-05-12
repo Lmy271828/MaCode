@@ -1,0 +1,58 @@
+{
+  "name": "build_up_payoff",
+  "description": "引入简单积木 → 组合成复杂结构 → 展示惊艳结果 → 反思原理。对应 narrative-patterns.md 的 'Build Up → Payoff'，用于推导和构造类场景。",
+  "source": "manim_skill/narrative-patterns.md + visual-techniques.md",
+  "stages": [
+    {
+      "id": "setup",
+      "zone": "title",
+      "type": "text",
+      "duration_hint": 2.0,
+      "must_be_first": true
+    },
+    {
+      "id": "build_1",
+      "zone": "main_visual",
+      "type": "visual",
+      "duration_hint": 2.5,
+      "requires": ["setup"]
+    },
+    {
+      "id": "build_2",
+      "zone": "main_visual",
+      "type": "visual",
+      "duration_hint": 2.5,
+      "requires": ["build_1"]
+    },
+    {
+      "id": "build_3",
+      "zone": "main_visual",
+      "type": "visual",
+      "duration_hint": 2.5,
+      "requires": ["build_2"]
+    },
+    {
+      "id": "payoff",
+      "zone": "main_visual",
+      "type": "visual",
+      "duration_hint": 4.0,
+      "requires": ["build_3"]
+    },
+    {
+      "id": "reflection",
+      "zone": "caption",
+      "type": "text",
+      "duration_hint": 3.0,
+      "requires": ["payoff"]
+    }
+  ],
+  "rules": {
+    "primary_zone_first_visual_within": 3.0,
+    "max_text_chars_per_scene": 120,
+    "text_to_visual_ratio": "<= 0.3"
+  },
+  "meta": {
+    "version": "1.0",
+    "engine": "agnostic"
+  }
+}

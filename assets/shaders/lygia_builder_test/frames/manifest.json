@@ -1,0 +1,11 @@
+{
+  "source": "assets/shaders/lygia_builder_test",
+  "fps": 2.0,
+  "duration": 0.5,
+  "resolution": [
+    400,
+    400
+  ],
+  "frame_count": 1,
+  "frame_pattern": "frame_%04d.png"
+}
