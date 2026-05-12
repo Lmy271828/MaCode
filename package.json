@@ -6,6 +6,7 @@
     "@motion-canvas/vite-plugin": "^3.17.2",
     "canvas": "^3.2.3",
     "jsdom": "^29.1.1",
+    "playwright": "^1.59.1",
     "puppeteer": "^24.43.0",
     "tsx": "^4.21.0",
     "typescript": "^6.0.3",
@@ -14,7 +15,6 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "globals": "^17.6.0",
-    "playwright": "^1.59.1",
     "typescript-eslint": "^8.59.2"
   }
 }

@@ -1,0 +1,10 @@
+# MaCode Python dependencies (Development / Testing)
+# Installed on top of requirements.txt by bin/setup-dev.sh.
+#
+# 开发依赖不包含在用户版 setup 中，防止 Host Agent 误修改测试基础设施。
+
+# 测试框架
+pytest>=8.0
+
+# 代码质量
+ruff>=0.15

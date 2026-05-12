@@ -2,15 +2,24 @@
 set -euo pipefail
 
 # bin/setup.sh
-# 项目初始化：修复权限、创建目录、检查依赖、配置引擎环境。
+# 用户版项目初始化：修复权限、创建目录、检查依赖、配置引擎环境。
+# 不安装测试框架（pytest/ruff），不暴露测试脚本，避免 Host Agent 误修改测试基础设施。
+# 开发/贡献请使用 bin/setup-dev.sh。
 
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
     cat <<'EOF'
 Usage: setup.sh [--help]
 
-Initialize MaCode project: fix permissions, create directories,
-check dependencies, configure engine environments (Manim, ManimGL, Motion Canvas).
-Run once after clone.
+Initialize MaCode project (USER edition):
+  - Fix permissions, create directories
+  - Check core dependencies
+  - Configure engine environments (ManimCE, ManimGL, Motion Canvas)
+
+Does NOT install:
+  - pytest, ruff (development tools)
+  - Test scripts under tests/ are left untouched
+
+For development/contributing, use: bin/setup-dev.sh
 EOF
     exit 0
 fi
@@ -19,7 +28,7 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
 echo "========================================"
-echo "  MaCode Setup"
+echo "  MaCode Setup (User Edition)"
 echo "========================================"
 echo ""
 
@@ -115,13 +124,13 @@ fi
 # Ensure .agent/bin is in PATH for subsequent tools
 export PATH="$PROJECT_ROOT/.agent/bin:$PATH"
 
-# 5. 配置 Manim（Python 引擎）
+# 5. 配置 ManimCE（Python 引擎）
 echo "  [5/8] Configuring ManimCE (Python engine)..."
 if [[ ! -d ".venv" ]]; then
     echo "        Creating virtual environment with uv..."
     $UV_BIN venv .venv
 fi
-echo "        Installing Python dependencies..."
+echo "        Installing Python runtime dependencies..."
 if [[ -f "requirements.txt" ]]; then
     $UV_BIN pip install -p .venv -r requirements.txt
 else
@@ -214,17 +223,19 @@ fi
 
 echo ""
 echo "========================================"
-echo "  Setup complete"
+echo "  Setup complete (User Edition)"
 echo "========================================"
 echo ""
 echo "Quick start:"
-echo "  bin/agent-shell                      # Enter agent environment"
+echo "  export PATH=\"\$PWD/bin:\$PATH\"          # Add macode to PATH"
 echo "  macode status                        # View project status"
 echo "  macode inspect --level P0            # Browse engine API"
-echo "  python3 bin/sourcemap-sync.py --all  # Regenerate JSON after editing SOURCEMAP"
+echo "  pipeline/render.sh scenes/01_test/   # Render a scene"
 echo ""
 echo "Engines:"
 echo "  .venv/         → ManimCE  (batch rendering, final output)"
 echo "  .venv-manimgl/ → ManimGL  (interactive preview, dev iteration)"
 echo "  node_modules/  → Motion Canvas (browser HMR)"
+echo ""
+echo "For development/testing, run: bin/setup-dev.sh"
 echo ""

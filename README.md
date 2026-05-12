@@ -14,8 +14,11 @@ MaCode 是一个 Bash-First 的数学动画 Agent 工作流系统。它不封装
 ## 快速开始
 
 ```bash
-# 克隆后首次：初始化权限、目录、依赖检查、配置 API
+# 克隆后首次：初始化权限、目录、依赖检查、配置引擎环境（用户版）
 bash bin/setup.sh
+
+# 开发/测试环境（额外安装 pytest、ruff 并运行 smoke 测试）
+# bash bin/setup-dev.sh
 
 # 检查项目环境
 bin/agent --check
@@ -89,7 +92,8 @@ macode/
 │   ├── cache.sh            #   帧级缓存
 │   └── deliver.sh          #   产物交付（.agent/tmp/ → output/）
 ├── bin/                    # 全局工具脚本
-│   ├── setup.sh             #   项目初始化（权限 + 依赖 + 引擎环境）
+│   ├── setup.sh             #   项目初始化 — 用户版（不暴露测试依赖）
+│   ├── setup-dev.sh         #   项目初始化 — 开发版（含测试框架 + 验证）
 │   ├── agent                #   配置检查 + 系统提示生成
 │   ├── agent-shell          #   人类用户可选交互式 shell（非 Host Agent 入口）
 │   ├── macode               #   主入口 CLI（render / status / inspect）
@@ -246,8 +250,25 @@ pipeline/add_audio.sh output/lecture.mp4 assets/bgm.mp3 output/final.mp4
 
 - **Python**：由 `uv` 统一管理，在项目根目录创建 `.venv/` 虚拟环境。ManimCE 及所有 Python 依赖仅安装于此，绝不使用全局 `pip` 或 `conda`。
 - **Node.js**：Motion Canvas 通过 `npx` 调用，`npm install` 将依赖安装到项目本地 `node_modules/`，不污染全局 npm。
-- `bin/setup.sh` 会自动下载 `uv`、创建 `.venv`（ManimCE）和 `.venv-manimgl`（ManimGL）、安装 `manim` / `manimgl`、执行 `npm install`，一步完成全部引擎配置。
 - **硬件自适应**：`bin/detect-hardware.sh` 自动检测 GPU / OpenGL / CUDA，生成 `.agent/hardware_profile.json`；`bin/select-backend.sh` 根据画像选择最优后端。
+
+### 构建脚本
+
+| 脚本 | 适用对象 | 安装内容 | 测试暴露 |
+|------|---------|---------|---------|
+| `bin/setup.sh` | 用户 / Host Agent | 运行时引擎（ManimCE、ManimGL、Motion Canvas） | ❌ 不安装 pytest/ruff，不运行测试 |
+| `bin/setup-dev.sh` | 开发者 / CI | 运行时引擎 + 开发依赖（pytest、ruff） | ✅ 自动运行 smoke + unit 测试 |
+
+用户版 `setup.sh` 故意**不暴露测试基础设施**，防止 Host Agent 在场景编写过程中误修改 `tests/` 目录或引入测试依赖到生产环境。开发/贡献请使用 `setup-dev.sh`。
+
+一步完成全部引擎配置：
+```bash
+# 用户版（推荐）
+bash bin/setup.sh
+
+# 开发版（包含测试验证）
+bash bin/setup-dev.sh
+```
 
 迁移引擎只需修改 `manifest.json` 的 `engine` 字段并重写场景文件，管道脚本无需改动。
 
