@@ -304,6 +304,22 @@ bash bin/setup-dev.sh
 
 迁移引擎只需修改 `manifest.json` 的 `engine` 字段并重写场景文件，管道脚本无需改动。
 
+### 开发者注意事项
+
+**Git Hooks**：`setup.sh` / `setup-dev.sh` 会自动安装提交拦截 hooks（源模板在 `.githooks/`，受版本控制）：
+```bash
+# 手动检查 hooks 是否最新
+bin/install-hooks.sh --check
+
+# 手动更新（模板变更后）
+bin/install-hooks.sh
+```
+
+- `pre-commit`：拦截对 `bin/`、`engines/`、`pipeline/` 等基础设施的误修改；对 `scenes/` 的修改自动运行 fs-guard 边界检查。
+- `pre-push`：推送前全量扫描所有场景的 `security-run.sh`（导入黑名单 + sandbox + 原语检测）。
+
+**基础设施维护**：当你需要修改 `bin/`、`engines/` 等受保护目录时，pre-commit 会拒绝提交。这是设计行为 —— 请使用 `git commit --no-verify` 并确保修改经过人工 review。
+
 ## 安全模型
 
 渲染前自动执行五层防御：
