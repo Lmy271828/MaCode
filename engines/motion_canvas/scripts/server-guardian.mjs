@@ -84,6 +84,36 @@ async function scanOnce() {
       continue;
     }
 
+    // Shader preview servers use same state schema but different tool name
+    if (state.tool === 'shader-preview.mjs') {
+      if (!state.pid || !state.outputs?.url) continue;
+      const alive = isPidAlive(state.pid);
+      if (!alive) {
+        cleanupState(tmpRoot, entry.name);
+        continue;
+      }
+      activeCount++;
+      // Shader preview uses manual TTL via lastUsedAt if present, else skip idle check
+      if (state.lastUsedAt) {
+        const lastUsed = new Date(state.lastUsedAt).getTime();
+        const idle = Date.now() - lastUsed;
+        if (idle > TTL_MS) {
+          console.log(`[guardian] ${entry.name}: idle ${Math.round(idle/1000)}s > TTL, stopping...`);
+          try { process.kill(state.pid, 'SIGTERM'); } catch {}
+          cleanupState(tmpRoot, entry.name);
+          stoppedCount++;
+        } else {
+          console.log(`[guardian] ${entry.name}: active, idle ${Math.round(idle/1000)}s`);
+        }
+      } else {
+        console.log(`[guardian] ${entry.name}: active (no idle tracking)`);
+      }
+      continue;
+    }
+
+    // Original MC dev server logic follows...
+    // (the rest of the loop body for non-shader-preview entries)
+
     if (!state.pid || !state.lastUsedAt) continue;
 
     // 检查进程是否存活

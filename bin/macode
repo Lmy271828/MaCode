@@ -434,13 +434,43 @@ except Exception as e:
     sys.exit(1)
 "
                 ;;
+            preview)
+                ASSET_ID="${3:-}"
+                if [[ -z "$ASSET_ID" ]]; then
+                    echo "Usage: macode shader preview <asset_id> [--port <n>]" >&2
+                    exit 1
+                fi
+                shift 3
+                node "$PROJECT_ROOT/bin/shader-preview.mjs" "$ASSET_ID" "$@"
+                ;;
+            preview-stop)
+                ASSET_ID="${3:-}"
+                if [[ -z "$ASSET_ID" ]]; then
+                    echo "Usage: macode shader preview-stop <asset_id>" >&2
+                    exit 1
+                fi
+                STATE="$PROJECT_ROOT/.agent/tmp/shader-preview-$ASSET_ID/state.json"
+                if [[ -f "$STATE" ]]; then
+                    PID=$(python3 -c "import json;print(json.load(open('$STATE')).get('pid',''))" 2>/dev/null)
+                    if [[ -n "$PID" ]]; then
+                        kill "$PID" 2>/dev/null && echo "Stopped shader-preview-$ASSET_ID (pid=$PID)" || echo "Process not found"
+                    else
+                        echo "No pid in state.json" >&2; exit 1
+                    fi
+                else
+                    echo "No state.json found for shader-preview-$ASSET_ID" >&2
+                    exit 1
+                fi
+                ;;
             help|*)
-                echo "Usage: macode shader <list|render|extract> [args]"
+                echo "Usage: macode shader <list|render|preview|preview-stop|extract> [args]"
                 echo "  list                          List available shader assets"
                 echo "  render <shader_dir> [opts]    Compile Layer 2 asset to Layer 1 PNG frames"
                 echo "    --fps <n>                   Override fps"
                 echo "    --duration <sec>            Override duration"
                 echo "    --resolution <WxH>          Override resolution"
+                echo "  preview <asset_id> [--port]   Start WebGL 2 shader preview server"
+                echo "  preview-stop <asset_id>       Stop shader preview server"
                 echo "  extract <name> <out_dir>      Extract built-in manimlib shader"
                 ;;
         esac

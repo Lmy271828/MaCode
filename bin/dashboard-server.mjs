@@ -81,11 +81,64 @@ function _tailLog(filePath, n = 20) {
   } catch { return []; }
 }
 
+function listShaderPreviews() {
+  const previews = [];
+  if (!fs.existsSync(TMP_DIR)) return previews;
+  for (const dir of fs.readdirSync(TMP_DIR)) {
+    if (!dir.startsWith('shader-preview-')) continue;
+    const statePath = path.join(TMP_DIR, dir, 'state.json');
+    const progressPath = path.join(PROGRESS_DIR, `${dir}.jsonl`);
+    const progress = readJsonL(progressPath);
+    const lastProgress = progress[progress.length - 1] || {};
+
+    let hasPreviewServer = false;
+    let previewUrl = null;
+    if (fs.existsSync(statePath)) {
+      try {
+        const state = readJson(statePath);
+        if (state?.pid) {
+          try { process.kill(state.pid, 0); hasPreviewServer = true; } catch {}
+        }
+        previewUrl = state?.outputs?.url || null;
+      } catch {}
+    }
+
+    // Check signals
+    const sigDir = path.join(SIGNALS_DIR, 'per-scene', dir);
+    let reviewNeeded = false;
+    let rejected = false;
+    if (fs.existsSync(sigDir)) {
+      reviewNeeded = fs.existsSync(path.join(sigDir, 'review_needed'));
+      rejected = fs.existsSync(path.join(sigDir, 'reject'));
+    }
+
+    previews.push({
+      name: dir,
+      type: 'shader-preview',
+      progress: lastProgress.progress ?? 0,
+      phase: lastProgress.phase || 'idle',
+      status: lastProgress.status || 'idle',
+      message: lastProgress.message || '',
+      timestamp: lastProgress.timestamp || null,
+      hasPreviewServer,
+      previewUrl,
+      reviewNeeded,
+      rejected,
+    });
+  }
+  return previews.sort((a, b) => {
+    const aActive = a.hasPreviewServer ? 1 : 0;
+    const bActive = b.hasPreviewServer ? 1 : 0;
+    if (aActive !== bActive) return bActive - aActive;
+    return a.name.localeCompare(b.name);
+  });
+}
+
 function listScenes() {
   const scenes = [];
   if (!fs.existsSync(TMP_DIR)) return scenes;
   for (const dir of fs.readdirSync(TMP_DIR)) {
-    if (dir.startsWith('.')) continue;
+    if (dir.startsWith('.') || dir.startsWith('shader-preview-')) continue;
     const statePath = path.join(TMP_DIR, dir, 'state.json');
     const framesDir = path.join(TMP_DIR, dir, 'frames');
     const finalMp4 = path.join(TMP_DIR, dir, 'final.mp4');
@@ -226,6 +279,7 @@ function buildState() {
   return {
     timestamp: new Date().toISOString(),
     scenes: listScenes(),
+    shaderPreviews: listShaderPreviews(),
     signals: getSignals(),
     disk: getDiskUsage(),
     queue: getQueue(),
@@ -320,6 +374,7 @@ function htmlDashboard() {
   .dot-completed { background: var(--ok); }
   .dot-idle { background: #484f58; }
   .dot-error { background: var(--err); }
+  .dot-warn { background: var(--warn); }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
   .main { flex: 1; overflow-y: auto; padding: 20px; }
@@ -368,37 +423,102 @@ function htmlDashboard() {
 </div>
 
 <script>
-let state = { scenes: [], signals: {}, disk: { gb: '0.00' } };
+let state = { scenes: [], shaderPreviews: [], signals: {}, disk: { gb: '0.00' } };
 let selectedScene = null;
 
 function renderSceneList() {
   const el = document.getElementById('sceneList');
-  if (!state.scenes.length) {
-    el.innerHTML = '<div style="padding:20px;color:#484f858">No scenes found in .agent/tmp/</div>';
-    return;
+  const previews = state.shaderPreviews || [];
+  const scenes = state.scenes || [];
+
+  let html = '';
+
+  // Shader Previews section
+  if (previews.length > 0) {
+    html += '<div style="padding:8px 16px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#8b949e;border-bottom:1px solid #21262d">Shader Previews</div>';
+    html += previews.map(s => {
+      const dotClass = s.hasPreviewServer ? 'dot-running' :
+                       s.rejected ? 'dot-error' :
+                       s.reviewNeeded ? 'dot-warn' : 'dot-completed';
+      const isActive = selectedScene === s.name ? 'active' : '';
+      return \`<div class="scene-item \${isActive}" onclick="selectScene('\${s.name}')">
+        <div>
+          <div class="scene-name">\${s.name.replace('shader-preview-', '')}</div>
+          <div class="scene-meta">\${s.phase || 'idle'} · \${s.hasPreviewServer ? '● running' : s.rejected ? '✗ rejected' : s.reviewNeeded ? '⚠ review' : '○ idle'}</div>
+        </div>
+        <div class="scene-dot \${dotClass}"></div>
+      </div>\`;
+    }).join('');
   }
-  el.innerHTML = state.scenes.map(s => {
-    const dotClass = s.status === 'running' || s.hasDevServer ? 'dot-running' :
-                     s.status === 'error' ? 'dot-error' :
-                     s.hasFinalMp4 ? 'dot-completed' : 'dot-idle';
-    const isActive = selectedScene === s.name ? 'active' : '';
-    return \`<div class="scene-item \${isActive}" onclick="selectScene('\${s.name}')">
-      <div>
-        <div class="scene-name">\${s.name}</div>
-        <div class="scene-meta">\${s.phase || 'idle'} · \${(s.progress * 100).toFixed(0)}% · \${s.frameCount}f</div>
-      </div>
-      <div class="scene-dot \${dotClass}"></div>
-    </div>\`;
-  }).join('');
-  document.getElementById('sceneCount').textContent = state.scenes.length + ' scenes';
+
+  // Scenes section
+  if (scenes.length > 0) {
+    if (previews.length > 0) {
+      html += '<div style="padding:8px 16px;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#8b949e;border-bottom:1px solid #21262d;border-top:1px solid #30363d;margin-top:4px">Scenes</div>';
+    }
+    html += scenes.map(s => {
+      const dotClass = s.status === 'running' || s.hasDevServer ? 'dot-running' :
+                       s.status === 'error' ? 'dot-error' :
+                       s.hasFinalMp4 ? 'dot-completed' : 'dot-idle';
+      const isActive = selectedScene === s.name ? 'active' : '';
+      return \`<div class="scene-item \${isActive}" onclick="selectScene('\${s.name}')">
+        <div>
+          <div class="scene-name">\${s.name}</div>
+          <div class="scene-meta">\${s.phase || 'idle'} · \${(s.progress * 100).toFixed(0)}% · \${s.frameCount}f</div>
+        </div>
+        <div class="scene-dot \${dotClass}"></div>
+      </div>\`;
+    }).join('');
+  }
+
+  if (!html) {
+    html = '<div style="padding:20px;color:#484f58">No scenes or shader previews found.</div>';
+  }
+
+  el.innerHTML = html;
+  const total = scenes.length + previews.length;
+  document.getElementById('sceneCount').textContent = total + ' items';
   document.getElementById('diskUsage').textContent = state.disk.gb + ' GB';
 }
 
 function renderMainPanel() {
-  const s = state.scenes.find(x => x.name === selectedScene);
+  let s = state.scenes.find(x => x.name === selectedScene);
+  let isPreview = false;
+  if (!s) {
+    s = state.shaderPreviews.find(x => x.name === selectedScene);
+    isPreview = true;
+  }
   const el = document.getElementById('mainPanel');
   if (!s) {
-    el.innerHTML = '<div style="color:#484f58;text-align:center;padding:60px 20px">Select a scene to view details.</div>';
+    el.innerHTML = '<div style="color:#484f58;text-align:center;padding:60px 20px">Select a scene or shader preview to view details.</div>';
+    return;
+  }
+
+  if (isPreview) {
+    el.innerHTML = \`
+      <div class="grid">
+        <div class="card" style="grid-column:1/-1">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h2>\${s.name}</h2>
+            <span class="badge \${s.hasPreviewServer ? 'ok' : s.rejected ? 'err' : s.reviewNeeded ? 'warn' : 'warn'}">\${s.hasPreviewServer ? 'running' : s.rejected ? 'rejected' : s.reviewNeeded ? 'review needed' : 'idle'}</span>
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:#8b949e">\${s.message || ''} · \${s.timestamp || ''}</div>
+        </div>
+        <div class="card">
+          <h3>Preview Info</h3>
+          <div class="info-row"><span class="info-label">Server</span><span>\${s.hasPreviewServer ? '✓ Running' : '—'}</span></div>
+          <div class="info-row"><span class="info-label">URL</span><span>\${s.previewUrl ? \`<a href="\${s.previewUrl}" target="_blank" style="color:var(--accent)">Open</a>\` : '—'}</span></div>
+          <div class="info-row"><span class="info-label">Review</span><span>\${s.reviewNeeded ? '⚠ needed' : '—'}</span></div>
+          <div class="info-row"><span class="info-label">Rejected</span><span>\${s.rejected ? '✗ yes' : '—'}</span></div>
+        </div>
+        <div class="card">
+          <h3>Filesystem</h3>
+          <div class="info-row"><span class="info-label">Progress</span><code>.agent/progress/\${s.name}.jsonl</code></div>
+          <div class="info-row"><span class="info-label">State</span><code>.agent/tmp/\${s.name}/state.json</code></div>
+          <div class="info-row"><span class="info-label">Signal</span><code>.agent/signals/per-scene/\${s.name}/</code></div>
+        </div>
+      </div>
+    \`;
     return;
   }
 
