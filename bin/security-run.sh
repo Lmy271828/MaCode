@@ -45,12 +45,19 @@ SCENE_DIR="${SCENE_DIR%/}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Find scene source file
+# Find scene source file and infer engine
 SCENE_PY="$SCENE_DIR/scene.py"
 SCENE_TSX="$SCENE_DIR/scene.tsx"
+MANIFEST="$SCENE_DIR/manifest.json"
+
 if [[ -f "$SCENE_PY" ]]; then
     SCENE_FILE="$SCENE_PY"
-    ENGINE="manim"
+    # Infer engine: manifest.json takes precedence
+    if [[ -f "$MANIFEST" ]]; then
+        ENGINE="$(python3 -c "import json,sys; d=json.load(open('$MANIFEST')); print(d.get('engine','manim'))" 2>/dev/null || echo manim)"
+    else
+        ENGINE="manim"
+    fi
 elif [[ -f "$SCENE_TSX" ]]; then
     SCENE_FILE="$SCENE_TSX"
     ENGINE="motion_canvas"

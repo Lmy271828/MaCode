@@ -1,8 +1,8 @@
 # MaCode Engine Source Map: ManimGL
 
-> 生成日期: 2026-05-07
-> 引擎版本: 1.6.1
-> 适配层版本: 1.0.0
+> 生成日期: 2026-05-11
+> 引擎版本: 1.7.2
+> 适配层版本: 1.0.1
 > 源码根目录: `.venv-manimgl/lib/python3.x/site-packages/manimlib/`
 
 ## WHITELIST: 推荐探索路径

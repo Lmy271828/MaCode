@@ -203,6 +203,15 @@ PY
         fi
         echo ""
 
+        # SOURCEMAP 健康状态
+        echo "SOURCEMAP health:"
+        if [[ -f "$PROJECT_ROOT/bin/sourcemap-version-check.py" ]]; then
+            python3 "$PROJECT_ROOT/bin/sourcemap-version-check.py" --all 2>&1 | sed 's/^/  /'
+        else
+            echo "  ~ sourcemap-version-check.py not found"
+        fi
+        echo ""
+
         # 上次渲染
         LAST_RENDER=$(find .agent/tmp -name "final.mp4" -type f 2>/dev/null | sort | tail -1)
         if [[ -n "$LAST_RENDER" ]]; then

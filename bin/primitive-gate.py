@@ -104,8 +104,12 @@ def main() -> int:
     violations: list[str] = []
 
     # 1. Check scene code files for primitive patterns
+    # Skip test fixtures (e.g. test_ffmpeg_builder.py) which deliberately
+    # contain forbidden patterns to verify the gate itself.
     for ext in ('.py', '.tsx', '.ts', '.js', '.mjs'):
         for f in os.listdir(scene_dir):
+            if f.startswith('test_') and f.endswith('.py'):
+                continue
             if f.endswith(ext):
                 violations.extend(check_code(os.path.join(scene_dir, f)))
 

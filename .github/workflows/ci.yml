@@ -108,9 +108,10 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
+
       - name: Run smoke tests
-        env:
-          PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium-browser
         run: ./bin/macode test smoke --verbose
         timeout-minutes: 15
 

@@ -201,6 +201,14 @@ except Exception as e:
             OPENGL_VERSION_SHORT=$(echo "$D3D12_VERSION" | grep -oE '[0-9]+\.[0-9]+' | head -n1)
             OPENGL_VENDOR="$D3D12_VENDOR"
             OPENGL_IS_SOFTWARE=false
+            # Remove stale llvmpipe/software renderer warnings — D3D12 is now active
+            NEW_WARNINGS=()
+            for w in "${WARNINGS[@]}"; do
+                if [[ "$w" != *"llvmpipe"* && "$w" != *"software renderer"* ]]; then
+                    NEW_WARNINGS+=("$w")
+                fi
+            done
+            WARNINGS=("${NEW_WARNINGS[@]}")
             WARNINGS+=("OpenGL upgraded from llvmpipe to D3D12 GPU passthrough (WSL2).")
             if [[ -n "$OPENGL_VERSION_SHORT" ]]; then
                 # Replace old opengl capability with new version

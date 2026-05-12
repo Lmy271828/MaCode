@@ -165,6 +165,19 @@ else
     echo "        ~ bin/detect-hardware.sh not found, skipping"
 fi
 
+# 5d. WSL2 环境检查（仅在 WSL2 时运行）
+echo "  [5d/8] Checking WSL2 configuration..."
+if [[ -f "bin/check-wsl2.sh" ]]; then
+    if bash bin/check-wsl2.sh >/dev/null 2>&1; then
+        echo "        ✓ WSL2 checks passed (or not WSL)"
+    else
+        echo "        ⚠ WSL2 configuration issues detected:" >&2
+        bash bin/check-wsl2.sh 2>&1 | sed 's/^/          /'
+    fi
+else
+    echo "        ~ bin/check-wsl2.sh not found, skipping"
+fi
+
 # 6. 配置 Motion Canvas（Node.js 引擎）
 echo "  [6/8] Configuring Motion Canvas (Node.js engine)..."
 if [[ -f "package.json" ]]; then
@@ -196,16 +209,28 @@ else
     echo "        ~ bin/sourcemap-sync.py not found, skipping JSON sync"
 fi
 
-# 7b. 验证 SOURCEMAP 路径
+# 7b. 检测引擎版本漂移
+SOURCEMAP_DRIFT=0
+if [[ -f "bin/sourcemap-version-check.py" ]]; then
+    echo "        Checking engine version drift..."
+    if ! python3 bin/sourcemap-version-check.py --all >/dev/null 2>&1; then
+        SOURCEMAP_DRIFT=1
+        python3 bin/sourcemap-version-check.py --all 2>&1 | sed 's/^/          /'
+    else
+        echo "        ✓ All versions match"
+    fi
+fi
+
+# 7c. 验证 SOURCEMAP 路径
 SOURCEMAP_WARN=0
 for engine_dir in engines/*/; do
     engine_name=$(basename "$engine_dir")
     sourcemap="$engine_dir/SOURCEMAP.md"
     validate_script="$engine_dir/scripts/validate_sourcemap.sh"
     if [[ -f "$sourcemap" && -x "$validate_script" ]]; then
-        echo "        Checking $engine_name..."
+        echo "        Checking $engine_name paths..."
         if bash "$validate_script" >/dev/null 2>&1; then
-            echo "        ✓ $engine_name SOURCEMAP valid"
+            echo "        ✓ $engine_name SOURCEMAP paths valid"
         else
             echo "        ⚠ $engine_name SOURCEMAP has INVALID paths" >&2
             echo "          Run: bash $validate_script" >&2
@@ -213,11 +238,16 @@ for engine_dir in engines/*/; do
         fi
     fi
 done
-if [[ $SOURCEMAP_WARN -gt 0 ]]; then
+if [[ $SOURCEMAP_WARN -gt 0 || $SOURCEMAP_DRIFT -gt 0 ]]; then
     echo ""
-    echo "WARNING: $SOURCEMAP_WARN engine(s) have outdated SOURCEMAPs." >&2
-    echo "  The engine version may have changed since SOURCEMAP was last updated." >&2
-    echo "  Run the validate scripts above and update engines/*/SOURCEMAP.md accordingly." >&2
+    echo "WARNING: SOURCEMAP may be outdated." >&2
+    if [[ $SOURCEMAP_DRIFT -gt 0 ]]; then
+        echo "  → Engine version drift detected. Update '引擎版本' in engines/*/SOURCEMAP.md" >&2
+    fi
+    if [[ $SOURCEMAP_WARN -gt 0 ]]; then
+        echo "  → Invalid paths found. Run validate_sourcemap.sh for details." >&2
+    fi
+    echo "  After updating SOURCEMAP.md, run: python3 bin/sourcemap-sync.py --all" >&2
 fi
 # ────────────────────────────────────────────────────
 

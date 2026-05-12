@@ -146,6 +146,54 @@ def write_json(data, out_path):
     print(f"[sourcemap-sync] {out_path}")
 
 
+def _write_api_txt(data, out_path):
+    """Generate flat engine_api.txt for Host Agent quick-loading."""
+    lines = [
+        f"# Engine: {data['engine']}",
+        f"# Version: {data['version']}  (Adapter: {data['adapter_version']})",
+        f"# Generated: {data['generated_at']}",
+        "",
+        "## WHITELIST (P0 = core, P1 = common, P2 = advanced)",
+        "",
+    ]
+    for item in data.get("whitelist", []):
+        lines.append(f"[{item['priority']}] {item['id']}: {item['path_raw']}")
+        lines.append(f"    Purpose: {item['purpose']}")
+        lines.append("")
+
+    if data.get("redirect"):
+        lines.append("## REDIRECT (pitfall → correct approach)")
+        lines.append("")
+        for item in data["redirect"]:
+            lines.append(f"AVOID: {item['pitfall']}")
+            lines.append(f"  USE:  {item['correct']}")
+            lines.append(f"  WHY:  {item['reason']}")
+            lines.append("")
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text("\n".join(lines), encoding="utf-8")
+    print(f"[sourcemap-sync] {out_path}")
+
+
+def _write_blacklist_txt(data, out_path):
+    """Generate flat engine_blacklist.txt for api-gate.py quick-loading."""
+    lines = [
+        f"# Engine: {data['engine']}",
+        f"# Version: {data['version']}",
+        "",
+        "## BLACKLIST",
+        "",
+    ]
+    for item in data.get("blacklist", []):
+        lines.append(f"{item['id']}: {item['path_raw']}")
+        lines.append(f"    Reason: {item['reason']}")
+        lines.append("")
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text("\n".join(lines), encoding="utf-8")
+    print(f"[sourcemap-sync] {out_path}")
+
+
 def sync_engine(engine_name, project_root):
     """同步单个引擎的 SOURCEMAP。"""
     md_path = Path(project_root) / "engines" / engine_name / "SOURCEMAP.md"
@@ -156,6 +204,14 @@ def sync_engine(engine_name, project_root):
     data = parse_sourcemap(md_path)
     out_path = Path(project_root) / ".agent" / "context" / f"{engine_name}_sourcemap.json"
     write_json(data, out_path)
+
+    # Also write flat text files for low-token consumption
+    api_txt = Path(project_root) / ".agent" / "context" / f"{engine_name}_api.txt"
+    _write_api_txt(data, api_txt)
+
+    blacklist_txt = Path(project_root) / ".agent" / "context" / f"{engine_name}_blacklist.txt"
+    _write_blacklist_txt(data, blacklist_txt)
+
     return True
 
 

@@ -403,10 +403,11 @@ SOURCEMAP 是每个引擎目录下的结构化黑白名单文档（`engines/{nam
 
 ```bash
 # 1. 启动时自动加载（macode CLI 内置）
-bin/macode sourcemap sync
-# → 校验 engines/{engine}/SOURCEMAP.md 存在且版本匹配
-# → 提取 P0/P1 API 到 .agent/context/engine_api.txt
-# → 提取 BLACKLIST 到 .agent/context/engine_blacklist.txt
+python3 bin/sourcemap-sync.py --all
+# → 校验 engines/{engine}/SOURCEMAP.md 存在且格式正确
+# → 生成 .agent/context/{engine}_sourcemap.json（机器接口）
+# → 生成 .agent/context/{engine}_api.txt（低 Token 速查）
+# → 生成 .agent/context/{engine}_blacklist.txt（快速加载）
 
 # 2. 编码前查询 API
 macode inspect --grep "NumberLine\|Axes\|MathTex"
@@ -422,22 +423,39 @@ pipeline/render.sh scenes/02_demo/
 # → 匹配 BLACKLIST 条目 → "你踩了 DEPRECATED_GL，修复方案是 X"
 ```
 
-**Agent 必须遵守的 SOURCEMAP 规则**：
-1. 禁止直接编辑 `engines/{name}/SOURCEMAP.md`
-2. 在场景代码中 `import` 未确认的模块前，先用 `macode inspect --grep` 查 WHITELIST
-3. 被 `api-gate.py` 拦截时，必须先修复违规导入再渲染
-4. 渲染失败时，先读日志中的 SOURCEMAP 诊断建议，不盲目重试
-5. 禁止 `grep -r` 整个引擎源码树 —— 用 `macode inspect` 按图索骥
+**自动化维护工具链**（开发者关注）：
 
-**SOURCEMAP 维护触发条件**（开发者关注）：
-- 引擎版本升级（`pip install --upgrade manim` / `npm update`）
+| 工具 | 职责 | 何时运行 |
+|------|------|---------|
+| `sourcemap-version-check.py` | 检测引擎版本漂移 | `setup.sh` 自动调用；`macode status` 显示 |
+| `sourcemap-scan-api.py` | 扫描未覆盖的公共 API / 适配层文件 | 引擎升级后手动运行，生成建议清单 |
+| `sourcemap-sync.py` | Markdown → JSON + flat text | `setup.sh` 自动调用；修改 `.md` 后手动调用 |
+| `sourcemap-lint.py` | Markdown schema 校验 | `sourcemap-sync.py` 内部调用 |
+| `validate_sourcemap.sh` | 路径存在性验证 | 修改 WHITELIST/BLACKLIST 路径后手动运行 |
+
+```bash
+# 快速健康检查（集成在 macode status 中）
+python3 bin/sourcemap-version-check.py --all
+# → 报告引擎版本与 SOURCEMAP 声明是否一致
+
+# 扫描 API 覆盖缺口
+python3 bin/sourcemap-scan-api.py --all
+# → 列出适配层新文件、引擎公共类/函数中未在 WHITELIST 注册的项目
+# → 开发者审核后选择性加入 SOURCEMAP.md
+```
+
+**SOURCEMAP 维护触发条件**：
+- 引擎版本升级（`pip install --upgrade manim` / `npm update`）→ 先运行 `version-check`，再运行 `scan-api`
 - Agent 误入陷阱（复盘后补入 BLACKLIST）
-- 适配层新增代码（`engines/{name}/src/` 下新增文件）
+- 适配层新增代码（`engines/{name}/src/` 下新增文件）→ `scan-api` 会检测到
 - 扩展计划变更（EXTENSION 中的 TODO → DONE/WONTFIX）
 
 **验证**：生成或修改 SOURCEMAP.md 后必须运行：
 ```bash
-engines/{name}/scripts/validate_sourcemap.sh
+python3 bin/sourcemap-lint.py engines/{name}/SOURCEMAP.md       # 格式校验
+bash engines/{name}/scripts/validate_sourcemap.sh                # 路径存在性
+python3 bin/sourcemap-sync.py {name}                             # 同步 JSON
+python3 bin/sourcemap-version-check.py {name}                    # 版本匹配
 ```
 
 ### 4.8 Layout Compiler 工作流
@@ -622,6 +640,53 @@ manifest 无 engine 字段时：
 - **Remotion（作为主引擎）**：通用视频工具，无内置数学对象抽象。仅适合"最终拼接层"。
 - **SoX（音频处理）**：Windows 兼容性差。所有音频由 `ffmpeg` 统一处理。
 
+### 6.6 WSL2 运行环境调优
+
+MaCode 的推荐 Windows 运行方式是 **WSL2**（而非原生 Windows）。WSL2 提供完整的 Linux 内核 + NVIDIA D3D12 GPU passthrough，性能损失通常 <10%。
+
+**自动检测与修复**：
+```bash
+bin/check-wsl2.sh          # 检测 WSL2 配置问题
+bin/check-wsl2.sh --json   # 机器可读输出
+```
+`setup.sh` 会自动调用此脚本。
+
+**关键约束**：
+
+| 项目 | 要求 | 后果 |
+|------|------|------|
+| 项目位置 | 必须放在 WSL2 **原生文件系统** (`~/MaCode`) | `/mnt/c` 上的 9p/DRVS 性能差 10-50 倍，且 inotify 失效 |
+| GPU 驱动 | 安装 [WSL2 NVIDIA 驱动](https://developer.nvidia.com/cuda/wsl) | 否则 OpenGL 回退到 llvmpipe（纯 CPU，极慢） |
+| `vm.max_map_count` | `>= 262144` | Chromium/Playwright 启动失败 |
+| `fs.inotify.max_user_watches` | `>= 524288` | 大项目文件监听断连 |
+| `/dev/shm` | `>= 1GB` | Chromium OOM 崩溃 |
+| WSLg | 更新到最新 WSL2 | ManimGL 交互预览需要 GUI 支持 |
+
+**`.wslconfig` 建议**（Windows 用户目录 `%USERPROFILE%\.wslconfig`）：
+```ini
+[wsl2]
+memory=12GB
+processors=8
+swap=4GB
+localhostForwarding=true
+guiApplications=true
+kernelCommandLine=tmpfs.size=2G
+```
+
+**`.wslconfig` 生效后**：
+```powershell
+wsl --shutdown   # 完全关闭 WSL2 VM
+wsl              # 重新启动
+```
+
+**GPU 加速状态确认**：
+```bash
+bash bin/detect-hardware.sh
+cat .agent/hardware_profile.json | jq '.opengl.renderer'
+# 期望输出: "D3D12 (NVIDIA ...)"
+# 如果输出 "llvmpipe": 驱动未正确安装
+```
+
 ---
 
 ## 7. 文件命名与接口约定
@@ -680,6 +745,10 @@ scenes/
 | `bin/macode inspect --grep <re>` | 查询 API | `bin/macode inspect --grep "Circle\|MathTex"` | 匹配的 WHITELIST 条目 |
 | `cat .agents/skills/{engine}/SKILL.md` | 引擎 API 参考 | `cat .agents/skills/manimce-best-practices/SKILL.md` | 完整引擎 API 文档 |
 | `bin/api-gate.py <scene.py> <SOURCEMAP>` | 代码审查 | `bin/api-gate.py scenes/01_test/scene.py engines/manim/SOURCEMAP.md` | 退出码 0/1 + 违规列表 |
+| `bin/sourcemap-version-check.py` | SOURCEMAP 版本漂移检测 | `python3 bin/sourcemap-version-check.py --all` | 每个引擎的匹配状态 |
+| `bin/sourcemap-scan-api.py` | 扫描未覆盖的公共 API | `python3 bin/sourcemap-scan-api.py --all` | 建议加入 WHITELIST 的候选 |
+| `bin/sourcemap-sync.py [engine]` | Markdown → JSON/text 同步 | `python3 bin/sourcemap-sync.py --all` | `.agent/context/{engine}_*.json/txt` |
+| `bin/sourcemap-read <engine> <section>` | 查询 JSON sourcemap | `sourcemap-read manim whitelist --level P0` | 筛选后的条目列表 |
 | `bin/detect-hardware.sh` | 硬件检测 | `bash bin/detect-hardware.sh` | `.agent/hardware_profile.json` |
 | `bin/select-backend.sh` | 后端选择 | `bash bin/select-backend.sh` | `gpu` / `d3d12` / `cpu` / `headless` |
 | `pipeline/concat.sh <frames_dir> <out.mp4> [fps]` | 帧序列编码 | `pipeline/concat.sh .agent/tmp/01_test/frames/ out.mp4 30` | MP4 文件 |

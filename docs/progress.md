@@ -193,8 +193,8 @@
 
 ### 已知风险
 
-1. **WSL2 + Chromium**：需确认 `puppeteer` 能找到 Chromium 可执行文件（可能需要 `PUPPETEER_EXECUTABLE_PATH` 环境变量）
-2. **`ShaderFrame` 图片加载时序**：首次加载帧时 `img.complete` 为 false，Motion Canvas 的 `DependencyContext.collectPromise` 会暂停渲染直到加载完成，但 Puppeteer 截图时可能尚未就绪
+1. **WSL2 + Chromium**：Playwright 自动管理 Chromium 二进制（`~/.cache/ms-playwright/`），WSL2 下开箱即用。若 `/dev/shm` 不足（<1GB）需 `--disable-dev-shm-usage`
+2. **`ShaderFrame` 图片加载时序**：首次加载帧时 `img.complete` 为 false，Motion Canvas 的 `DependencyContext.collectPromise` 会暂停渲染直到加载完成，但 Playwright 截图时可能尚未就绪
 3. **Vite HMR 干扰**：`ShaderFrame.tsx` 位于 `engines/motion_canvas/src/` 外，Vite 可能不监视其变更（当前在 `engines/` 下，应该在服务范围内）
 
 ---
