@@ -26,8 +26,9 @@ Layer 1: Runtime Enforcement    (硬性强制，渲染前拦截)
       └── bin/fs-guard.py       (文件系统边界)
 
 Layer 2: Commit Interception    (版本保护，提交前拦截)
-  └── .git/hooks/pre-commit     (调用 security-run.sh --staged)
-  └── .git/hooks/pre-push       (调用 security-run.sh --all)
+  └── .githooks/pre-commit      (版本化模板，调用 security-run.sh --staged)
+  └── .githooks/pre-push        (版本化模板，调用 security-run.sh --all)
+  └── bin/install-hooks.sh      (安装脚本：复制模板到 .git/hooks/)
 
 Layer 3: Infrastructure Isolation (根本解决，权限隔离)
   ├── engines/*/effect-registry/    (chmod 644 — Agent 只读)

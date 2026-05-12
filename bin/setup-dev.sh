@@ -161,18 +161,13 @@ else
     echo "[dev] --skip-tests specified; skipping test execution."
 fi
 
-# ── Step 5: Git hooks (optional) ────────────────────
+# ── Step 5: Git hooks ───────────────────────────────
 echo ""
-echo "[dev] Checking Git hooks..."
-if [[ -d ".git/hooks" ]]; then
-    if [[ ! -f ".git/hooks/pre-commit" ]]; then
-        echo "        ~ No pre-commit hook installed."
-        echo "          To install: cp .github/hooks/* .git/hooks/  (if available)"
-    else
-        echo "        ✓ pre-commit hook present"
-    fi
+echo "[dev] Installing Git hooks..."
+if [[ -f "bin/install-hooks.sh" ]]; then
+    bash bin/install-hooks.sh
 else
-    echo "        ~ Not a git repository, skipping hook check"
+    echo "        ~ bin/install-hooks.sh not found, skipping"
 fi
 
 echo ""

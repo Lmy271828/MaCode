@@ -545,8 +545,18 @@ bin/fs-guard.py        scenes/01_test/
 
 ### 5.3 Layer 2 — 提交拦截（Commit Interception）
 
+Hooks 以版本化模板形式存在于 `.githooks/`，由 `bin/install-hooks.sh` 在 setup 时复制到 `.git/hooks/`：
+
 ```bash
-# Git hooks 自动拦截（已安装）
+# 安装/更新 hooks（首次 setup 或模板变更后运行）
+bin/install-hooks.sh
+
+# 验证 hooks 已安装且为最新
+bin/install-hooks.sh --check
+```
+
+激活后的 hooks：
+```bash
 .git/hooks/pre-commit   # 拦截 protected 文件修改 + scene 目录边界检查
 .git/hooks/pre-push     # 推送前全量安全扫描
 ```
@@ -556,6 +566,8 @@ bin/fs-guard.py        scenes/01_test/
 - `project.yaml`、`requirements.txt`、`package.json` 修改 → **拒绝**
 - Scene 目录越界 → **拒绝**
 - Bypass: `git commit --no-verify`（人类基础设施维护时使用）
+
+> **注意**：`.githooks/` 目录本身不受 pre-commit 保护，因此 hooks 模板可以被正常更新而无需 `--no-verify`。
 
 ### 5.4 Layer 3 — 基础设施隔离（Infrastructure Isolation）
 
@@ -738,6 +750,7 @@ scenes/
 | `bin/macode status` | 项目状态 | `bin/macode status` | 文本摘要 |
 | `bin/macode check <scene_dir>` | 静态 + 帧检查 | `macode check scenes/01_test --static` | 检查报告 JSON |
 | `bin/macode cleanup [--dry-run]` | 清理 dead PID 和过期 claim | `macode cleanup --dry-run` | 清理报告 |
+| `bin/install-hooks.sh [--check]` | 安装/检查 git hooks | `bin/install-hooks.sh --check` | 安装报告或状态检查 |
 | `bin/macode dry-run <scene_file>` | 预渲染验证（语法、导入、LaTeX） | `macode dry-run scenes/01_test/scene.py` | 通过/失败 + 问题列表 |
 | `bin/calc-preview-duration.py <manifest>` | 计算预览时长 | `calc-preview-duration.py scenes/01_test/manifest.json` | 预览秒数（如 `3.0`） |
 | `bin/patch-manifest.py <manifest>` | 原子修改 manifest | `patch-manifest.py m.json --duration 3 --fps 10` | 原子写回，支持 `--backup` / `--restore` |

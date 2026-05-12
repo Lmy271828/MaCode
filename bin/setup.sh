@@ -251,6 +251,14 @@ if [[ $SOURCEMAP_WARN -gt 0 || $SOURCEMAP_DRIFT -gt 0 ]]; then
 fi
 # ────────────────────────────────────────────────────
 
+# 8. 安装 Git hooks
+if [[ -f "bin/install-hooks.sh" ]]; then
+    echo "  [8/8] Installing Git hooks..."
+    bash bin/install-hooks.sh
+else
+    echo "  [8/8] ~ bin/install-hooks.sh not found, skipping"
+fi
+
 echo ""
 echo "========================================"
 echo "  Setup complete (User Edition)"
