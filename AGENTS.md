@@ -55,7 +55,7 @@ python -m manim scene.py --format png -o .agent/tmp/frames/ \
 ### 2.5 优先使用工具而非机制
 - 需要音频合成？调用 `ffmpeg -f lavfi` 生成测试音，不内建音频引擎。
 - 需要公式渲染？调用 `pdflatex` 或 `mathjax-node-cli`，不内建排版系统。
-- 需要缓存？使用 `just` 的文件时间戳判断，不内建数据库。
+- 需要缓存？使用文件时间戳和内容哈希判断（`bin/sourcemap-sync.py` 的 `content_hash`），不内建数据库。
 - 需要视频剪辑？调用 `ffmpeg` 的 filtergraph，不内建时间轴编辑器。
 
 ---
@@ -78,27 +78,34 @@ macode/
 │   ├── cache/               # 渲染缓存（按场景内容哈希）
 │   └── log/                 # 全局命令执行日志
 │
+├── .githooks/               # Git hook 模板（版本化，setup 时安装到 .git/hooks/）
+│   ├── pre-commit           #   提交前拦截：protected 文件 + scene 边界检查
+│   └── pre-push             #   推送前全量安全扫描
+│
 ├── engines/                 # 渲染引擎适配层（只读模板）
-│   ├── manim/
-│   │   ├── src/             # 引擎适配源码（Agent 可 grep 学习）
-│   │   │   ├── templates/     # 基类模板（CameraScene, setup, construct）
-│   │   │   ├── mobjects/      # 自定义 Mobject
-│   │   │   └── utils/         # ffmpeg_pipe.py, latex_helper.py
-│   │   ├── scripts/
-│   │   │   ├── render.sh      # 入口：scene.py + output_dir → 帧序列
-│   │   │   ├── inspect.sh     # 打印可用 Mobject / Animation 列表
-│   │   │   └── site_packages.sh # 打印 manim 安装路径
-│   │   └── Justfile
-│   └── motion_canvas/
+│   ├── manim/               #   ManimCE（CI/无头环境专用）
+│   │   ├── src/
+│   │   │   ├── templates/
+│   │   │   ├── mobjects/
+│   │   │   └── utils/
+│   │   └── scripts/
+│   │       ├── render.sh
+│   │       └── inspect.sh
+│   ├── manimgl/             #   ManimGL（交互式预览，默认 .py 引擎）
+│   │   ├── src/
+│   │   │   ├── components/    # ZoneScene, NarrativeScene（ManimGL 特有）
+│   │   │   ├── templates/
+│   │   │   └── utils/
+│   │   └── scripts/
+│   │       ├── render.sh
+│   │       └── inspect.sh
+│   └── motion_canvas/       #   Motion Canvas（.tsx 场景，WebGL）
 │       ├── src/
 │       │   ├── templates/
-│       │   │   └── scene_base.tsx
 │       │   └── utils/
-│       │       └── mathjax_bridge.ts
-│       ├── scripts/
-│       │   ├── render.sh
-│       │   └── inspect.sh
-│       └── Justfile
+│       └── scripts/
+│           ├── render.sh
+│           └── inspect.sh
 │
 ├── scenes/                  # 用户场景（Agent 主要工作区）
 │   ├── 00_title/
@@ -114,20 +121,24 @@ macode/
 │       ├── scene.tsx          # 若引擎为 motion_canvas
 │       └── assets/
 │
-├── pipeline/                # 后处理管道（纯 bash，ffmpeg 驱动）
+├── pipeline/                # 后处理管道（bash + ffmpeg 驱动）
 │   ├── render.sh            # 读取 manifest，分发到引擎渲染脚本
 │   ├── concat.sh            # 场景拼接（ffmpeg concat demuxer）
 │   ├── add_audio.sh         # 音轨合成（ffmpeg amix / amerge）
-│   ├── fade.sh              # 淡入淡出（ffmpeg afade / fade filter）
 │   ├── compress.sh          # 输出压缩（CRF / preset 控制）
-│   └── preview.sh           # 快速预览（降分辨率 / 抽帧）
+│   └── ...                  #   fade.sh, preview.sh, validate-manifest.py, etc.
 │
 ├── bin/                     # 全局工具脚本
-│   ├── macode               # 主入口 CLI
-│   ├── agent-shell          # Agent 默认 shell 入口，预装 PATH
+│   ├── macode               # 主入口 CLI（子命令分派器）
 │   ├── agent-run.sh         # Git 原子操作包装器
-│   ├── safety-gate.sh       # 命令白名单拦截器
-│   └── discover             # 交互式项目结构探索助手
+│   ├── install-hooks.sh     # 安装 .githooks/ 模板到 .git/hooks/
+│   ├── setup.sh             # 项目初始化 — 用户版
+│   ├── setup-dev.sh         # 项目初始化 — 开发版
+│   ├── detect-hardware.sh   # GPU / OpenGL / CUDA 检测
+│   ├── macode-dev.sh        # 引擎 dev 模式启动
+│   ├── sourcemap-sync.py    # SOURCEMAP Markdown → JSON 同步
+│   ├── api-gate.py          # 静态导入/API 黑名单检查
+│   └── ...                  #   40+ 个独立 CLI 工具（见 §9 速查表）
 │
 └── project.yaml             # 全局配置：默认引擎、分辨率、fps、安全策略
 ```
@@ -150,6 +161,8 @@ macode/
 3. Agent 用 `grep / find` 阅读目标引擎模板源码，理解映射关系。
 4. Agent 生成新的 `scene.tsx`，修改 `manifest.json` 中的 `engine` 字段。
 5. 重新运行 `pipeline/render.sh`，不修改任何管道脚本。
+
+> **诚实的边界**：上述迁移对标准场景（纯几何、动画、文本）完全成立。但如果你使用了 ManimGL 特有的高阶抽象（如 §4.5 ZoneScene、§4.6 NarrativeScene），迁移需要重写这些语义层 —— 这是预期内的成本，而非架构失败。高阶抽象绑定到特定引擎是设计上的有意选择。
 
 ---
 
@@ -336,7 +349,9 @@ macode composite render scenes/09_lecture
 
 > **统一渲染路由**：`composite-unified` 不通过独立 CLI 入口调用。运行 `macode composite render <scene_dir>` 或 `pipeline/render.sh <scene_dir>` 时，`render.sh` 自动读取 `manifest.json` 的 `type` 字段并分发到 `pipeline/composite-unified-render.py`。
 
-### 4.5 Zone/Region Constraint System
+### 4.5 Zone/Region Constraint System（ManimGL 特有）
+
+> **引擎绑定声明**：本节描述的所有组件（ZoneScene、NarrativeScene、布局模板、叙事模板）均为 **ManimGL 引擎特有**。Motion Canvas 和 ManimCE 无等价实现。这是有意的设计选择 —— 高阶语义抽象绑定到最适合它的引擎，而非强行统一。
 
 声明式空间约束系统，确保数学对象在场景中按语义区域放置，避免视觉混乱。
 
@@ -363,7 +378,9 @@ class MyScene(ZoneScene):
         self.validate_primary_zone()  # 确保主视觉区有非文本对象
 ```
 
-### 4.6 Narrative Mode Library
+### 4.6 Narrative Mode Library（ManimGL 特有）
+
+> **引擎绑定声明**：与 §4.5 Zone 系统相同，Narrative Mode 是 **ManimGL 特有** 的高阶抽象。Motion Canvas 和 ManimCE 无等价实现。
 
 叙事模板驱动的场景编排，将数学讲解抽象为可复用的叙事阶段（stage）。
 
@@ -503,16 +520,17 @@ MaCode 采用**纵深防御**：从提示词到运行时到提交拦截到权限
 
 ### 5.1 Layer 0 — 提示词约束（Prompt Guardrails）
 
-各 AI 工具的配置文件由统一策略源生成：
+各 AI 工具的配置文件分散在仓库根目录，无中央生成器：
 
 ```
-.agents/security/prompt-policy.yml  (策略源)
-    → .claude/settings.local.json
-    → .cursorrules
-    → .github/copilot-instructions.md
-    → .windsurf/rules.md
-    → .aider.conf.yml
+.claude/settings.local.json     # Claude Code 配置
+.cursorrules                    # Cursor 配置
+.github/copilot-instructions.md # GitHub Copilot 配置
+.windsurf/rules.md              # Windsurf 配置
+.aider.conf.yml                 # Aider 配置
 ```
+
+> 注：早期设计中有 `.agents/security/prompt-policy.yml` 作为统一策略源，但实际维护中改为各工具独立配置，避免单点变更影响所有 IDE。
 
 核心约束：
 - **Allowed**: `scenes/*`, `assets/*` 读写
@@ -608,10 +626,13 @@ jq . .agent/security/audit.log
 
 ```bash
 # 读取 project.yaml，无需 Host Agent 干预
+# - 渲染超时：600s  （由 engines/*/scripts/render.sh 强制执行）
+# - 全局并发上限：max_concurrent_scenes  （由 bin/render-all.sh / pipeline/composite-render.py 强制执行）
+#
+# 以下限制在 project.yaml 中声明，但当前未自动化强制执行：
 # - 帧数上限：10000
 # - 磁盘上限：50GB
-# - 渲染超时：600s
-# - 全局并发上限：max_concurrent_scenes
+#   （依赖 Host Agent 自觉遵守，或后续通过 render-scene.py 内置熔断实现）
 ```
 
 
@@ -972,6 +993,6 @@ rm .agent/tmp/{scene}/.claimed_by
 
 ---
 
-*文档版本：v0.3*  
+*文档版本：v0.4*  
 *设计原则：UNIX Philosophy + Host Agent "Bash is All You Need"*  
-*状态：Phase 0-9 完成，Multi-Agent 基础设施就绪*
+*状态：Phase 0-9 完成，Multi-Agent 基础设施就绪，SOURCEMAP 自动更新 + Git hooks 版本化*
