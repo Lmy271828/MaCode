@@ -13,29 +13,61 @@ MaCode 是一个 Bash-First 的数学动画 Agent 工作流系统。它不封装
 
 ## 快速开始
 
+MaCode 是**Host-Agent-First**的 Harness。首选使用方式是让 Host Agent（Claude Code、Cursor、Kimi 等）在项目中直接调用 CLI；人类用户可在无 Agent 会话时手动操作。
+
+### 方式一：Host Agent 启用（推荐）
+
+在 MaCode 项目目录启动你的 Host Agent 会话。Agent 会自动读取 `AGENTS.md` 和 `project.yaml` 理解项目架构。
+
 ```bash
-# 克隆后首次：初始化权限、目录、依赖检查、配置引擎环境（用户版）
+# 1. 初始化项目（由 Host Agent 执行）
 bash bin/setup.sh
 
-# 开发/测试环境（额外安装 pytest、ruff 并运行 smoke 测试）
-# bash bin/setup-dev.sh
+# 2. Agent 读取 Skill 获取工作流模板
+cat .agents/skills/macode-host-agent/SKILL.md
 
-# 检查项目环境
-bin/agent --check
+# 3. Agent 直接调用 CLI 完成场景编写与渲染
+pipeline/render.sh scenes/01_test/
+macode status
+macode inspect --grep "Circle"
+```
 
-# 设置 PATH（macode 命令需要）
+> **💡 提示**：若你的 AI 工具不支持自动读取项目级 skill，可复制以下系统提示给它：
+> ```bash
+> bin/agent --prompt
+> ```
+
+Host Agent 的标准工作流：
+1. 读取目标 `scenes/*/manifest.json` 理解需求
+2. 用 `macode inspect --grep <keyword>` 查询引擎 API
+3. 编写场景源码（`scene.py` / `scene.tsx` + `manifest.json`）
+4. `pipeline/render.sh <scene_dir>` 渲染
+5. 若失败：`tail -n 50 .agent/log/*.log` 查看诊断
+
+---
+
+### 方式二：人类手动操作（无 Host Agent 会话）
+
+```bash
+# 克隆项目
+git clone <repo-url> MaCode && cd MaCode
+
+# 初始化（用户版）
+bash bin/setup.sh
+
+# 设置 PATH
 export PATH="$PWD/bin:$PATH"
 
-# 查看项目状态
-macode status
+# 检查环境
+bin/agent --check
 
-# 查看引擎可用 API
-macode inspect --level P0
+# 查看状态
+macode status
 
 # 渲染单个场景
 pipeline/render.sh scenes/01_test/
 
-# 批量渲染所有场景
+# 批量渲染
 bin/render-all.sh
 
 # 并行渲染（最多 4 个场景同时）
@@ -45,9 +77,9 @@ bin/render-all.sh --parallel 4
 node bin/dashboard-server.mjs --port 3000
 # → 浏览器打开 http://localhost:3000/
 # → curl http://localhost:3000/api/state | jq .
-# → curl http://localhost:3000/api/scene/01_test | jq .
-# → curl http://localhost:3000/api/queue | jq .
 ```
+
+> 开发/测试环境请使用 `bin/setup-dev.sh`（额外安装 pytest、ruff 并自动运行 smoke 测试）。
 
 ## 目录结构
 
