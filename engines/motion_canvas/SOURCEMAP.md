@@ -1,6 +1,6 @@
 # MaCode Engine Source Map: Motion Canvas
 
-> 生成日期: 2026-05-12
+> 生成日期: 2026-05-13
 > 引擎版本: 3.17.2
 > 适配层版本: 1.0.1
 > 源码根目录: `node_modules/@motion-canvas/core/lib/`, `node_modules/@motion-canvas/2d/lib/`
@@ -72,4 +72,4 @@ When you find yourself writing the left column, use the right column instead.
 | Use `fetch()` for external data | Pre-load data into `assets/` and import statically | Network requests in scene code break reproducibility |
 | Use `eval()` or `new Function()` | Use static imports and MaCode helper functions | Arbitrary execution bypasses sandbox |
 | Direct `document.*` manipulation | Use Motion Canvas Node API (`<Node>`, `<Txt>`, etc.) | DOM access breaks Playwright screenshot consistency |
-| Import `puppeteer-core` or `playwright-core` directly | Use `macode mc serve` + `playwright-render.mjs` | Browser pool manages lifecycle and isolation |
+| Import `puppeteer-core` or `playwright-core` directly | Use `macode mc serve` + `render.mjs` capture path | Harness manages Vite + Playwright lifecycle |

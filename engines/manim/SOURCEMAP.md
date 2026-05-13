@@ -1,6 +1,6 @@
 # MaCode Engine Source Map: ManimCE
 
-> 生成日期: 2026-05-07
+> 生成日期: 2026-05-13
 > 引擎版本: 0.20.1
 > 适配层版本: 1.0.0
 > 源码根目录: `.venv/lib/python3.13/site-packages/manim/`

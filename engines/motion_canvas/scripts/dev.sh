@@ -124,8 +124,8 @@ fi
 
 # ── Watch mode ──
 if $DO_WATCH; then
-    # Start persistent dev server (serve.mjs detaches Vite and exits)
-    node "$PROJECT_ROOT/engines/motion_canvas/scripts/serve.mjs" "$SCENE_DIR" "$DEV_PORT" >/dev/null 2>&1
+    # Start persistent dev server (render.mjs --serve-only detaches Vite and exits)
+    node "$PROJECT_ROOT/engines/motion_canvas/scripts/render.mjs" --serve-only "$SCENE_DIR" "$DEV_PORT" >/dev/null 2>&1
     sleep 2
 
     ACTUAL_PORT="$DEV_PORT"
@@ -149,7 +149,7 @@ if $DO_WATCH; then
     cleanup_watch() {
         echo ""
         echo "[motion_canvas] Stopping dev server..."
-        node "$PROJECT_ROOT/engines/motion_canvas/scripts/stop.mjs" "$SCENE_DIR" >/dev/null 2>&1 || true
+        node "$PROJECT_ROOT/engines/motion_canvas/scripts/render.mjs" --stop "$SCENE_DIR" >/dev/null 2>&1 || true
         exit 0
     }
     trap cleanup_watch INT TERM EXIT
@@ -173,7 +173,7 @@ if $DO_WATCH; then
 fi
 
 # ── Default mode: start dev server and keep foreground ──
-node "$PROJECT_ROOT/engines/motion_canvas/scripts/serve.mjs" "$SCENE_DIR" "$DEV_PORT"
+node "$PROJECT_ROOT/engines/motion_canvas/scripts/render.mjs" --serve-only "$SCENE_DIR" "$DEV_PORT"
 
 sleep 2
 
@@ -193,7 +193,7 @@ echo "[motion_canvas] Press Ctrl+C to stop."
 cleanup_default() {
     echo ""
     echo "[motion_canvas] Stopping dev server..."
-    node "$PROJECT_ROOT/engines/motion_canvas/scripts/stop.mjs" "$SCENE_DIR" >/dev/null 2>&1 || true
+    node "$PROJECT_ROOT/engines/motion_canvas/scripts/render.mjs" --stop "$SCENE_DIR" >/dev/null 2>&1 || true
     exit 0
 }
 trap cleanup_default INT TERM EXIT

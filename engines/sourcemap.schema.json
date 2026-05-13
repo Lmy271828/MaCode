@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:macode:sourcemap",
+  "title": "MaCode Engine Sourcemap",
+  "type": "object",
+  "required": ["engine", "version", "adapter_version", "whitelist", "blacklist", "extension", "redirect"],
+  "additionalProperties": true,
+  "properties": {
+    "engine": { "type": "string", "minLength": 1 },
+    "version": { "type": "string" },
+    "adapter_version": { "type": "string" },
+    "generated_at": { "type": "string" },
+    "source_md": { "type": "string" },
+    "source_root": { "type": "string" },
+    "content_hash": { "type": "string" },
+    "whitelist": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "path_raw", "purpose", "priority"],
+        "additionalProperties": true,
+        "properties": {
+          "id": { "type": "string" },
+          "path_raw": { "type": "string" },
+          "purpose": { "type": "string" },
+          "priority": { "type": "string" }
+        }
+      }
+    },
+    "blacklist": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "path_raw", "reason"],
+        "additionalProperties": true,
+        "properties": {
+          "id": { "type": "string" },
+          "path_raw": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "extension": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "desc", "status"],
+        "additionalProperties": true,
+        "properties": {
+          "id": { "type": "string" },
+          "desc": { "type": "string" },
+          "status": { "type": "string" }
+        }
+      }
+    },
+    "redirect": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["pitfall", "correct", "reason"],
+        "additionalProperties": true,
+        "properties": {
+          "pitfall": { "type": "string" },
+          "correct": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    }
+  }
+}

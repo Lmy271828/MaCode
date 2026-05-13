@@ -1,0 +1,246 @@
+{
+  "engine": "ManimCE",
+  "version": "0.20.1",
+  "adapter_version": "1.0.0",
+  "generated_at": "2026-05-13T17:44:04.041996",
+  "source_md": "engines/manim/SOURCEMAP.md",
+  "whitelist": [
+    {
+      "id": "CORE_SCENE",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/scene/scene.py",
+      "purpose": "Scene 基类，construct() 生命周期",
+      "priority": "P0"
+    },
+    {
+      "id": "CORE_MOBJECT_GEOMETRY",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/mobject/geometry/",
+      "purpose": "Circle, Square, Line, Arc, Polygon 等几何体（通过 `__init__.py` 统一导出）",
+      "priority": "P0"
+    },
+    {
+      "id": "CORE_MOBJECT_TYPES",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/mobject/types/vectorized_mobject.py",
+      "purpose": "VMobject 基类，路径与贝塞尔曲线",
+      "priority": "P0"
+    },
+    {
+      "id": "CORE_ANIMATION_CREATION",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/animation/creation.py",
+      "purpose": "Create, DrawBorderThenFill, Uncreate",
+      "priority": "P0"
+    },
+    {
+      "id": "CORE_ANIMATION_TRANSFORM",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/animation/transform.py",
+      "purpose": "Transform, ReplacementTransform",
+      "priority": "P0"
+    },
+    {
+      "id": "CORE_ANIMATION_FADING",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/animation/fading.py",
+      "purpose": "FadeIn, FadeOut, FadeToColor",
+      "priority": "P0"
+    },
+    {
+      "id": "CORE_ANIMATION_MOVEMENT",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/animation/movement.py",
+      "purpose": "MoveToTarget, ComplexHomotopy",
+      "priority": "P1"
+    },
+    {
+      "id": "CORE_ANIMATION_INDICATION",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/animation/indication.py",
+      "purpose": "Flash, FocusOn, Indicate, Circumscribe",
+      "priority": "P1"
+    },
+    {
+      "id": "CORE_RENDERER",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/renderer/",
+      "purpose": "渲染管线与 OpenGL 后端",
+      "priority": "P1"
+    },
+    {
+      "id": "UTIL_CAMERA",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/camera/camera.py",
+      "purpose": "相机控制、取景与移动",
+      "priority": "P1"
+    },
+    {
+      "id": "UTIL_TEX",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/mobject/text/tex_mobject.py",
+      "purpose": "MathTex, Tex LaTeX 渲染",
+      "priority": "P1"
+    },
+    {
+      "id": "UTIL_TEXT",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/mobject/text/text_mobject.py",
+      "purpose": "Text, Paragraph 文本渲染",
+      "priority": "P1"
+    },
+    {
+      "id": "UTIL_NUMBER_LINE",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/mobject/graphing/number_line.py",
+      "purpose": "NumberLine, Axes 坐标轴",
+      "priority": "P1"
+    },
+    {
+      "id": "UTIL_COORDINATE",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/mobject/graphing/coordinate_systems.py",
+      "purpose": "CoordinateSystem, Axes, ComplexPlane",
+      "priority": "P1"
+    },
+    {
+      "id": "UTIL_COLOR",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/utils/color/",
+      "purpose": "颜色常量与工具（core.py, manim_colors.py）",
+      "priority": "P1"
+    },
+    {
+      "id": "CORE_3D",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/mobject/three_d/",
+      "purpose": "Sphere, Cube, Prism3D, Cylinder, Cone 等 3D 对象",
+      "priority": "P1"
+    },
+    {
+      "id": "CORE_TABLE",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/mobject/table.py",
+      "purpose": "Table, MobjectTable 数据表格",
+      "priority": "P1"
+    },
+    {
+      "id": "ADAPTER_TEMPLATES",
+      "path_raw": "engines/manim/src/templates/",
+      "purpose": "MaCode 场景基类模板（待创建）",
+      "priority": "P2"
+    },
+    {
+      "id": "ADAPTER_AUDIO_SYNC",
+      "path_raw": "engines/manim/src/utils/audio_sync.py",
+      "purpose": "音频节拍同步读取器",
+      "priority": "P2"
+    },
+    {
+      "id": "ADAPTER_UTILS",
+      "path_raw": "engines/manim/src/utils/",
+      "purpose": "ffmpeg_pipe 等工具封装（待创建）",
+      "priority": "P2"
+    }
+  ],
+  "blacklist": [
+    {
+      "id": "DEPRECATED_GL",
+      "path_raw": "manimlib/",
+      "reason": "ManimGL 旧版 API，与 CE 分支不兼容"
+    },
+    {
+      "id": "TEST_SUITE",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/utils/testing/",
+      "reason": "测试代码，非 API 表面"
+    },
+    {
+      "id": "INTERNAL_CONFIG",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/_config/",
+      "reason": "全局配置黑魔法，修改会破坏渲染环境"
+    },
+    {
+      "id": "INTERNAL_CLI",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/cli/",
+      "reason": "CLI 内部实现，非 API"
+    },
+    {
+      "id": "INTERNAL_PLUGINS",
+      "path_raw": "$(.venv/bin/python -c \"import manim; print(manim.__path__[0])\")/plugins/",
+      "reason": "插件标志内部实现"
+    },
+    {
+      "id": "BUILD_ARTIFACT",
+      "path_raw": ".agent/tmp/",
+      "reason": "中间产物，非源码"
+    },
+    {
+      "id": "NODE_MODULES",
+      "path_raw": "node_modules/",
+      "reason": "非 Python 引擎目录"
+    },
+    {
+      "id": "VENV_DIR",
+      "path_raw": ".venv/",
+      "reason": "Python 虚拟环境，非源码"
+    }
+  ],
+  "extension": [
+    {
+      "id": "ADAPTER_SCENE_BASE",
+      "desc": "`engines/manim/src/templates/scene_base.py` — MaCodeScene 基类（继承 MovingCameraScene，含路径注入/相机聚焦/音频同步）",
+      "status": "DONE"
+    },
+    {
+      "id": "ADAPTER_FFMPEG_PIPE",
+      "desc": "`engines/manim/src/utils/ffmpeg_builder.py` — ffmpeg 管道编码工具",
+      "status": "DONE"
+    },
+    {
+      "id": "ADAPTER_LATEX_HELPER",
+      "desc": "`engines/manim/src/utils/latex_helper.py` — LaTeX 辅助工具（中文模板 / 公式工厂 / 预编译 / 错误诊断）",
+      "status": "DONE"
+    },
+    {
+      "id": "SHADER_PIPELINE",
+      "desc": "自定义 GLSL 着色器接入",
+      "status": "DONE"
+    },
+    {
+      "id": "AUDIO_SYNC",
+      "desc": "音频节拍同步（BPM 驱动动画参数）",
+      "status": "DONE"
+    },
+    {
+      "id": "GPU_RENDER",
+      "desc": "CUDA/OpenCL 加速渲染",
+      "status": "WONTFIX"
+    }
+  ],
+  "redirect": [
+    {
+      "pitfall": "Hand-write `-vf \"fade=...\"` in Python strings",
+      "correct": "`utils.ffmpeg_builder.FFMpeg().video.fade(...)`",
+      "reason": "String concat error-prone; timing edge-case prone"
+    },
+    {
+      "pitfall": "Hand-write `-af \"amix=...\"` in Python strings",
+      "correct": "`utils.ffmpeg_builder.FFMpeg().audio.amix(...)`",
+      "reason": "Same as above"
+    },
+    {
+      "pitfall": "Hand-write `\\begin{cases}` in MathTex",
+      "correct": "`utils.latex_helper.cases(...)`",
+      "reason": "MathTex default `align*` cannot nest `cases`"
+    },
+    {
+      "pitfall": "Hand-write `\\begin{bmatrix}` in MathTex",
+      "correct": "`utils.latex_helper.matrix(...)`",
+      "reason": "Same nesting conflict"
+    },
+    {
+      "pitfall": "Hand-write `\\begin{align*}` in MathTex",
+      "correct": "`utils.latex_helper.align_eqns(...)`",
+      "reason": "Double `align*` environment"
+    },
+    {
+      "pitfall": "Hand-write `gl_Position = ...`",
+      "correct": "`utils.shader_builder.Shader().node(...)`",
+      "reason": "GLSL compile errors decoupled from causes"
+    },
+    {
+      "pitfall": "Hand-write 60+ character regex",
+      "correct": "`utils.pattern_helper.pattern.xxx()`",
+      "reason": "Unreadable, edge-case prone"
+    },
+    {
+      "pitfall": "Hand-write raw ffmpeg command strings",
+      "correct": "`utils.ffmpeg_builder`",
+      "reason": "Bash variable expansion traps"
+    }
+  ],
+  "source_root": ".venv/lib/python3.13/site-packages/manim/"
+}

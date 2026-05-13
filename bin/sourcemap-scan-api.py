@@ -30,21 +30,16 @@ def get_project_root() -> Path:
     return Path(__file__).parent.parent.resolve()
 
 
-def load_whitelist_ids(md_path: Path) -> set:
-    """Extract identifier column from WHITELIST table."""
-    ids = set()
-    with open(md_path, encoding="utf-8") as f:
-        content = f.read()
-    section = re.search(r"^## WHITELIST:.*?(?=\n## |\Z)", content, re.DOTALL | re.MULTILINE)
-    if not section:
+def load_whitelist_ids(engine: str, project_root: Path) -> set:
+    """Extract identifier column from engines/{engine}/sourcemap.json."""
+    jp = project_root / "engines" / engine / "sourcemap.json"
+    ids: set[str] = set()
+    if not jp.is_file():
         return ids
-    for line in section.group(0).splitlines():
-        if not line.startswith("|") or " 标识 " in line or "---" in line.replace("|", ""):
-            continue
-        parts = [p.strip() for p in line.split("|")]
-        parts = [p for p in parts if p]
-        if len(parts) >= 4:
-            ids.add(parts[0])
+    data = json.loads(jp.read_text(encoding="utf-8"))
+    for item in data.get("whitelist") or []:
+        if isinstance(item, dict) and item.get("id"):
+            ids.add(str(item["id"]))
     return ids
 
 
@@ -213,20 +208,23 @@ def main() -> int:
     if args.all:
         engines_dir = project_root / "engines"
         if engines_dir.exists():
-            engines = sorted([d.name for d in engines_dir.iterdir() if d.is_dir() and (d / "SOURCEMAP.md").exists()])
+            engines = sorted(
+                [d.name for d in engines_dir.iterdir() if d.is_dir() and (d / "sourcemap.json").is_file()]
+            )
     elif args.engine:
         engines = [args.engine]
     else:
         engines_dir = project_root / "engines"
         if engines_dir.exists():
-            engines = sorted([d.name for d in engines_dir.iterdir() if d.is_dir() and (d / "SOURCEMAP.md").exists()])
+            engines = sorted(
+                [d.name for d in engines_dir.iterdir() if d.is_dir() and (d / "sourcemap.json").is_file()]
+            )
 
     all_results = []
     total_candidates = 0
 
     for engine in engines:
-        md_path = project_root / "engines" / engine / "SOURCEMAP.md"
-        whitelist_ids = load_whitelist_ids(md_path)
+        whitelist_ids = load_whitelist_ids(engine, project_root)
         candidates = []
         candidates.extend(scan_adapter_layer(engine, project_root, whitelist_ids))
         candidates.extend(scan_python_public_api(engine, project_root, whitelist_ids))
@@ -272,7 +270,7 @@ def main() -> int:
         print("")
         if total_candidates:
             print(f"Found {total_candidates} candidate(s) not covered by WHITELIST.")
-            print("Review and add relevant items to engines/{{engine}}/SOURCEMAP.md")
+            print("Review and add relevant items to engines/{engine}/sourcemap.json")
         else:
             print("All scanned APIs appear covered by WHITELIST.")
 

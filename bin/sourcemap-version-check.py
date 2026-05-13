@@ -1,23 +1,22 @@
 #!/usr/bin/env python3
 """bin/sourcemap-version-check.py
-Detect engine version drift against SOURCEMAP.md declarations.
+Detect engine version drift against engines/*/sourcemap.json (canonical).
 
 Runs without Host Agent intervention. Designed to be called by setup.sh,
-macode status, or CI to surface outdated SOURCEMAPs early.
+macode status, or CI to surface outdated sourcemap.json early.
 
 Usage:
     sourcemap-version-check.py [--all] [engine_name]
 
 Exit codes:
     0 - all versions match (or engine not installed)
-    1 - one or more SOURCEMAPs are outdated
+    1 - one or more declared versions are outdated vs installed engine
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -27,14 +26,16 @@ def get_project_root() -> Path:
     return Path(__file__).parent.parent.resolve()
 
 
-def extract_sourcemap_version(md_path: Path) -> str:
-    """Parse engine version from SOURCEMAP.md metadata line."""
-    with open(md_path, encoding="utf-8") as f:
-        for line in f:
-            m = re.search(r">\s*引擎版本:\s*(.+)", line)
-            if m:
-                return m.group(1).strip()
-    return ""
+def extract_sourcemap_declared_version(jp: Path) -> str:
+    """Parse engine version from engines/{engine}/sourcemap.json."""
+    if not jp.is_file():
+        return ""
+    try:
+        data = json.loads(jp.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return ""
+    ver = data.get("version")
+    return ver.strip() if isinstance(ver, str) else ""
 
 
 def get_manimce_version(project_root: Path) -> str | None:
@@ -90,22 +91,22 @@ ENGINE_VERSION_DETECTORS = {
 
 
 def check_engine(engine: str, project_root: Path) -> dict:
-    md_path = project_root / "engines" / engine / "SOURCEMAP.md"
+    jp = project_root / "engines" / engine / "sourcemap.json"
     result = {
         "engine": engine,
-        "sourcemap_exists": md_path.exists(),
+        "sourcemap_exists": jp.exists(),
         "sourcemap_version": "",
         "installed_version": None,
         "match": True,
         "message": "",
     }
 
-    if not md_path.exists():
-        result["match"] = True  # No sourcemap = nothing to drift
-        result["message"] = "No SOURCEMAP.md"
+    if not jp.exists():
+        result["match"] = True
+        result["message"] = "No sourcemap.json"
         return result
 
-    result["sourcemap_version"] = extract_sourcemap_version(md_path)
+    result["sourcemap_version"] = extract_sourcemap_declared_version(jp)
     detector = ENGINE_VERSION_DETECTORS.get(engine)
     if not detector:
         result["match"] = True
@@ -122,7 +123,7 @@ def check_engine(engine: str, project_root: Path) -> dict:
 
     if not result["sourcemap_version"]:
         result["match"] = False
-        result["message"] = "SOURCEMAP missing version metadata"
+        result["message"] = "sourcemap.json missing version field"
         return result
 
     # Loose match: installed version starts with sourcemap version prefix
@@ -133,14 +134,14 @@ def check_engine(engine: str, project_root: Path) -> dict:
         result["message"] = f"OK ({installed})"
     else:
         result["match"] = False
-        result["message"] = f"DRIFT: SOURCEMAP={smv}, installed={installed}"
+        result["message"] = f"DRIFT: sourcemap.json={smv}, installed={installed}"
 
     return result
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Detect engine version drift against SOURCEMAP.md",
+        description="Detect engine version drift against engines/*/sourcemap.json",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("engine", nargs="?", help="Engine name to check")
@@ -163,7 +164,7 @@ def main() -> int:
         if engines_dir.exists():
             engines = sorted([
                 d.name for d in engines_dir.iterdir()
-                if d.is_dir() and (d / "SOURCEMAP.md").exists()
+                if d.is_dir() and (d / "sourcemap.json").exists()
             ])
 
     results = [check_engine(e, project_root) for e in engines]
@@ -182,9 +183,9 @@ def main() -> int:
         print("")
         if drifted:
             print(f"WARNING: {len(drifted)} engine(s) have version drift.")
-            print("  Action: Update engines/*/SOURCEMAP.md '引擎版本' and run validate_sourcemap.sh")
+            print("  Action: bump engines/*/sourcemap.json version and run validate_sourcemap.sh")
         else:
-            print("All SOURCEMAP versions match installed engines.")
+            print("All sourcemap.json versions match installed engines.")
 
     return 1 if drifted else 0
 

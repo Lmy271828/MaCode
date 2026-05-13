@@ -1,0 +1,268 @@
+{
+  "engine": "Motion Canvas",
+  "version": "3.17.2",
+  "adapter_version": "1.0.1",
+  "generated_at": "2026-05-13T17:44:04.085521",
+  "source_md": "engines/motion_canvas/SOURCEMAP.md",
+  "whitelist": [
+    {
+      "id": "CORE_SCENE",
+      "path_raw": "node_modules/@motion-canvas/2d/lib/scenes/makeScene2D.js",
+      "purpose": "Scene/Scene2D 基类与 makeScene2D 工厂",
+      "priority": "P0"
+    },
+    {
+      "id": "CORE_NODE",
+      "path_raw": "node_modules/@motion-canvas/2d/lib/components/Node.js",
+      "purpose": "节点树基类（Node, Shape, Layout）",
+      "priority": "P0"
+    },
+    {
+      "id": "CORE_SHAPES",
+      "path_raw": "node_modules/@motion-canvas/2d/lib/components/",
+      "purpose": "几何节点：Circle, Rect, Line, Path, Polygon",
+      "priority": "P0"
+    },
+    {
+      "id": "CORE_TEXT",
+      "path_raw": "node_modules/@motion-canvas/2d/lib/components/",
+      "purpose": "文本节点：Txt, Latex, CodeBlock",
+      "priority": "P1"
+    },
+    {
+      "id": "CORE_MEDIA",
+      "path_raw": "node_modules/@motion-canvas/2d/lib/components/",
+      "purpose": "媒体节点：Img, Video, SVG",
+      "priority": "P1"
+    },
+    {
+      "id": "CORE_VIEW",
+      "path_raw": "node_modules/@motion-canvas/2d/lib/components/",
+      "purpose": "视口节点：Camera, Grid, View2D",
+      "priority": "P1"
+    },
+    {
+      "id": "CORE_LAYOUT",
+      "path_raw": "node_modules/@motion-canvas/2d/lib/components/Layout.js",
+      "purpose": "布局节点：Layout, FlexLayout, Rect (布局容器)",
+      "priority": "P1"
+    },
+    {
+      "id": "CORE_TEXT_DETAIL",
+      "path_raw": "node_modules/@motion-canvas/2d/lib/components/Txt.js",
+      "purpose": "文本节点 Txt（精确路径）",
+      "priority": "P1"
+    },
+    {
+      "id": "CORE_LATEX_DETAIL",
+      "path_raw": "node_modules/@motion-canvas/2d/lib/components/Latex.js",
+      "purpose": "LaTeX 节点 Latex（精确路径）",
+      "priority": "P1"
+    },
+    {
+      "id": "FLOW_SEQUENCE",
+      "path_raw": "node_modules/@motion-canvas/core/lib/flow/sequence.js",
+      "purpose": "顺序执行动画",
+      "priority": "P0"
+    },
+    {
+      "id": "FLOW_ALL",
+      "path_raw": "node_modules/@motion-canvas/core/lib/flow/all.js",
+      "purpose": "并行执行动画",
+      "priority": "P0"
+    },
+    {
+      "id": "FLOW_DELAY",
+      "path_raw": "node_modules/@motion-canvas/core/lib/flow/delay.js",
+      "purpose": "延迟与等待",
+      "priority": "P1"
+    },
+    {
+      "id": "FLOW_LOOP",
+      "path_raw": "node_modules/@motion-canvas/core/lib/flow/loop.js",
+      "purpose": "循环控制流",
+      "priority": "P1"
+    },
+    {
+      "id": "FLOW_CHAIN",
+      "path_raw": "node_modules/@motion-canvas/core/lib/flow/chain.js",
+      "purpose": "链式组合",
+      "priority": "P1"
+    },
+    {
+      "id": "TWEENING",
+      "path_raw": "node_modules/@motion-canvas/core/lib/tweening/",
+      "purpose": "缓动函数与插值",
+      "priority": "P1"
+    },
+    {
+      "id": "SIGNALS",
+      "path_raw": "node_modules/@motion-canvas/core/lib/signals/",
+      "purpose": "响应式信号系统",
+      "priority": "P1"
+    },
+    {
+      "id": "ADAPTER_TEMPLATE",
+      "path_raw": "engines/motion_canvas/src/templates/scene_base.tsx",
+      "purpose": "MaCode 场景基类模板",
+      "priority": "P0"
+    }
+  ],
+  "blacklist": [
+    {
+      "id": "INTERNAL_APP",
+      "path_raw": "node_modules/@motion-canvas/core/lib/app/",
+      "reason": "内部渲染管线与播放器，非公开 API"
+    },
+    {
+      "id": "INTERNAL_PLUGIN",
+      "path_raw": "node_modules/@motion-canvas/core/lib/plugin/",
+      "reason": "插件系统内部实现"
+    },
+    {
+      "id": "INTERNAL_META",
+      "path_raw": "node_modules/@motion-canvas/core/lib/meta/",
+      "reason": "元数据序列化，非 API 表面"
+    },
+    {
+      "id": "INTERNAL_RENDERER",
+      "path_raw": "node_modules/@motion-canvas/2d/lib/curves/",
+      "reason": "曲线渲染内部实现"
+    },
+    {
+      "id": "INTERNAL_EDITOR",
+      "path_raw": "node_modules/@motion-canvas/2d/src/editor/",
+      "reason": "编辑器内部组件"
+    },
+    {
+      "id": "INTERNAL_SRC",
+      "path_raw": "node_modules/@motion-canvas/2d/src/lib/curves/",
+      "reason": "曲线渲染内部数学实现"
+    },
+    {
+      "id": "TEST_SUITE",
+      "path_raw": "node_modules/@motion-canvas/*/src/**/__tests__/",
+      "reason": "测试代码，非 API"
+    },
+    {
+      "id": "VENV_DIR",
+      "path_raw": ".venv/",
+      "reason": "Python 虚拟环境，非 JS 引擎目录"
+    },
+    {
+      "id": "BUILD_ARTIFACT",
+      "path_raw": ".agent/tmp/",
+      "reason": "中间产物，非源码"
+    },
+    {
+      "id": "DIRECT_EVAL",
+      "path_raw": "eval(",
+      "reason": "Arbitrary code execution in browser/Node"
+    },
+    {
+      "id": "DIRECT_EVAL_FUNCTION",
+      "path_raw": "new Function(",
+      "reason": "Arbitrary code execution in browser/Node"
+    },
+    {
+      "id": "FETCH_API",
+      "path_raw": "fetch(",
+      "reason": "Network requests break reproducibility"
+    },
+    {
+      "id": "FETCH_API_XHR",
+      "path_raw": "XMLHttpRequest",
+      "reason": "Network requests break reproducibility"
+    },
+    {
+      "id": "WEBSOCKET",
+      "path_raw": "WebSocket",
+      "reason": "Raw network socket access"
+    },
+    {
+      "id": "DOM_WRITE",
+      "path_raw": "document.write",
+      "reason": "DOM access breaks Playwright screenshot consistency"
+    },
+    {
+      "id": "DOM_LOCATION",
+      "path_raw": "document.location",
+      "reason": "Navigation breaks Playwright screenshot consistency"
+    },
+    {
+      "id": "WINDOW_LOCATION",
+      "path_raw": "window.location",
+      "reason": "Navigation breaks Playwright screenshot consistency"
+    },
+    {
+      "id": "PROCESS_EXIT",
+      "path_raw": "process.exit(",
+      "reason": "Premature Node.js termination"
+    },
+    {
+      "id": "CHILD_PROCESS",
+      "path_raw": "child_process",
+      "reason": "Arbitrary command execution in Node"
+    },
+    {
+      "id": "BYPASS_BROWSER_POOL_PUPPETEER",
+      "path_raw": "puppeteer-core",
+      "reason": "Bypass managed browser lifecycle"
+    },
+    {
+      "id": "BYPASS_BROWSER_POOL_PLAYWRIGHT",
+      "path_raw": "playwright-core",
+      "reason": "Bypass managed browser lifecycle"
+    }
+  ],
+  "extension": [
+    {
+      "id": "HEADLESS_RENDER",
+      "desc": "纯 Node.js 无头渲染（canvas + jsdom）",
+      "status": "DONE"
+    },
+    {
+      "id": "SHADER_NODES",
+      "desc": "`engines/motion_canvas/src/components/ShaderFrame.tsx` — 自定义 WebGL 着色器节点",
+      "status": "DONE"
+    },
+    {
+      "id": "AUDIO_SYNC",
+      "desc": "音频波形驱动的动画同步",
+      "status": "DONE"
+    },
+    {
+      "id": "LIVE_PREVIEW",
+      "desc": "WebSocket 热重载实时预览",
+      "status": "WONTFIX"
+    }
+  ],
+  "redirect": [
+    {
+      "pitfall": "Hand-write `gl_Position = ...`",
+      "correct": "`utils.shader_builder.Shader().node(...)`",
+      "reason": "GLSL compile errors decoupled from causes"
+    },
+    {
+      "pitfall": "Use `fetch()` for external data",
+      "correct": "Pre-load data into `assets/` and import statically",
+      "reason": "Network requests in scene code break reproducibility"
+    },
+    {
+      "pitfall": "Use `eval()` or `new Function()`",
+      "correct": "Use static imports and MaCode helper functions",
+      "reason": "Arbitrary execution bypasses sandbox"
+    },
+    {
+      "pitfall": "Direct `document.*` manipulation",
+      "correct": "Use Motion Canvas Node API (`<Node>`, `<Txt>`, etc.)",
+      "reason": "DOM access breaks Playwright screenshot consistency"
+    },
+    {
+      "pitfall": "Import `puppeteer-core` or `playwright-core` directly",
+      "correct": "Use `macode mc serve` + `render.mjs` capture path",
+      "reason": "Harness manages Vite + Playwright lifecycle"
+    }
+  ],
+  "source_root": "node_modules/@motion-canvas/core/lib/`, `node_modules/@motion-canvas/2d/lib/"
+}

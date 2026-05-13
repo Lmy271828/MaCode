@@ -1,157 +1,148 @@
 #!/usr/bin/env python3
 """bin/sourcemap-sync.py
-将 engines/{name}/SOURCEMAP.md 解析为结构化的 JSON，供机器消费。
+JSON 为唯一事实源：engines/{engine}/sourcemap.json → SOURCEMAP.md（生成）+
+.agent/context/*（派生）。
 
 用法:
-    sourcemap-sync.py [engine_name]       # 同步指定引擎（默认 project.yaml 中的 default engine）
-    sourcemap-sync.py --all               # 同步所有引擎
-    sourcemap-sync.py --check [engine]    # 检查 Markdown 与 JSON 是否同步（不写入）
-
-输出:
-    .agent/context/{engine}_sourcemap.json
+    sourcemap-sync.py [engine_name]     # 校验 JSON、写回 SOURCEMAP.md + .agent/context
+    sourcemap-sync.py --all               # 同上，所有带 sourcemap.json 的引擎目录
+    sourcemap-sync.py --check [engine]    # SOURCEMAP.md 是否与 JSON 生成一致（不落盘）
+    sourcemap-sync.py --write-md-only [e] # 仅写 Markdown（调试用）
 """
+
+from __future__ import annotations
 
 import argparse
 import hashlib
 import json
-import os
-import re
-import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
 
-
-def parse_markdown_table(lines, expected_cols):
-    """解析 Markdown 表格，返回字典列表。"""
-    rows = []
-    for line in lines:
-        line = line.strip()
-        if not line.startswith("|") or " 标识 " in line or " Pitfall " in line or "---" in line.replace("|", ""):
-            continue
-        parts = [p.strip() for p in line.split("|")]
-        # 过滤空字符串（首尾 | 产生的）
-        parts = [p for p in parts if p]
-        if len(parts) < expected_cols:
-            continue
-        rows.append(parts)
-    return rows
+try:
+    from jsonschema import Draft202012Validator
+except ImportError:
+    Draft202012Validator = None  # type: ignore
 
 
-def extract_section(content, section_name):
-    """从 Markdown 内容中提取指定 ## section 的表格行。"""
-    pattern = rf'^## {re.escape(section_name)}:.*?\n(.*?)(?=\n## |\Z)'
-    m = re.search(pattern, content, re.DOTALL | re.MULTILINE)
-    return m.group(1).splitlines() if m else []
+def get_project_root() -> Path:
+    return Path(__file__).parent.parent.resolve()
 
 
-def lint_sourcemap(md_path):
-    """调用 sourcemap-lint.py 校验 Markdown schema。"""
-    lint_script = Path(__file__).parent / "sourcemap-lint.py"
-    result = subprocess.run(
-        [sys.executable, str(lint_script), str(md_path)],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        print(result.stderr, file=sys.stderr)
-        return False
-    return True
+def schema_path(root: Path) -> Path:
+    return root / "engines" / "sourcemap.schema.json"
 
 
-def parse_sourcemap(md_path):
-    """解析 SOURCEMAP.md，返回结构化字典。"""
-    # 必须先通过 lint
-    if not lint_sourcemap(md_path):
-        raise RuntimeError(f"SOURCEMAP lint failed: {md_path}")
-
-    with open(md_path, encoding="utf-8") as f:
-        content = f.read()
-
-    # 提取元数据
-    engine_match = re.search(r'^# MaCode Engine Source Map:\s*(.+)$', content, re.MULTILINE)
-    engine_name = engine_match.group(1).strip() if engine_match else "unknown"
-
-    version_match = re.search(r'>\s*引擎版本:\s*(.+)$', content, re.MULTILINE)
-    version = version_match.group(1).strip() if version_match else "unknown"
-
-    adapter_match = re.search(r'>\s*适配层版本:\s*(.+)$', content, re.MULTILINE)
-    adapter_version = adapter_match.group(1).strip() if adapter_match else "unknown"
-
-    generated_at = datetime.now().isoformat()
-
-    # WHITELIST
-    whitelist = []
-    for parts in parse_markdown_table(extract_section(content, "WHITELIST"), 4):
-        # 格式: | 标识 | 路径/命令 | 用途 | 优先级 |
-        whitelist.append({
-            "id": parts[0],
-            "path_raw": parts[1].strip("`"),
-            "purpose": parts[2],
-            "priority": parts[3]
-        })
-
-    # BLACKLIST
-    blacklist = []
-    for parts in parse_markdown_table(extract_section(content, "BLACKLIST"), 3):
-        # 格式: | 标识 | 路径/命令 | 原因 |
-        blacklist.append({
-            "id": parts[0],
-            "path_raw": parts[1].strip("`"),
-            "reason": parts[2]
-        })
-
-    # EXTENSION
-    extension = []
-    for parts in parse_markdown_table(extract_section(content, "EXTENSION"), 3):
-        # 格式: | 标识 | 描述 | 状态 |
-        extension.append({
-            "id": parts[0],
-            "desc": parts[1],
-            "status": parts[2]
-        })
-
-    # REDIRECT
-    redirect = []
-    for parts in parse_markdown_table(extract_section(content, "REDIRECT"), 3):
-        # 格式: | Pitfall | Correct Approach | Reason |
-        redirect.append({
-            "pitfall": parts[0],
-            "correct": parts[1],
-            "reason": parts[2]
-        })
-
-    # 计算内容哈希
-    content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
-
-    return {
-        "engine": engine_name,
-        "version": version,
-        "adapter_version": adapter_version,
-        "generated_at": generated_at,
-        "source_md": str(md_path),
-        "content_hash": content_hash,
-        "whitelist": whitelist,
-        "blacklist": blacklist,
-        "extension": extension,
-        "redirect": redirect,
-    }
+def load_schema_validator(root: Path):
+    if Draft202012Validator is None:
+        print("FATAL: jsonschema is required. pip install jsonschema", file=sys.stderr)
+        sys.exit(2)
+    sp = schema_path(root)
+    if not sp.is_file():
+        print(f"FATAL: schema not found: {sp}", file=sys.stderr)
+        sys.exit(2)
+    schema = json.loads(sp.read_text(encoding="utf-8"))
+    return Draft202012Validator(schema)
 
 
-def write_json(data, out_path):
-    """写入格式化 JSON。"""
+def validate_data(validator, data: dict, label: str) -> None:
+    errors = sorted(validator.iter_errors(data), key=lambda e: list(e.path))
+    if errors:
+        print(f"FATAL: sourcemap JSON schema errors ({label}):", file=sys.stderr)
+        for e in errors[:20]:
+            print(f"  {'/'.join(str(p) for p in e.path)}: {e.message}", file=sys.stderr)
+        if len(errors) > 20:
+            print(f"  ... +{len(errors) - 20} more", file=sys.stderr)
+        sys.exit(2)
+
+
+def _esc_cell(s: str) -> str:
+    return (s or "").replace("|", "\\|").replace("\n", " ")
+
+
+def markdown_from_json(data: dict) -> str:
+    """Deterministic Markdown view from canonical JSON."""
+    lines: list[str] = []
+    title = data.get("engine", "unknown")
+    lines.append(f"# MaCode Engine Source Map: {_esc_cell(title)}")
+    lines.append("")
+    gen = data.get("generated_at", "")
+    date_s = gen[:10] if gen else ""
+    if date_s:
+        lines.append(f"> 生成日期: {date_s}")
+    lines.append(f"> 引擎版本: {_esc_cell(data.get('version', 'unknown'))}")
+    lines.append(f"> 适配层版本: {_esc_cell(data.get('adapter_version', 'unknown'))}")
+    sr = data.get("source_root")
+    if sr:
+        lines.append(f"> 源码根目录: `{_esc_cell(sr)}`")
+
+    lines.append("")
+    lines.append("## WHITELIST: 推荐探索路径")
+    lines.append("")
+    lines.append("| 标识 | 路径/命令 | 用途 | 优先级 |")
+    lines.append("|------|-----------|------|--------|")
+    for it in data.get("whitelist") or []:
+        pid = _esc_cell(str(it.get("id", "")))
+        raw = _esc_cell(str(it.get("path_raw", "")))
+        purpose = _esc_cell(str(it.get("purpose", "")))
+        pri = _esc_cell(str(it.get("priority", "")))
+        lines.append(f"| {pid} | `{raw}` | {purpose} | {pri} |")
+
+    lines.append("")
+    lines.append("## BLACKLIST: 禁止/不建议探索")
+    lines.append("")
+    lines.append("| 标识 | 路径/命令 | 原因 |")
+    lines.append("|------|-----------|------|")
+    for it in data.get("blacklist") or []:
+        pid = _esc_cell(str(it.get("id", "")))
+        raw = _esc_cell(str(it.get("path_raw", "")))
+        reason = _esc_cell(str(it.get("reason", "")))
+        lines.append(f"| {pid} | `{raw}` | {reason} |")
+
+    lines.append("")
+    lines.append("## EXTENSION: 待补充/可添加")
+    lines.append("")
+    lines.append("| 标识 | 描述 | 状态 |")
+    lines.append("|------|------|------|")
+    for it in data.get("extension") or []:
+        pid = _esc_cell(str(it.get("id", "")))
+        desc = _esc_cell(str(it.get("desc", "")))
+        st = _esc_cell(str(it.get("status", "")))
+        lines.append(f"| {pid} | {desc} | {st} |")
+
+    lines.append("")
+    lines.append("## REDIRECT: Common Pitfall Corrections")
+    lines.append("")
+    lines.append("When you find yourself writing the left column, use the right column instead.")
+    lines.append("")
+    lines.append("| Pitfall | Correct Approach | Reason |")
+    lines.append("|---------|-----------------|--------|")
+    for it in data.get("redirect") or []:
+        pit = _esc_cell(str(it.get("pitfall", "")))
+        cor = _esc_cell(str(it.get("correct", "")))
+        rea = _esc_cell(str(it.get("reason", "")))
+        lines.append(f"| {pit} | {cor} | {rea} |")
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+def normalize_md(text: str) -> str:
+    t = text.replace("\r\n", "\n").strip()
+    return t + "\n"
+
+
+def write_json(data: dict, out_path: Path) -> None:
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    out_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"[sourcemap-sync] {out_path}")
 
 
-def _write_api_txt(data, out_path):
-    """Generate flat engine_api.txt for Host Agent quick-loading."""
+def _write_api_txt(data: dict, out_path: Path) -> None:
     lines = [
         f"# Engine: {data['engine']}",
         f"# Version: {data['version']}  (Adapter: {data['adapter_version']})",
-        f"# Generated: {data['generated_at']}",
+        f"# Generated: {data.get('generated_at', '')}",
         "",
         "## WHITELIST (P0 = core, P1 = common, P2 = advanced)",
         "",
@@ -175,8 +166,7 @@ def _write_api_txt(data, out_path):
     print(f"[sourcemap-sync] {out_path}")
 
 
-def _write_blacklist_txt(data, out_path):
-    """Generate flat engine_blacklist.txt for api-gate.py quick-loading."""
+def _write_blacklist_txt(data: dict, out_path: Path) -> None:
     lines = [
         f"# Engine: {data['engine']}",
         f"# Version: {data['version']}",
@@ -194,99 +184,121 @@ def _write_blacklist_txt(data, out_path):
     print(f"[sourcemap-sync] {out_path}")
 
 
-def sync_engine(engine_name, project_root):
-    """同步单个引擎的 SOURCEMAP。"""
-    md_path = Path(project_root) / "engines" / engine_name / "SOURCEMAP.md"
-    if not md_path.exists():
-        print(f"[sourcemap-sync] SKIP: {md_path} not found", file=sys.stderr)
-        return False
+def write_derived(engine: str, data: dict, root: Path) -> None:
+    """Write SOURCEMAP.md + .agent/context copies."""
+    md_path = root / "engines" / engine / "SOURCEMAP.md"
+    md = markdown_from_json(data)
+    md_path.parent.mkdir(parents=True, exist_ok=True)
+    md_path.write_text(md, encoding="utf-8")
+    print(f"[sourcemap-sync] {md_path}")
 
-    data = parse_sourcemap(md_path)
-    out_path = Path(project_root) / ".agent" / "context" / f"{engine_name}_sourcemap.json"
-    write_json(data, out_path)
+    content_hash = hashlib.sha256(md.encode("utf-8")).hexdigest()
 
-    # Also write flat text files for low-token consumption
-    api_txt = Path(project_root) / ".agent" / "context" / f"{engine_name}_api.txt"
-    _write_api_txt(data, api_txt)
+    enriched = dict(data)
+    enriched["generated_at"] = data.get("generated_at") or datetime.now().isoformat()
+    enriched["source_md"] = f"engines/{engine}/SOURCEMAP.md"
+    enriched["content_hash"] = content_hash
 
-    blacklist_txt = Path(project_root) / ".agent" / "context" / f"{engine_name}_blacklist.txt"
-    _write_blacklist_txt(data, blacklist_txt)
+    out_path = root / ".agent" / "context" / f"{engine}_sourcemap.json"
+    write_json(enriched, out_path)
 
-    return True
+    _write_api_txt(enriched, root / ".agent" / "context" / f"{engine}_api.txt")
+    _write_blacklist_txt(enriched, root / ".agent" / "context" / f"{engine}_blacklist.txt")
 
 
-def check_sync(engine_name, project_root):
-    """检查 JSON 是否与 Markdown 同步（比较内容哈希）。"""
-    md_path = Path(project_root) / "engines" / engine_name / "SOURCEMAP.md"
-    json_path = Path(project_root) / ".agent" / "context" / f"{engine_name}_sourcemap.json"
-
-    if not md_path.exists():
-        return False, f"{md_path} not found"
-    if not json_path.exists():
-        return False, f"{json_path} not found (run sync first)"
-
-    # 读取当前 Markdown 的内容哈希
-    md_content = md_path.read_bytes()
-    current_hash = hashlib.sha256(md_content).hexdigest()
-
-    with open(json_path, encoding="utf-8") as f:
-        data = json.load(f)
-
-    recorded_hash = data.get("content_hash", "")
-    if not recorded_hash:
-        return False, "JSON missing content_hash (legacy, please re-sync)"
-
-    if current_hash != recorded_hash:
-        return False, "SOURCEMAP.md content changed (hash mismatch)"
-
+def check_engine(engine: str, root: Path, validator) -> tuple[bool, str]:
+    jp = root / "engines" / engine / "sourcemap.json"
+    mp = root / "engines" / engine / "SOURCEMAP.md"
+    if not jp.is_file():
+        return False, f"{jp} not found"
+    data = json.loads(jp.read_text(encoding="utf-8"))
+    validate_data(validator, data, str(jp))
+    if not mp.is_file():
+        return False, f"{mp} not found"
+    expected = normalize_md(markdown_from_json(data))
+    actual = normalize_md(mp.read_text(encoding="utf-8"))
+    if actual != expected:
+        return (
+            False,
+            f"SOURCEMAP.md drift from engines/{engine}/sourcemap.json "
+            f"(run: python3 bin/sourcemap-sync.py {engine})",
+        )
     return True, "sync OK"
 
 
-def main():
+def sync_engine(engine: str, root: Path, validator, write_agent: bool = True) -> bool:
+    ed = root / "engines" / engine
+    if not ed.is_dir():
+        print(f"[sourcemap-sync] SKIP: {ed} not a directory", file=sys.stderr)
+        return False
+    jp = ed / "sourcemap.json"
+    if not jp.is_file():
+        print(f"[sourcemap-sync] SKIP: {jp} not found", file=sys.stderr)
+        return False
+    data = json.loads(jp.read_text(encoding="utf-8"))
+    validate_data(validator, data, str(jp))
+    if write_agent:
+        write_derived(engine, data, root)
+    else:
+        md_path = ed / "SOURCEMAP.md"
+        md_path.write_text(markdown_from_json(data), encoding="utf-8")
+        print(f"[sourcemap-sync] {md_path} (write-md-only)")
+    return True
+
+
+def default_engine_from_project(root: Path) -> str:
+    try:
+        import yaml  # type: ignore
+    except ImportError:
+        return "manimgl"
+    try:
+        raw = (root / "project.yaml").read_text(encoding="utf-8")
+        d = yaml.safe_load(raw) or {}
+        de = d.get("defaults") or {}
+        if isinstance(de, dict) and de.get("engine"):
+            return str(de["engine"])
+    except (OSError, TypeError, ValueError):
+        pass
+    return "manimgl"
+
+
+def main() -> None:
     parser = argparse.ArgumentParser(
-        description='Parse engines/{name}/SOURCEMAP.md into structured JSON.',
-        epilog='Outputs .agent/context/{engine}_sourcemap.json for machine consumption.',
+        description="MaCode sourcemap: engines/{engine}/sourcemap.json is canonical.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument('engine', nargs='?', help='Engine name (default: from project.yaml)')
-    parser.add_argument('--all', action='store_true', help='Sync all engines')
-    parser.add_argument('--check', action='store_true',
-                        help='Check if Markdown and JSON are in sync (no write)')
+    parser.add_argument("engine", nargs="?", help="Engine name (default: project.yaml defaults.engine)")
+    parser.add_argument("--all", action="store_true", help="Sync all engines with sourcemap.json")
+    parser.add_argument("--check", action="store_true", help="Verify SOURCEMAP.md matches JSON (no write)")
+    parser.add_argument(
+        "--write-md-only",
+        action="store_true",
+        help="Only regenerate SOURCEMAP.md (no .agent/context)",
+    )
     args = parser.parse_args()
 
-    project_root = Path(__file__).parent.parent.resolve()
+    root = get_project_root()
+    validator = load_schema_validator(root)
 
     if args.all:
-        engines_dir = project_root / "engines"
-        ok = 0
-        for engine_dir in sorted(engines_dir.iterdir()):
-            if engine_dir.is_dir():
-                if sync_engine(engine_dir.name, project_root):
-                    ok += 1
-        print(f"[sourcemap-sync] {ok} engine(s) synced")
+        ok_count = 0
+        engines_dir = root / "engines"
+        for d in sorted(engines_dir.iterdir()):
+            if d.is_dir() and (d / "sourcemap.json").is_file():
+                if sync_engine(d.name, root, validator, write_agent=not args.write_md_only):
+                    ok_count += 1
+        print(f"[sourcemap-sync] {ok_count} engine(s) synced")
         return
 
     if args.check:
-        engine = args.engine
-        if not engine:
-            py = project_root / ".venv" / "bin" / "python"
-            if not py.exists():
-                py = "python3"
-            engine = os.popen(f'{py} -c "import yaml; print(yaml.safe_load(open(\'{project_root}/project.yaml\')).get(\'defaults\',{{}}).get(\'engine\',\'manimgl\'))" 2>/dev/null || echo manimgl"').read().strip()
-
-        is_sync, msg = check_sync(engine, project_root)
-        status = "✓" if is_sync else "✗"
+        engine = args.engine or default_engine_from_project(root)
+        is_ok, msg = check_engine(engine, root, validator)
+        status = "\u2713" if is_ok else "\u2717"
         print(f"[sourcemap-sync] {status} {engine}: {msg}")
-        sys.exit(0 if is_sync else 1)
+        sys.exit(0 if is_ok else 1)
 
-    engine = args.engine
-    if not engine:
-        py = project_root / ".venv" / "bin" / "python"
-        if not py.exists():
-            py = "python3"
-        engine = os.popen(f'{py} -c "import yaml; print(yaml.safe_load(open(\'{project_root}/project.yaml\')).get(\'defaults\',{{}}).get(\'engine\',\'manimgl\'))" 2>/dev/null || echo manimgl"').read().strip()
-
-    if sync_engine(engine, project_root):
+    engine = args.engine or default_engine_from_project(root)
+    if sync_engine(engine, root, validator, write_agent=not args.write_md_only):
         print("[sourcemap-sync] Done")
     else:
         sys.exit(1)

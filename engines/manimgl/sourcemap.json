@@ -1,0 +1,225 @@
+{
+  "engine": "ManimGL",
+  "version": "1.7.2",
+  "adapter_version": "1.0.1",
+  "generated_at": "2026-05-13T17:44:04.063880",
+  "source_md": "engines/manimgl/SOURCEMAP.md",
+  "whitelist": [
+    {
+      "id": "CORE_SCENE",
+      "path_raw": "manimlib/scene/scene.py",
+      "purpose": "Scene 基类，construct() 生命周期",
+      "priority": "P0"
+    },
+    {
+      "id": "CORE_MOBJECT",
+      "path_raw": "manimlib/mobject/mobject.py",
+      "purpose": "Mobject 基类，所有对象的根",
+      "priority": "P0"
+    },
+    {
+      "id": "CORE_GEOMETRY",
+      "path_raw": "manimlib/mobject/geometry.py",
+      "purpose": "Circle, Square, Line, Polygon 等几何体",
+      "priority": "P0"
+    },
+    {
+      "id": "CORE_SHAPES",
+      "path_raw": "manimlib/mobject/shape_matchers.py",
+      "purpose": "SurroundingRectangle, BackgroundRectangle",
+      "priority": "P1"
+    },
+    {
+      "id": "CORE_ANIMATION_CREATION",
+      "path_raw": "manimlib/animation/creation.py",
+      "purpose": "ShowCreation, DrawBorderThenFill",
+      "priority": "P0"
+    },
+    {
+      "id": "CORE_ANIMATION_TRANSFORM",
+      "path_raw": "manimlib/animation/transform.py",
+      "purpose": "Transform, ReplacementTransform",
+      "priority": "P0"
+    },
+    {
+      "id": "CORE_ANIMATION_FADING",
+      "path_raw": "manimlib/animation/fading.py",
+      "purpose": "FadeIn, FadeOut, FadeToColor",
+      "priority": "P0"
+    },
+    {
+      "id": "CORE_ANIMATION_MOVEMENT",
+      "path_raw": "manimlib/animation/movement.py",
+      "purpose": "MoveToTarget, ComplexHomotopy",
+      "priority": "P1"
+    },
+    {
+      "id": "CORE_ANIMATION_INDICATION",
+      "path_raw": "manimlib/animation/indication.py",
+      "purpose": "Flash, FocusOn, Indicate",
+      "priority": "P1"
+    },
+    {
+      "id": "CORE_CAMERA",
+      "path_raw": "manimlib/camera/camera.py",
+      "purpose": "相机控制与取景",
+      "priority": "P1"
+    },
+    {
+      "id": "CORE_TEX",
+      "path_raw": "manimlib/mobject/svg/tex_mobject.py",
+      "purpose": "Tex, TextMobject LaTeX 渲染",
+      "priority": "P1"
+    },
+    {
+      "id": "CORE_TEXT",
+      "path_raw": "manimlib/mobject/svg/text_mobject.py",
+      "purpose": "Text 文本渲染",
+      "priority": "P1"
+    },
+    {
+      "id": "CORE_NUMBER_LINE",
+      "path_raw": "manimlib/mobject/number_line.py",
+      "purpose": "NumberLine 数轴",
+      "priority": "P1"
+    },
+    {
+      "id": "CORE_COORDINATE",
+      "path_raw": "manimlib/mobject/coordinate_systems.py",
+      "purpose": "Axes, ComplexPlane 坐标系",
+      "priority": "P1"
+    },
+    {
+      "id": "CORE_COLOR",
+      "path_raw": "manimlib/utils/color.py",
+      "purpose": "颜色常量与工具",
+      "priority": "P1"
+    },
+    {
+      "id": "CORE_3D",
+      "path_raw": "manimlib/mobject/three_dimensions.py",
+      "purpose": "Sphere, Cube, Prism, Cylinder 等 3D 对象",
+      "priority": "P1"
+    },
+    {
+      "id": "CORE_TABLE",
+      "path_raw": "manimlib/mobject/table.py",
+      "purpose": "Table, MobjectTable 数据表格",
+      "priority": "P1"
+    },
+    {
+      "id": "ADAPTER_TEMPLATES",
+      "path_raw": "engines/manimgl/src/templates/",
+      "purpose": "MaCode 场景基类模板",
+      "priority": "P2"
+    },
+    {
+      "id": "ADAPTER_UTILS",
+      "path_raw": "engines/manimgl/src/utils/",
+      "purpose": "音频同步等工具封装（待创建）",
+      "priority": "P2"
+    }
+  ],
+  "blacklist": [
+    {
+      "id": "MANIMCE_API",
+      "path_raw": "manim/",
+      "reason": "ManimCE 社区版 API，与 ManimGL 不兼容"
+    },
+    {
+      "id": "MANIMCE_SCENE",
+      "path_raw": "manim.scene",
+      "reason": "ManimCE 的 Scene 体系，导入会导致冲突"
+    },
+    {
+      "id": "TEST_SUITE",
+      "path_raw": "manimlib/utils/testing/",
+      "reason": "测试代码，非 API 表面"
+    },
+    {
+      "id": "INTERNAL_CONFIG",
+      "path_raw": "manimlib/config.py",
+      "reason": "全局配置内部实现，修改会破坏环境"
+    },
+    {
+      "id": "INTERNAL_CLI",
+      "path_raw": "manimlib/stream_starter.py",
+      "reason": "CLI 内部启动器，非 API"
+    },
+    {
+      "id": "INTERNAL_SHADER",
+      "path_raw": "manimlib/shaders/",
+      "reason": "GLSL 着色器内部目录，直接修改风险高"
+    },
+    {
+      "id": "BUILD_ARTIFACT",
+      "path_raw": ".agent/tmp/",
+      "reason": "中间产物，非源码"
+    },
+    {
+      "id": "NODE_MODULES",
+      "path_raw": "node_modules/",
+      "reason": "非 Python 引擎目录"
+    },
+    {
+      "id": "VENV_DIR",
+      "path_raw": ".venv-manimgl/",
+      "reason": "Python 虚拟环境，非源码"
+    }
+  ],
+  "extension": [
+    {
+      "id": "ADAPTER_SCENE_BASE",
+      "desc": "`engines/manimgl/src/templates/scene_base.py` — MaCode Scene 模板",
+      "status": "DONE"
+    },
+    {
+      "id": "ADAPTER_AUDIO_SYNC",
+      "desc": "`engines/manimgl/src/utils/audio_sync.py` — 音频节拍同步读取器",
+      "status": "DONE"
+    },
+    {
+      "id": "ADAPTER_FFMPEG_PIPE",
+      "desc": "`engines/manimgl/src/utils/ffmpeg_builder.py` — ffmpeg 管道编码工具",
+      "status": "DONE"
+    },
+    {
+      "id": "SHADER_PIPELINE",
+      "desc": "自定义 GLSL 着色器接入",
+      "status": "DONE"
+    },
+    {
+      "id": "AUDIO_SYNC",
+      "desc": "音频节拍同步（BPM 驱动动画参数）",
+      "status": "TODO"
+    },
+    {
+      "id": "GPU_RENDER",
+      "desc": "CUDA/OpenCL 加速渲染",
+      "status": "WONTFIX"
+    }
+  ],
+  "redirect": [
+    {
+      "pitfall": "Hand-write `\\begin{cases}` in MathTex",
+      "correct": "`utils.latex_helper.cases(...)`",
+      "reason": "MathTex default `align*` cannot nest `cases`"
+    },
+    {
+      "pitfall": "Hand-write `\\begin{bmatrix}` in MathTex",
+      "correct": "`utils.latex_helper.matrix(...)`",
+      "reason": "Same nesting conflict"
+    },
+    {
+      "pitfall": "Hand-write `\\begin{align*}` in MathTex",
+      "correct": "`utils.latex_helper.align_eqns(...)`",
+      "reason": "Double `align*` environment"
+    },
+    {
+      "pitfall": "Hand-write `gl_Position = ...`",
+      "correct": "`utils.shader_builder.Shader().node(...)`",
+      "reason": "GLSL compile errors decoupled from causes"
+    }
+  ],
+  "source_root": ".venv-manimgl/lib/python3.x/site-packages/manimlib/"
+}

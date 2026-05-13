@@ -1,94 +1,85 @@
 #!/usr/bin/env python3
 """bin/api-gate.py
-利用 SOURCEMAP BLACKLIST 做导入静态拦截。
+利用 SOURCEMAP（canonical JSON）BLACKLIST 做导入静态拦截。
 
 用法:
-    bin/api-gate.py <scene_file> <sourcemap_path>
+    bin/api-gate.py <scene_file> <engines/.../sourcemap.json> [--engine <name>]
 
 退出码:
     0 - 通过（API_GATE_OK）
     1 - 发现违规导入（API_GATE_VIOLATIONS）
-    2 - 参数错误或文件缺失
+    2 - 参数错误或文件缺失 / JSON 不可用
 """
+from __future__ import annotations
 
 import argparse
 import json
 import os
 import re
-import subprocess
 import sys
 
 
-def load_blacklist(sourcemap_path):
-    """解析 SOURCEMAP，返回禁止的模块模式列表。优先读取 JSON sourcemap，fallback 到 Markdown。"""
-    patterns = []
+def infer_engine_from_sourcemap_json_path(abs_path: str) -> str | None:
+    """Return engine directory name from .../engines/<engine>/sourcemap.json."""
+    norm = os.path.abspath(abs_path).replace("\\", "/")
+    marker = "/engines/"
+    if marker not in norm:
+        return None
+    rest = norm.split(marker, 1)[1]
+    parts = rest.split("/")
+    if len(parts) < 2:
+        return None
+    if parts[-1] != "sourcemap.json":
+        return None
+    return parts[0]
 
-    # 推断引擎名，如 engines/manim/SOURCEMAP.md -> manim
-    engine = None
-    if sourcemap_path:
-        parts = sourcemap_path.replace('\\', '/').split('/')
-        if len(parts) >= 2 and parts[-1] == 'SOURCEMAP.md':
-            engine = parts[-2]
 
-    if engine:
-        json_path = f".agent/context/{engine}_sourcemap.json"
-        if not os.path.exists(json_path):
-            # 尝试自动同步生成 JSON
-            try:
-                subprocess.run(
-                    ["python3", "bin/sourcemap-sync.py", engine],
-                    check=False,
-                    capture_output=True,
-                )
-            except Exception:
-                pass
+def load_blacklist(sourcemap_json_path: str, engine_cli: str | None = None) -> list[tuple[str, str | None]]:
+    """Parse sourcemap JSON; fail-closed (exit 2) on missing/malformed data."""
+    if not os.path.isfile(sourcemap_json_path):
+        print(f"FATAL: SOURCEMAP JSON not found: {sourcemap_json_path}", file=sys.stderr)
+        sys.exit(2)
 
-        if os.path.exists(json_path):
-            try:
-                with open(json_path, encoding='utf-8') as f:
-                    data = json.load(f)
-                for item in data.get("blacklist", []):
-                    path_raw = item.get("path_raw", "") if isinstance(item, dict) else ""
-                    if path_raw:
-                        if path_raw.startswith("@"):
-                            module = path_raw
-                        else:
-                            module = _path_to_module(path_raw)
-                        patterns.append((path_raw, module))
-                return patterns
-            except (json.JSONDecodeError, OSError, KeyError, TypeError) as e:
-                print(f"WARN: Failed to load JSON sourcemap: {e}", file=sys.stderr)
-                # fallback to markdown below
+    inferred = infer_engine_from_sourcemap_json_path(sourcemap_json_path)
+    if engine_cli:
+        if inferred and inferred != engine_cli:
+            print(
+                f"FATAL: --engine '{engine_cli}' does not match path (expected engine '{inferred}' from file path)",
+                file=sys.stderr,
+            )
+            sys.exit(2)
+    elif not inferred:
+        print(
+            "FATAL: Cannot infer engine from sourcemap path; pass --engine <name>",
+            file=sys.stderr,
+        )
+        sys.exit(2)
 
-    # Fallback: 旧的 Markdown 解析逻辑
     try:
-        with open(sourcemap_path, encoding='utf-8') as f:
-            content = f.read()
-    except FileNotFoundError:
-        print(f"FATAL: SOURCEMAP not found: {sourcemap_path}", file=sys.stderr)
-        sys.exit(2)
-    except OSError as e:
-        print(f"FATAL: Cannot read SOURCEMAP: {e}", file=sys.stderr)
+        with open(sourcemap_json_path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"FATAL: Cannot read SOURCEMAP JSON: {e}", file=sys.stderr)
         sys.exit(2)
 
-    # 提取 BLACKLIST 段（到下一个 ## 为止）
-    m = re.search(r'^## BLACKLIST:.*?\n(.*?)(?=\n## |\Z)', content, re.DOTALL | re.MULTILINE)
-    if not m:
-        print("WARN: BLACKLIST section not found in SOURCEMAP", file=sys.stderr)
-        return patterns
+    patterns: list[tuple[str, str | None]] = []
+    entries = data.get("blacklist", [])
+    if not isinstance(entries, list):
+        print("FATAL: SOURCEMAP JSON blacklist is not a list", file=sys.stderr)
+        sys.exit(2)
 
-    for line in m.group(1).splitlines():
-        if not line.startswith('|') or ' 标识 ' in line:
+    for item in entries:
+        if not isinstance(item, dict):
             continue
-        parts = [p.strip() for p in line.split('|')]
-        if len(parts) >= 4:
-            path_raw = parts[2].strip('`').strip()
-            if path_raw and path_raw != '路径/命令':
-                if path_raw.startswith("@"):
-                    module = path_raw
-                else:
-                    module = _path_to_module(path_raw)
-                patterns.append((path_raw, module))
+        path_raw = item.get("path_raw", "")
+        path_raw = path_raw.strip() if isinstance(path_raw, str) else ""
+        if not path_raw:
+            continue
+        if path_raw.startswith("@"):
+            module = path_raw
+        else:
+            module = _path_to_module(path_raw)
+        patterns.append((path_raw, module))
 
     return patterns
 
@@ -266,11 +257,16 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument('scene_file', help='Path to scene source file (.py or .tsx)')
-    parser.add_argument('sourcemap_path', help='Path to engine SOURCEMAP.md')
+    parser.add_argument('sourcemap_json', help='Path to engines/{engine}/sourcemap.json')
+    parser.add_argument(
+        '--engine',
+        default=None,
+        help='Explicit engine id (must match path engines/<engine>/sourcemap.json when inferable)',
+    )
     args = parser.parse_args()
 
     scene_file = args.scene_file
-    sourcemap_path = args.sourcemap_path
+    sourcemap_path = args.sourcemap_json
 
     if not os.path.exists(scene_file):
         print(f"FATAL: Scene file not found: {scene_file}", file=sys.stderr)
@@ -284,7 +280,7 @@ def main():
         print(f"FATAL: Cannot read scene: {e}", file=sys.stderr)
         sys.exit(2)
 
-    blacklist = load_blacklist(sourcemap_path)
+    blacklist = load_blacklist(sourcemap_path, args.engine)
     all_violations = []
 
     is_js = scene_file.endswith(('.ts', '.tsx', '.js', '.mjs'))
@@ -313,7 +309,7 @@ def main():
             print("API_GATE_VIOLATIONS:")
             for v in all_violations:
                 print(f"  - {v}")
-            print(f"\nFix: consult {sourcemap_path} WHITELIST for safe alternatives.",
+            print(f"\nFix: consult {sourcemap_path} (whitelist in engines/*/sourcemap.json + REDIRECT).",
                   file=sys.stderr)
         sys.exit(1)
     else:

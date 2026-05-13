@@ -2,10 +2,10 @@
 
 Covers:
   - _path_to_module: path normalization, dynamic paths, edge cases
-  - check_scene_content: blacklist import detection
+  - check_python_imports: blacklist import detection
   - check_sandbox: dangerous call detection
   - check_syntax_gate: raw syntax pattern detection
-  - load_blacklist: JSON and Markdown parsing
+  - load_blacklist: engines/{engine}/sourcemap.json only
   - main: CLI exit codes
 """
 
@@ -132,55 +132,65 @@ class TestCheckSyntaxGate:
 
 
 class TestLoadBlacklist:
-    def test_json_sourcemap(self):
+    def test_loads_from_sourcemap_json(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            os.chdir(tmpdir)
-            os.makedirs(".agent/context", exist_ok=True)
+            jp = os.path.join(tmpdir, "engines", "manim", "sourcemap.json")
+            os.makedirs(os.path.dirname(jp), exist_ok=True)
             data = {"blacklist": [{"path_raw": "manimlib/"}, {"path_raw": "mobject/types/"}]}
-            with open(".agent/context/manim_sourcemap.json", "w") as f:
+            with open(jp, "w", encoding="utf-8") as f:
                 json.dump(data, f)
 
-            sm_path = os.path.join(tmpdir, "engines", "manim", "SOURCEMAP.md")
-            os.makedirs(os.path.dirname(sm_path), exist_ok=True)
-            open(sm_path, "w").close()
-
-            result = api_gate.load_blacklist(sm_path)
+            result = api_gate.load_blacklist(jp)
             modules = [m for _, m in result]
             assert "manimlib" in modules
             assert "mobject.types" in modules
 
-    def test_markdown_fallback(self):
+    def test_engine_mismatch_exit_2(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            sm_path = os.path.join(tmpdir, "SOURCEMAP.md")
-            with open(sm_path, "w") as f:
-                f.write("## BLACKLIST: forbidden\n")
-                f.write("| 标识 | 路径/命令 | 说明 |\n")
-                f.write("|---|---|---|\n")
-                f.write("| bad | `manimlib/` | old api |\n")
-                f.write("| bad | `mobject/types/` | internal |\n")
+            jp = os.path.join(tmpdir, "engines", "manim", "sourcemap.json")
+            os.makedirs(os.path.dirname(jp), exist_ok=True)
+            with open(jp, "w", encoding="utf-8") as f:
+                json.dump({"blacklist": []}, f)
+            with pytest.raises(SystemExit) as exc_info:
+                api_gate.load_blacklist(jp, engine_cli="manimgl")
+            assert exc_info.value.code == 2
 
-            with mock.patch("os.path.exists", return_value=False):
-                result = api_gate.load_blacklist(sm_path)
-            modules = [m for _, m in result]
-            assert "manimlib" in modules
-            assert "mobject.types" in modules
+    def test_path_not_inferable_without_engine_exit_2(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            jp = os.path.join(tmpdir, "sourcemap.json")
+            open(jp, "w", encoding="utf-8").write("{}")
+            with pytest.raises(SystemExit) as exc_info:
+                api_gate.load_blacklist(jp)
+            assert exc_info.value.code == 2
+
+    def test_non_inferable_ok_with_matching_engine_cli(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            jp = os.path.join(tmpdir, "sourcemap.json")
+            with open(jp, "w", encoding="utf-8") as f:
+                json.dump({"blacklist": [{"path_raw": "badpkg/"}]}, f)
+            result = api_gate.load_blacklist(jp, engine_cli="manim")
+            assert any(m == "badpkg" for _, m in result)
 
     def test_missing_sourcemap_exits(self):
         with pytest.raises(SystemExit) as exc_info:
-            api_gate.load_blacklist("/nonexistent/SOURCEMAP.md")
+            api_gate.load_blacklist("/nonexistent/engines/manim/sourcemap.json")
         assert exc_info.value.code == 2
 
 
 class TestMain:
+    def _write_sourcemap(self, tmpdir, engine="manim"):
+        jp = os.path.join(tmpdir, "engines", engine, "sourcemap.json")
+        os.makedirs(os.path.dirname(jp), exist_ok=True)
+        with open(jp, "w", encoding="utf-8") as f:
+            json.dump({"blacklist": []}, f)
+        return jp
+
     def test_clean_scene_exits_0(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             scene = os.path.join(tmpdir, "scene.py")
-            with open(scene, "w") as f:
+            with open(scene, "w", encoding="utf-8") as f:
                 f.write("import numpy as np\n")
-            sm = os.path.join(tmpdir, "SOURCEMAP.md")
-            with open(sm, "w") as f:
-                f.write("## BLACKLIST\n")
-
+            sm = self._write_sourcemap(tmpdir)
             with mock.patch.object(sys, "argv", ["api-gate.py", scene, sm]):
                 with pytest.raises(SystemExit) as exc_info:
                     api_gate.main()
@@ -189,23 +199,18 @@ class TestMain:
     def test_violation_scene_exits_1(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             scene = os.path.join(tmpdir, "scene.py")
-            with open(scene, "w") as f:
+            with open(scene, "w", encoding="utf-8") as f:
                 f.write("import subprocess\n")
-            sm = os.path.join(tmpdir, "SOURCEMAP.md")
-            with open(sm, "w") as f:
-                f.write("## BLACKLIST\n")
-
+            sm = self._write_sourcemap(tmpdir)
             with mock.patch.object(sys, "argv", ["api-gate.py", scene, sm]):
                 with pytest.raises(SystemExit) as exc_info:
                     api_gate.main()
                 assert exc_info.value.code == 1
 
     def test_missing_scene_exits_2(self):
-        sm = os.path.join(tempfile.gettempdir(), "SOURCEMAP.md")
-        with open(sm, "w") as f:
-            f.write("## BLACKLIST\n")
-
-        with mock.patch.object(sys, "argv", ["api-gate.py", "/nonexistent/scene.py", sm]):
-            with pytest.raises(SystemExit) as exc_info:
-                api_gate.main()
-            assert exc_info.value.code == 2
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sm = self._write_sourcemap(tmpdir)
+            with mock.patch.object(sys, "argv", ["api-gate.py", "/nonexistent/scene.py", sm]):
+                with pytest.raises(SystemExit) as exc_info:
+                    api_gate.main()
+                assert exc_info.value.code == 2
