@@ -1,3 +1,6 @@
+> 本文件已弃用，请阅读 CHANGELOG.md 与 docs/roadmap.md。
+>
+
 # MaCode 项目进度追踪
 
 ## 当前会话完成项（2026-05-09）

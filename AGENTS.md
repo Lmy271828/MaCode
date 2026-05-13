@@ -183,7 +183,7 @@ Skill 本质是一份带有 YAML frontmatter 的 Markdown 文档（`.agents/skil
 | 层级 | 文件 | 内容 | 何时查阅 |
 |------|------|------|----------|
 | 第一层 | `SKILL.md` | 触发条件 + 核心指令摘要 | 判断 skill 是否适用 |
-| 第二层 | `workflows/` | 工作流模板（单场景渲染、检查-修复循环、Multi-Agent 协调） | 执行具体任务时 |
+| 第二层 | `workflows/` | 工作流模板（单场景渲染、检查-修复循环） | 执行具体任务时 |
 | 第三层 | `prompts/system-prompt.md` | 完整的 Agent 角色定义和安全约束 | 需要完整上下文时 |
 | 第四层 | `references/` | API 速查表、退出码表、**引擎参考索引** | 遇到特定问题时 |
 | 第五层 | `examples/` | 典型场景的完整 prompt 示例 | 需要复用模式时 |
@@ -251,8 +251,8 @@ macode render scenes/02_shader_mc/ --fps 30 --duration 3 --width 1920 --height 1
 macode mc serve scenes/02_shader_mc/        # 启动 dev server，输出随机端口
 macode mc stop scenes/02_shader_mc/         # 停止 dev server
 
-# 单帧截图（复用已有 dev server 或启动临时实例）
-node engines/motion_canvas/scripts/snapshot.mjs \
+# 单帧截图（snapshot.mjs 为 render.mjs 薄封装，或直接）
+node engines/motion_canvas/scripts/render.mjs --snapshot \
   scenes/02_shader_mc/scene.tsx snapshot.png 1.5 30 1920 1080
 ```
 
@@ -268,18 +268,7 @@ node engines/motion_canvas/scripts/snapshot.mjs \
 ```
 `shaders` 列表中的 Layer 2 素材会在渲染前自动预渲染为 PNG 帧序列，供 `ShaderFrame` 节点消费。
 
-**并发优化 — Browser Pool**：
-多幕并发渲染时，各场景共享同一个 Chromium Browser 实例（通过 `browser.newContext()` 隔离），避免每幕独立启动 ~150MB 的 Chromium 进程：
-- `engines/motion_canvas/scripts/browser-pool.mjs` — 自动发现/启动 pool server，`acquireBrowser()` 返回远程 Browser
-- `playwright-render.mjs` 每次渲染完成后只关闭 Context，不关闭 Browser
-- 4 幕并发预期内存节省：600MB → ~200MB
-
-**Dev Server 懒回收**：
-`--keep-server` 保留的 dev server 不会永久驻留，`server-guardian.mjs` 会定期扫描并自动 stop 空闲实例：
-- `serve.mjs` 启动 dev server 时自动拉起 guardian daemon
-- `state.json` 记录 `lastUsedAt`，`render-cli.mjs` 复用时自动刷新
-- 默认 TTL 5 分钟，guardian 每 60s 扫描一次；无存活 server 时 10 分钟后自毁
-- 手动扫描：`node engines/motion_canvas/scripts/server-guardian.mjs`
+**Harness 2.0 CLI（Sprint 3）**：`engines/motion_canvas/scripts/render.mjs` 合并了原 `serve.mjs` / `stop.mjs` / `playwright-render.mjs`：批量渲染时在同一进程内拉起 Vite、Playwright 抓帧、再杀掉 dev server；`macode mc serve|stop` 映射为 `render.mjs --serve-only` 与 `render.mjs --stop`。不再使用独立的 Browser Pool 与 `server-guardian.mjs`。
 
 ### 4.3 批量渲染与后处理
 
@@ -409,7 +398,9 @@ class MyScene(NarrativeScene):
 
 ### 4.7 SOURCEMAP 协议 —— Agent 的安全地图
 
-SOURCEMAP 是每个引擎目录下的结构化黑白名单文档（`engines/{name}/SOURCEMAP.md`）。它不是给 Agent 看的文档，而是 **Harness 用来约束和引导 Agent 的协议**。
+`engines/{name}/sourcemap.json` 是黑白名单与安全元数据的 **唯一机器真源**。同目录下的 `SOURCEMAP.md` 是由 `bin/sourcemap-sync.py` **从 JSON 生成**的人类可读视图；若二者不一致，`sourcemap-sync.py --check` 会报错。
+
+它不是给使用者 Agent随意编辑的草稿，而是 **Harness 用来约束和引导 Agent 的协议**（人类维护者修改 JSON → 再生 MD）。
 
 **核心原则**：
 - **使用者 Agent 只读** SOURCEMAP，通过 `macode inspect` 查询 API
@@ -419,12 +410,10 @@ SOURCEMAP 是每个引擎目录下的结构化黑白名单文档（`engines/{nam
 **Agent 工作流中的 SOURCEMAP**：
 
 ```bash
-# 1. 启动时自动加载（macode CLI 内置）
+# 1. 启动时自动加载（macode CLI / setup）
 python3 bin/sourcemap-sync.py --all
-# → 校验 engines/{engine}/SOURCEMAP.md 存在且格式正确
-# → 生成 .agent/context/{engine}_sourcemap.json（机器接口）
-# → 生成 .agent/context/{engine}_api.txt（低 Token 速查）
-# → 生成 .agent/context/{engine}_blacklist.txt（快速加载）
+# → 校验 engines/{engine}/sourcemap.json（jsonschema）
+# → 写回同源 SOURCEMAP.md + .agent/context/{engine}_sourcemap.json 等副本
 
 # 2. 编码前查询 API
 macode inspect --grep "NumberLine\|Axes\|MathTex"
@@ -432,7 +421,7 @@ macode inspect --grep "NumberLine\|Axes\|MathTex"
 
 # 3. 渲染前自动审查（pipeline/render.sh 内置）
 pipeline/render.sh scenes/02_demo/
-# → api-gate.py 检查 scene.py 是否包含 BLACKLIST 导入
+# → api-gate.py 对照 engines/<engine>/sourcemap.json BLACKLIST（与 manifest.engine 对齐）
 # → 若发现 "import manimlib" → 立即阻断，提示修复
 
 # 4. 出错时定向诊断（engines/*/scripts/render.sh 内置）
@@ -446,19 +435,20 @@ pipeline/render.sh scenes/02_demo/
 |------|------|---------|
 | `sourcemap-version-check.py` | 检测引擎版本漂移 | `setup.sh` 自动调用；`macode status` 显示 |
 | `sourcemap-scan-api.py` | 扫描未覆盖的公共 API / 适配层文件 | 引擎升级后手动运行，生成建议清单 |
-| `sourcemap-sync.py` | Markdown → JSON + flat text | `setup.sh` 自动调用；修改 `.md` 后手动调用 |
-| `sourcemap-lint.py` | Markdown schema 校验 | `sourcemap-sync.py` 内部调用 |
-| `validate_sourcemap.sh` | 路径存在性验证 | 修改 WHITELIST/BLACKLIST 路径后手动运行 |
+| `sourcemap-sync.py` | JSON（真源）→ SOURCEMAP.md + `.agent/context` | `setup.sh` 自动调用；改 JSON 后手动 `sync` |
+| `engines/*/scripts/validate_sourcemap.sh` | WHITELIST/BLACKLIST 路径存在性 | 改路径后或与 CI 对齐时运行 |
+
+薄封装：`macode sourcemap validate|generate-md|scan-api|version-check`（见 `bin/macode`）。
 
 ```bash
-# 快速健康检查（集成在 macode status 中）
+# 快速健康检查（也见 macode sourcemap version-check）
 python3 bin/sourcemap-version-check.py --all
-# → 报告引擎版本与 SOURCEMAP 声明是否一致
+# → 报告 engines/*/sourcemap.json version 字段与已安装引擎是否一致
 
 # 扫描 API 覆盖缺口
 python3 bin/sourcemap-scan-api.py --all
 # → 列出适配层新文件、引擎公共类/函数中未在 WHITELIST 注册的项目
-# → 开发者审核后选择性加入 SOURCEMAP.md
+# → 开发者审核后选择性加入 engines/*/sourcemap.json（再 generate-md）
 ```
 
 **SOURCEMAP 维护触发条件**：
@@ -467,13 +457,14 @@ python3 bin/sourcemap-scan-api.py --all
 - 适配层新增代码（`engines/{name}/src/` 下新增文件）→ `scan-api` 会检测到
 - 扩展计划变更（EXTENSION 中的 TODO → DONE/WONTFIX）
 
-**验证**：生成或修改 SOURCEMAP.md 后必须运行：
+**验证**：修改 **sourcemap.json**（真源）后：
 ```bash
-python3 bin/sourcemap-lint.py engines/{name}/SOURCEMAP.md       # 格式校验
-bash engines/{name}/scripts/validate_sourcemap.sh                # 路径存在性
-python3 bin/sourcemap-sync.py {name}                             # 同步 JSON
-python3 bin/sourcemap-version-check.py {name}                    # 版本匹配
+python3 bin/sourcemap-sync.py --check {name}                 # MD 与 JSON 一致
+bash engines/{name}/scripts/validate_sourcemap.sh            # 路径存在性
+python3 bin/sourcemap-sync.py {name}                       # 再生 SOURCEMAP.md / .agent/context
+python3 bin/sourcemap-version-check.py {name}                # 版本匹配
 ```
+或 `macode sourcemap validate {name}`（含 `--check` + `validate_sourcemap.sh`）。
 
 ### 4.8 Layout Compiler 工作流
 
@@ -546,7 +537,7 @@ MaCode 采用**纵深防御**：从提示词到运行时到提交拦截到权限
 bin/security-run.sh scenes/01_test/
 
 # 独立调用（调试用）
-bin/api-gate.py        scenes/01_test/scene.py engines/manim/SOURCEMAP.md
+bin/api-gate.py        scenes/01_test/scene.py engines/manim/sourcemap.json --engine manim
 bin/sandbox-check.py   scenes/01_test/scene.py
 bin/primitive-gate.py  scenes/01_test/
 bin/fs-guard.py        scenes/01_test/
@@ -640,17 +631,19 @@ jq . .agent/security/audit.log
 
 ## 6. 引擎选型策略
 
-### 6.1 默认引擎：ManimGL（.py 场景）
+项目级默认引擎以仓库根目录 `project.yaml` 中的 `defaults.engine` 为唯一真源。The canonical default engine is `defaults.engine` in `project.yaml` at the repository root.
+
+### 6.1 ManimGL（.py 场景）
 
 - **理由**：3b1b 实际使用的引擎，OpenGL 实时预览，开发迭代效率最高。Agent 写 `from manimlib import *` 即可获得完整的数学动画抽象。
-- **定位**：Agent 快速迭代阶段的**默认引擎**。
+- **定位**：适合 Agent 在本地快速迭代 `.py` 场景。
 - **约束**：必须通过 `engines/manimgl/scripts/render.sh` / `dev.sh` 调用。
 
-### 6.2 默认引擎：Motion Canvas（.tsx 场景）
+### 6.2 Motion Canvas（.tsx 场景）
 
 - **理由**：浏览器 WebGL 热重载，Shader 实时编译，数据可视化/UI 布局能力强。
-- **定位**：`.tsx` 扩展名场景的**默认引擎**；Shader 特效、数据可视化、交互式内容的首选。
-- **约束**：通过 Harness 2.0（`render-cli.mjs` / `serve.mjs`）统一入口。`bin/macode render` 自动识别 `manifest.json` 的 `engine: motion_canvas` 并路由。
+- **定位**：适合声明式 `.tsx` 场景；Shader 特效、数据可视化、交互式内容的首选。
+- **约束**：通过 Harness 2.0 — `engines/motion_canvas/scripts/render.mjs`（统一抓帧与可选 dev server）。`bin/macode render` 自动识别 `manifest.json` 的 `engine: motion_canvas` 并路由。
 - **架构**：Layer 2 shader 素材（LYGIA）由 `ShaderFrame.tsx` 通过浏览器 WebGL2 实时编译渲染；Playwright 在 Chromium 中抓帧输出 `frame_%04d.png`。
 
 ### 6.3 生产引擎：ManimCE（CI/无头环境专用）
@@ -770,7 +763,7 @@ scenes/
 | `bin/render-all.sh` | 批量渲染 | `bin/render-all.sh --parallel 4` | 所有场景的 `final.mp4` |
 | `bin/macode status` | 项目状态 | `bin/macode status` | 文本摘要 |
 | `bin/macode check <scene_dir>` | 静态 + 帧检查 | `macode check scenes/01_test --static` | 检查报告 JSON |
-| `bin/macode cleanup [--dry-run]` | 清理 dead PID 和过期 claim | `macode cleanup --dry-run` | 清理报告 |
+| `bin/macode cleanup [--dry-run]` | 清理 dead PID（stalled）与可选日志裁剪 | `macode cleanup --dry-run` | 清理报告 |
 | `bin/install-hooks.sh [--check]` | 安装/检查 git hooks | `bin/install-hooks.sh --check` | 安装报告或状态检查 |
 | `bin/macode dry-run <scene_file>` | 预渲染验证（语法、导入、LaTeX） | `macode dry-run scenes/01_test/scene.py` | 通过/失败 + 问题列表 |
 | `bin/calc-preview-duration.py <manifest>` | 计算预览时长 | `calc-preview-duration.py scenes/01_test/manifest.json` | 预览秒数（如 `3.0`） |
@@ -778,10 +771,10 @@ scenes/
 | `bin/watch-file.sh <file>` | 轮询监听文件变化 | `watch-file.sh scene.py --exec "echo changed"` | 变化时执行命令 |
 | `bin/macode inspect --grep <re>` | 查询 API | `bin/macode inspect --grep "Circle\|MathTex"` | 匹配的 WHITELIST 条目 |
 | `cat .agents/skills/{engine}/SKILL.md` | 引擎 API 参考 | `cat .agents/skills/manimce-best-practices/SKILL.md` | 完整引擎 API 文档 |
-| `bin/api-gate.py <scene.py> <SOURCEMAP>` | 代码审查 | `bin/api-gate.py scenes/01_test/scene.py engines/manim/SOURCEMAP.md` | 退出码 0/1 + 违规列表 |
+| `bin/api-gate.py <scene.py> engines/<engine>/sourcemap.json [--engine]` | 代码审查 | `bin/api-gate.py scenes/01_test/scene.py engines/manim/sourcemap.json --engine manim` | 退出码 0/1（违规）/2（参数或 JSON）
 | `bin/sourcemap-version-check.py` | SOURCEMAP 版本漂移检测 | `python3 bin/sourcemap-version-check.py --all` | 每个引擎的匹配状态 |
 | `bin/sourcemap-scan-api.py` | 扫描未覆盖的公共 API | `python3 bin/sourcemap-scan-api.py --all` | 建议加入 WHITELIST 的候选 |
-| `bin/sourcemap-sync.py [engine]` | Markdown → JSON/text 同步 | `python3 bin/sourcemap-sync.py --all` | `.agent/context/{engine}_*.json/txt` |
+| `bin/sourcemap-sync.py [engine] \| --all \| --check` | JSON ↔ 视图与 agent 上下文 | `python3 bin/sourcemap-sync.py --all` | `.agent/context/*` + 各引擎 `SOURCEMAP.md`
 | `bin/sourcemap-read <engine> <section>` | 查询 JSON sourcemap | `sourcemap-read manim whitelist --level P0` | 筛选后的条目列表 |
 | `bin/detect-hardware.sh` | 硬件检测 | `bash bin/detect-hardware.sh` | `.agent/hardware_profile.json` |
 | `bin/select-backend.sh` | 后端选择 | `bash bin/select-backend.sh` | `gpu` / `d3d12` / `cpu` / `headless` |
@@ -920,79 +913,33 @@ python3 bin/signal-check.py --scene 01_test
 
 ---
 
-## 12. Multi-Agent 并发协调
+## 12. 并发与宿主模型（不含 Multi-Agent 协调）
 
-MaCode 支持多个独立 Agent 实例安全并发地操作同一项目，各自负责不同 scene 的 detect → fix → re-render → re-verify 循环。
+PRD 不包含跨进程 Multi-Agent：**不在 Harness 层做 scene claim、排队或 exit 4/5**。同一项目内若要并行渲染，请自行用外层编排（或通过 `render-all`/composite 的线程池在本机并行**不同目录**）。
 
-### 12.1 核心机制
+仍保留的工程事实：
 
-| 机制 | 实现 | 路径 |
-|------|------|------|
-| **Scene Claim** | 文件系统原子 claim | `.agent/tmp/{scene}/.claimed_by` |
-| **全局并发限制** | claim 计数软限制 | `project.yaml` → `max_concurrent_scenes` |
-| **Check Report 锁** | POSIX `flock` | `.agent/check_reports/*.json.lock` |
-| **Git 锁** | `flock` 串行化 commit | `.agent/.git_lock` |
-| **端口原子分配** | `bind()` 抢占 | `pipeline/render-scene.py` |
-| **Agent 身份** | 环境变量注入 | `MACODE_AGENT_ID` |
+| 机制 | 用途 |
+|------|------|
+| **Check Report 锁** | POSIX `flock`，避免并行写同一检查报告 JSON |
+| **Git 锁** | `agent-run.sh` / `.agent/.git_lock` 串行化 commit |
+| **端口抢占** | 渲染前通过 `bind()` 分配空闲端口（非跨 Agent 协议）|
 
-### 12.2 Agent 使用方式
+`project.yaml` 的 `max_concurrent_scenes` 仍可用于 **本机** `render-all` / composite 的并行上限，与已过期的「全局 claim 排队」语义无关。
 
-```bash
-# 每个 Agent 设置唯一 ID
-export MACODE_AGENT_ID="agent-$(hostname)-$$"
+### 12.1 Stale 状态清理
 
-# 直接渲染（自动 claim → 渲染 → 释放 claim）
-macode render scenes/01_test/
-
-# 渲染冲突时的行为：
-#   exit 3 — awaiting_review（需要人工审批）
-#   exit 4 — claimed（已被其他 Agent 占用）
-#   exit 5 — queued（全局并发超限）
-```
-
-### 12.3 任务队列（可选）
-
-轻量级文件系统队列，无需 Redis：
+渲染进程崩溃后，`state.json` 可能长时间停留在 `running`。清理：
 
 ```bash
-# 扫描 scenes/ 生成待处理任务
-mkdir -p .agent/queue/{pending,claimed,done}
-
-# Agent 从 pending 中 pick，原子 rename 到 claimed
-mv .agent/queue/pending/01_test.json .agent/queue/claimed/01_test_agent-A.json
-
-# 完成后移动到 done
-mv .agent/queue/claimed/01_test_agent-A.json .agent/queue/done/01_test_agent-A_$(date +%s).json
-```
-
-Dashboard 实时暴露队列状态：`GET /api/queue`
-
-### 12.4 Stale 状态清理
-
-Agent crash 后可能留下：
-- `.claimed_by` 永久占用（其他 Agent 无法处理该 scene）
-- `state.json` 永久 `running`（Dashboard 显示错误）
-
-清理工具：
-```bash
-# 扫描并修复（dry-run 先预览）
 python3 bin/cleanup-stale.py --dry-run
 python3 bin/cleanup-stale.py
-
-# 手动紧急释放某个 scene
-rm .agent/tmp/{scene}/.claimed_by
 ```
 
-### 12.5 最佳实践
-
-1. **每个 Agent 设置唯一 `MACODE_AGENT_ID`**，便于 Dashboard 追踪
-2. **渲染前检查冲突**：如果收到 `exit 4`（claimed），等待 30 秒后重试，或换另一个 scene
-3. **定期运行 cleanup-stale**：在 cron 或 Agent 启动时执行
-4. **不要手动删除 `.claimed_by.lock`**：它是 flock 的锁文件，删除可能导致竞争
-5. **Composite 子 segment 自动跳过 claim**：`render-scene.py --no-claim` 用于内部 composite 调用
+可选 `--logs`：按保留策略裁剪 `.agent/log/*.log`。
 
 ---
 
 *文档版本：v0.4*  
 *设计原则：UNIX Philosophy + Host Agent "Bash is All You Need"*  
-*状态：Phase 0-9 完成，Multi-Agent 基础设施就绪，SOURCEMAP 自动更新 + Git hooks 版本化*
+*状态：Phase 0-9 完成；单宿主渲染与检查管线就绪，SOURCEMAP 自动更新 + Git hooks 版本化*

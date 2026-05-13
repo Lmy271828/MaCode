@@ -81,6 +81,18 @@ node bin/dashboard-server.mjs --port 3000
 
 > 开发/测试环境请使用 `bin/setup-dev.sh`（额外安装 pytest、ruff 并自动运行 smoke 测试）。
 
+### 可选：渲染时人工标记坏帧（Copilot feedback）
+
+渲染管道**不会**自动启动本工具。若在本地交互调试时希望在出帧过程中用 **Ctrl+F** 记录当前帧序号与备注，可在**另一终端**、仓库根目录执行：
+
+```bash
+python3 bin/copilot-feedback.py watch <场景目录名>
+# 当渲染子进程有已知 PID、希望在进程结束后自动退出 watch 时：
+python3 bin/copilot-feedback.py watch <场景目录名> --pid <ENGINE_PID>
+```
+
+记录会追加到 `.agent/signals/frame_feedback.jsonl`。字段约定见 `docs/task-state-schema.md` 与源码注释。
+
 ## 目录结构
 
 ```text
@@ -91,7 +103,7 @@ macode/
 │   ├── cache/              # 帧级缓存（按内容哈希寻址）
 │   └── log/                # 全局渲染日志
 ├── engines/                # 渲染引擎适配层
-│   ├── manim/              #   ManimCE（Python，默认 batch 引擎）
+│   ├── manim/              #   ManimCE（Python，batch / CI 常用）
 │   │   ├── SOURCEMAP.md    #     源码地图（Agent 的 API 导航）
 │   │   ├── scripts/        #     render.sh, inspect.sh, validate_sourcemap.sh
 │   │   └── src/            #     适配层模板与工具（scene_base, latex_helper, ffmpeg_builder...）
@@ -272,11 +284,13 @@ pipeline/add_audio.sh output/lecture.mp4 assets/bgm.mp3 output/final.mp4
 
 ## 引擎与环境管理
 
-| 引擎 | 语言 | 模式 | 状态 | 适用场景 |
-|------|------|------|------|----------|
-| ManimCE | Python | batch | **默认** | 3Blue1Brown 风格、LaTeX 公式、几何动画 |
-| ManimGL | Python | interactive | 预览 | Grant Sanderson 原版，实时 OpenGL 交互 |
-| Motion Canvas | TypeScript | batch | 备选 | 热重载迭代、Web 原生导出 |
+默认引擎以仓库根目录 `project.yaml` 的 `defaults.engine` 为唯一真源。The canonical default engine is `defaults.engine` in `project.yaml` at the repository root.
+
+| 引擎 | 语言 | 模式 | 适用场景 |
+|------|------|------|----------|
+| ManimCE | Python | batch | CI / 无头、确定性输出、LaTeX 与几何动画 |
+| ManimGL | Python | interactive | 本地 OpenGL 预览、快速迭代 |
+| Motion Canvas | TypeScript | batch | 热重载、Shader、Web 原生工作流 |
 
 ### 环境隔离原则
 
@@ -373,34 +387,23 @@ bin/human-tools/agent-shell
 | 6 | ManimGL + SOURCEMAP 硬化 + 语法防火墙 | ✅ |
 | 7 | WSL2 GPU 加速 — Mesa D3D12 直通 | ✅ |
 | 8 | Harness 2.0 — 编排/执行严格分离 + macode-run | ✅ |
-| 9 | Multi-Agent 并发协调 — claim / flock / 端口原子分配 | ✅ |
+| 9 | Harness 单机并发（本机并行、锁、macode-run） | ✅ |
 
 详见 [`docs/progress.md`](docs/progress.md)。
 
-## Multi-Agent 并发协调
+## 本机并行与锁
 
-MaCode 支持多个独立 Agent 实例安全并发地操作同一项目：
+并行渲染多场不同 scene 时请使用 `render-all` / composite 自带的线程池上限（`project.yaml` → `max_concurrent_scenes`）。Harness **不做**跨进程 Multi-Agent scene claim／排队（无 `.claimed_by`、无 exit 4/5）。
+
+- **Check Report**：`macode check` 使用 POSIX `flock`，并发 check 同一 scene 不丢失 issue  
+- **Git**：`agent-run.sh` 使用 `.agent/.git_lock` 串行化 commit  
+- **端口**：MC dev server 通过 `bind()` 抢占空闲端口  
+- **Stale**：`python3 bin/cleanup-stale.py [--dry-run] [--logs]` 将 dead-PID 的 `state.json` 标为 stalled，并可裁剪旧日志  
+
+**Dashboard**（可选）：
 
 ```bash
-# Agent 1 负责 scene A（--no-review 跳过人工审查标记，适合自动化循环）
-MACODE_AGENT_ID="agent-1" macode render scenes/01_test/ --no-review
-
-# Agent 2 负责 scene B（同时进行）
-MACODE_AGENT_ID="agent-2" macode render scenes/02_demo/ --no-review &
-```
-
-**机制**：
-- **Scene Claim**：渲染前自动写入 `.agent/tmp/{scene}/.claimed_by`，其他 Agent 发现 claim 存在则跳过
-- **全局并发限制**：受 `project.yaml` 的 `max_concurrent_scenes` 约束（默认 4），超限时自动排队
-- **Check Report 锁**：`macode check` 使用 POSIX `flock`，并发 check 同一 scene 不丢失 issue
-- **Git 锁**：`agent-run.sh` 的 `git commit` 使用 `.agent/.git_lock`，多 Agent 同时 commit 不冲突
-- **端口原子分配**：MC dev server 使用 `bind()` 原子抢占端口，避免启动冲突
-- **Stale 清理**：`python3 bin/cleanup-stale.py [--dry-run]` 定期清理 dead-PID 任务和过期 claim
-
-**Dashboard 观测**：
-```bash
-curl -s http://localhost:3456/api/state | jq '.scenes[] | {name, status, agentId, claimedBy}'
-curl -s http://localhost:3456/api/queue | jq .
+curl -s http://localhost:3000/api/state | jq '.scenes[] | {name, status, phase}'
 ```
 
 ---

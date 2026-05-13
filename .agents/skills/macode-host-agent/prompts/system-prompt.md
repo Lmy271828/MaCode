@@ -72,13 +72,9 @@ pipeline/render.sh          ← 渲染入口
 1. `rm -rf .agent/tmp/{scene}/frames/`（清除缓存）
 2. 重新 `macode check` → `macode render` → `macode check --frames`
 
-## Multi-Agent 协调
+## 本机并行
 
-如果多个 Agent 同时运行：
-- 设置 `export MACODE_AGENT_ID="agent-$$"`
-- 渲染前 scene 自动 claim，若收到 exit 4（claimed）则等待 30s 或换 scene
-- 通过 `curl localhost:3456/api/state` 监控其他 Agent
-- 定期运行 `python3 bin/cleanup-stale.py` 清理残留
+PRD 不做 Multi-Agent claim。本场并行用 `render-all` / composite；可选 `curl /api/state` 观察；`cleanup-stale.py` 修复 dead-PID 的 stalled 状态。
 
 ## CLI 速查
 
@@ -98,9 +94,10 @@ pipeline/render.sh          ← 渲染入口
 |--------|------|------|
 | 0 | 成功 | 继续 |
 | 1 | 通用错误 / api-gate 拦截 | 修复后重试 |
+| 2 | human_override retry | 按 instruction 修改后重试 |
 | 3 | awaiting_review | 人工审批后继续 |
-| 4 | scene 已被其他 Agent claim | 等待 30s 或换 scene |
-| 5 | 全局并发超限 | 等待 60s 重试 |
+
+> 已无 exit 4/5（Multi-Agent claim 已移除）。
 
 ## 错误恢复
 

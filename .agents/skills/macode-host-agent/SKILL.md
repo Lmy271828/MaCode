@@ -130,23 +130,14 @@ git add scenes/{name}/
 git commit -m "agent: render {name}"
 ```
 
-## Multi-Agent 协调
+## 本机并行（非 Multi-Agent）
 
-如果多个 Agent 同时运行：
+PRD 不包含跨进程 Multi-Agent claim／排队。同一机器上并行多场请用 `render-all` / composite（受 `max_concurrent_scenes` 限制），或自行在外层编排；**不要**再依赖 exit 4/5 或 `MACODE_AGENT_ID`。
+
+可选监控：
 
 ```bash
-# 设置唯一身份
-export MACODE_AGENT_ID="agent-$$"
-
-# 渲染前 scene 自动 claim，冲突时:
-#   exit 4 = claimed (被其他 Agent 占用) → 等待 30s 或换 scene
-#   exit 5 = queued (全局并发超限) → 等待 60s 重试
-
-# 监控其他 Agent
-curl -s http://localhost:3456/api/state | jq '.scenes[] | {name, status, agentId}'
-curl -s http://localhost:3456/api/queue | jq .
-
-# 清理残留
+curl -s http://localhost:3000/api/state | jq '.scenes[] | {name, status, phase}'
 python3 bin/cleanup-stale.py --dry-run
 ```
 

@@ -200,6 +200,7 @@ for node in ast.walk(tree):
     echo "[manimgl] Writing video: $SCENE_PY → $OUTPUT_DIR/raw.mp4"
     write_progress "capture" "running" "video write started"
 
+    # 渲染超时由上游 bin/macode-run 统一 enforce，本脚本不使用 GNU timeout。
     cd "$PROJECT_ROOT"
     RENDER_RC=0
     if [[ -n "$SCENE_CLASS" ]]; then
@@ -233,6 +234,7 @@ else
 
     cd "$PROJECT_ROOT"
 
+    # 渲染超时由上游 bin/macode-run 统一 enforce，本脚本不使用 GNU timeout。
     RENDER_RC=0
     "$VENV_PYTHON" -m manimlib "$SCENE_PY" 2>&1 | tee "$OUTPUT_DIR/render.log" || RENDER_RC=$?
 

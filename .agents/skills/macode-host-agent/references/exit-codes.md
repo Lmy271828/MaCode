@@ -8,8 +8,8 @@
 | 1 | 通用错误 | api-gate 拦截、引擎渲染失败、manifest 无效 | 查看日志，修复后重试 |
 | 2 | retry | human_override.json action=retry | 按 instruction 修改后重试 |
 | 3 | awaiting_review | review_needed 存在且无 override | 人工审批后继续 |
-| 4 | claimed | scene 被其他 Agent 占用 | 等待 30s 或换 scene |
-| 5 | queued | 全局并发超限 (max_concurrent_scenes) | 等待 60s 重试 |
+
+> **Multi-Agent**：PRD 已移除 scene claim / 全局队列；不再有 exit 4/5。
 
 ## macode-run（统一进程生命周期管理器）
 

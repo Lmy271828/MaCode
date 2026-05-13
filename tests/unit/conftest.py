@@ -11,6 +11,8 @@ import pytest
 # Allow importing bin/*.py modules (filenames with hyphens require importlib)
 BIN_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "bin")
 PROJECT_ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
+if BIN_DIR not in sys.path:
+    sys.path.insert(0, BIN_DIR)
 
 
 def _load_bin_module(name: str, filename: str):
@@ -87,3 +89,25 @@ def tmp_project_with_shaders(tmp_scene_dir):
         "assets_dir": assets_dir,
         "project_root": project_root,
     }
+
+
+@pytest.fixture(autouse=True)
+def _preserve_cwd():
+    """Defensive: snapshot cwd before each test and restore after.
+
+    Some legacy tests use ``os.chdir(tmpdir)`` without try/finally, leaving the
+    process cwd pointing at a deleted directory. This fixture isolates that damage
+    to the offending test only, so later tests don't blow up on ``os.getcwd()``.
+    """
+    try:
+        orig = os.getcwd()
+    except FileNotFoundError:
+        orig = os.path.dirname(os.path.abspath(__file__))
+        os.chdir(orig)
+    try:
+        yield
+    finally:
+        try:
+            os.chdir(orig)
+        except (FileNotFoundError, OSError):
+            pass

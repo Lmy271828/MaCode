@@ -187,7 +187,6 @@ git commit -m "agent: add 05_new_scene — [engine] [duration]s"
 ```bash
 # 设置环境
 export PATH="$PWD/bin:$PATH"
-export MACODE_AGENT_ID="agent-$$"
 
 # 创建场景
 mkdir -p scenes/05_new_scene

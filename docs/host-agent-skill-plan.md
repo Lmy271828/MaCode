@@ -79,11 +79,11 @@ skills/macode-host-agent/
 7. 读取 `.agent/check_reports/{name}_frames.json`，修复 issue
 8. `git add scenes/{name}/ && git commit -m "agent: render {name}"`
 
-## Multi-Agent 协调
-- 设置 `MACODE_AGENT_ID` 环境变量标识自己
-- 渲染前 scene 会自动 claim，若收到 `exit 4`（claimed）则等待 30s 或换 scene
-- 通过 `curl localhost:3456/api/state` 监控其他 Agent 进度
-- 定期运行 `python3 bin/cleanup-stale.py` 清理残留状态
+## 本机并行（PRD 不做 Multi-Agent）
+
+- 无 `MACODE_AGENT_ID`、无 scene claim、`macode render` 无 exit 4/5
+- 多场并行：`render-all` / composite + `max_concurrent_scenes`
+- 可选 `curl http://localhost:<port>/api/state`；`cleanup-stale.py` 修复 stalled state
 ```
 
 ### 3.2 SELF-CORRECTION WORKFLOW（self-correction.md）
@@ -142,36 +142,25 @@ Confidence: {fix_confidence}
 3. 修改后的验证命令
 ```
 
-### 3.3 MULTI-AGENT COORDINATION（multi-agent.md）
+### 3.3 ~~MULTI-AGENT COORDINATION~~（已弃用）
 
-**任务分配策略**:
+PRD 已移除 Harness 内 Multi-Agent claim/队列。外层若需多进程，请自行用 shell `flock` 或任务调度器；场内并行用 `render-all` / composite。
+
+**历史策略（仅供参考，代码路径已删）**：
 
 ```
-Phase 1: 扫描
-  → 读取 scenes/ 下所有 manifest.json
-  → 根据 engine / duration / 依赖关系计算优先级
-
-Phase 2: 认领
-  → 对每个未 claim 的 scene，尝试 `claim_scene(scene_name, MACODE_AGENT_ID)`
-  → 若失败（claimed / max_concurrent），跳过并记录
-
-Phase 3: 执行
-  → 对被 claim 的 scene 执行标准工作流（写 → check → render → commit）
-  → 渲染完成后自动释放 claim
-
-Phase 4: 监控
-  → 每 30s 查询 Dashboard API
-  → 发现其他 Agent stalled（state.json running 但 pid dead）→ 调用 cleanup-stale.py
+Phase 1: 扫描 scenes/
+Phase 2: （已删）claim_scene
+Phase 3: 标准工作流 check → render
+Phase 4: cleanup-stale / dashboard 观测
 ```
 
-**冲突解决策略**:
+**冲突解决（仍适用）**：
 
-| 冲突类型 | 检测方式 | 解决策略 |
-|----------|----------|----------|
-| Scene 已被 claim | `macode render` exit 4 | 等待 30s 重试，或换下一个 scene |
-| 全局并发超限 | `macode render` exit 5 | 等待 60s 重试 |
-| Git commit 冲突 | `git commit` 失败 | 先 `git pull --rebase`，再重试 |
-| Check report 被覆盖 | 发现 issue 丢失 | 重新运行 check，flock 保证不丢失 |
+| 冲突类型 | 解决策略 |
+|----------|----------|
+| Git commit 冲突 | `git pull --rebase` 后重试 |
+| Check report 竞态 | flock 保护；重跑 check |
 
 ---
 

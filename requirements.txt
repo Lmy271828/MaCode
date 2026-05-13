@@ -11,6 +11,8 @@ manim==0.20.1
 #（尽管它们也是 manim 的传递依赖，但独立声明可防止上游变更导致项目损坏）
 numpy>=1.26
 Pillow>=10.0
+PyYAML>=6.0
+jsonschema>=4.20
 
 # Shader Pipeline 直接依赖（moderngl headless runner）
 # moderngl 也是 manim 的传递依赖，显式声明确保 shader pipeline 独立可用

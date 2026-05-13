@@ -16,14 +16,35 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$PROJECT_ROOT"
 
-# 读取 project.yaml（如果存在）
+# 读取 project.yaml：唯一真源；缺失或缺字段时 fail-loud 退出
+# （PRD §8.1 已选型；不再在多处硬编码 fallback 字面量）
 PROJECT_NAME="MaCode"
-DEFAULT_ENGINE="manim"
-if [[ -f "project.yaml" ]]; then
-    if command -v yq >/dev/null 2>&1; then
-        PROJECT_NAME=$(yq -r '.project.name // "MaCode"' project.yaml)
-        DEFAULT_ENGINE=$(yq -r '.defaults.engine // "manimgl"' project.yaml)
+DEFAULT_ENGINE=""
+if [[ ! -f "project.yaml" ]]; then
+    echo "Error: project.yaml missing at $PROJECT_ROOT/project.yaml" >&2
+    echo "  See docs/PRD-draft.md §8.1 — project.yaml is the canonical config source." >&2
+    exit 2
+fi
+if command -v yq >/dev/null 2>&1; then
+    PROJECT_NAME=$(yq -r '.project.name // "MaCode"' project.yaml)
+    DEFAULT_ENGINE=$(yq -r '.defaults.engine // ""' project.yaml)
+else
+    # Prefer venv python only if it can actually import yaml
+    _PY="python3"
+    if [[ -x "$PROJECT_ROOT/.venv/bin/python" ]] && "$PROJECT_ROOT/.venv/bin/python" -c 'import yaml' >/dev/null 2>&1; then
+        _PY="$PROJECT_ROOT/.venv/bin/python"
     fi
+    PROJECT_NAME=$(
+        "$_PY" -c 'import yaml, pathlib; d=yaml.safe_load(pathlib.Path("project.yaml").read_text()) or {}; p=d.get("project"); p=p if isinstance(p, dict) else {}; print(p.get("name") or "MaCode")'
+    )
+    DEFAULT_ENGINE=$(
+        "$_PY" -c 'import yaml, pathlib; d=yaml.safe_load(pathlib.Path("project.yaml").read_text()) or {}; g=d.get("defaults"); g=g if isinstance(g, dict) else {}; print(g.get("engine") or "")'
+    )
+fi
+if [[ -z "$DEFAULT_ENGINE" ]]; then
+    echo "Error: project.yaml missing 'defaults.engine'" >&2
+    echo "  Set 'defaults.engine: <name>' to one of: $(ls -d engines/*/ 2>/dev/null | xargs -n1 basename | tr '\n' ' ')" >&2
+    exit 2
 fi
 
 CMD="${1:-help}"
@@ -368,26 +389,54 @@ PY
 
     sourcemap)
         SUB="${2:-help}"
-        ENGINE="${3:-$DEFAULT_ENGINE}"
         case "$SUB" in
+            generate-md|--sync)
+                if [[ "${3:-}" == "--all" ]]; then
+                    python3 "$PROJECT_ROOT/bin/sourcemap-sync.py" --all
+                elif [[ -n "${3:-}" ]]; then
+                    python3 "$PROJECT_ROOT/bin/sourcemap-sync.py" "$3"
+                else
+                    python3 "$PROJECT_ROOT/bin/sourcemap-sync.py"
+                fi
+                ;;
+            scan-api)
+                python3 "$PROJECT_ROOT/bin/sourcemap-scan-api.py" "${@:3}"
+                ;;
+            version-check)
+                python3 "$PROJECT_ROOT/bin/sourcemap-version-check.py" "${@:3}"
+                ;;
             init)
+                ENGINE="${3:-$DEFAULT_ENGINE}"
+                echo "Canonical blacklist/whitelist live in engines/$ENGINE/sourcemap.json"
                 echo "Run: engines/$ENGINE/scripts/inspect.sh  to explore the engine"
-                echo "Then: engines/$ENGINE/scripts/validate_sourcemap.sh  to verify paths"
-                echo "SOURCEMAP location: engines/$ENGINE/SOURCEMAP.md"
+                echo "Then: engines/$ENGINE/scripts/validate_sourcemap.sh  after macode sourcemap validate $ENGINE"
+                echo "SOURCEMAP.md is a generated human view (macode sourcemap generate-md $ENGINE)."
                 ;;
             validate)
-                # 先 lint，再验证路径
-                echo "[macode] Linting SOURCEMAP..."
-                if ! python3 "$PROJECT_ROOT/bin/sourcemap-lint.py" "$PROJECT_ROOT/engines/$ENGINE/SOURCEMAP.md"; then
-                    exit 1
+                ENGINE="${3:-$DEFAULT_ENGINE}"
+                if [[ "$ENGINE" == "--all" ]]; then
+                    for engine_dir in "$PROJECT_ROOT"/engines/*/; do
+                        en=$(basename "$engine_dir")
+                        [[ -f "$engine_dir/sourcemap.json" ]] || continue
+                        echo "[macode] sourcemap-sync --check $en"
+                        python3 "$PROJECT_ROOT/bin/sourcemap-sync.py" --check "$en" || exit 1
+                        echo "[macode] validate_sourcemap.sh $en"
+                        bash "$PROJECT_ROOT/engines/$en/scripts/validate_sourcemap.sh" || exit 1
+                    done
+                else
+                    echo "[macode] sourcemap-sync --check $ENGINE"
+                    python3 "$PROJECT_ROOT/bin/sourcemap-sync.py" --check "$ENGINE" || exit 1
+                    echo "[macode] validate_sourcemap.sh $ENGINE"
+                    bash "$PROJECT_ROOT/engines/$ENGINE/scripts/validate_sourcemap.sh"
                 fi
-                echo "[macode] Validating paths..."
-                bash "$PROJECT_ROOT/engines/$ENGINE/scripts/validate_sourcemap.sh"
                 ;;
             help|*)
-                echo "Usage: macode sourcemap <init|validate> [engine]"
-                echo "  init       Show instructions for creating SOURCEMAP"
-                echo "  validate   Run validate_sourcemap.sh for the engine"
+                echo "Usage: macode sourcemap <SUBCOMMAND> [args]"
+                echo "  generate-md [engine|--all]   Regenerate SOURCEMAP.md + .agent/context from sourcemap.json (default: project default engine)"
+                echo "  validate [engine|--all]      sourcemap-sync --check + validate_sourcemap.sh"
+                echo "  scan-api [engine ...]        Forward to sourcemap-scan-api.py"
+                echo "  version-check [args ...]     Forward to sourcemap-version-check.py"
+                echo "  init [engine]                Show where to edit canonical sourcemap"
                 ;;
         esac
         ;;
@@ -495,7 +544,7 @@ except Exception as e:
                     exit 1
                 fi
                 shift 3
-                node "$PROJECT_ROOT/engines/motion_canvas/scripts/serve.mjs" "$SCENE_DIR" "$@"
+                node "$PROJECT_ROOT/engines/motion_canvas/scripts/render.mjs" --serve-only "$SCENE_DIR" "$@"
                 ;;
             stop)
                 SCENE_DIR="${3:-}"
@@ -503,7 +552,7 @@ except Exception as e:
                     echo "Usage: macode mc stop <scene_dir>" >&2
                     exit 1
                 fi
-                node "$PROJECT_ROOT/engines/motion_canvas/scripts/stop.mjs" "$SCENE_DIR"
+                node "$PROJECT_ROOT/engines/motion_canvas/scripts/render.mjs" --stop "$SCENE_DIR"
                 ;;
             help|*)
                 echo "Usage: macode mc <serve|stop> [args]"
@@ -666,7 +715,7 @@ Commands:
     override <scene> --action <action> --instruction <msg>
                                   Human override (retry/modify/stop)
     log <scene>                   Read frame_feedback.jsonl history
-  cleanup [--dry-run]              Clean dead-PID states and expired claims
+  cleanup [--dry-run]              Clean dead-PID stalled states (--logs prunes logs)
   dry-run <scene_file> [engine]    Fast pre-render validation (syntax, imports, LaTeX)
   test [suite|flags] [options]
                                    Run test suite

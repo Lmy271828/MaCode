@@ -1,0 +1,41 @@
+{
+  "generated_at": "2026-05-13T09:05:39Z",
+  "repo_head": "89507a20ceba5a1937e09e44f4dfab8f444e1b28",
+  "scenes": {
+    "01_test": {
+      "render_exit_code": 0,
+      "final_mp4": ".agent/tmp/01_test/final.mp4",
+      "size_bytes": 21250,
+      "sha256": "76bc10594ddcc29d56c941849b9e8b6be2da0134d027cd64e122abd4c8d2df45",
+      "ffprobe_duration_sec": 3.0,
+      "frame_png_count": 90
+    },
+    "02_shader_mc": {
+      "render_exit_code": 0,
+      "final_mp4": ".agent/tmp/02_shader_mc/final.mp4",
+      "size_bytes": 144194,
+      "sha256": "2e250003ea903ce558ed13028af0420973d6e6ab0faf57f8fc8fc773da1e52f0",
+      "ffprobe_duration_sec": 3.0,
+      "frame_png_count": 90
+    },
+    "04_base_demo": {
+      "render_exit_code": 0,
+      "final_mp4": ".agent/tmp/04_base_demo/final.mp4",
+      "size_bytes": 252354,
+      "sha256": "edff546a7875d29698e6e579acbe6f135ad3bc0b02ac83684481b640c5fd7b47",
+      "ffprobe_duration_sec": 6.766667,
+      "frame_png_count": 203
+    },
+    "04_composite_demo": {
+      "render_exit_code": 1,
+      "error_message": "Composite segment main (scene 01_main): awaiting_review — run macode review approve/reject.",
+      "log_tail_last_60_lines": "",
+      "log_note": "No matching file found for glob .agent/log/*_04_composite_demo.log after this render."
+    },
+    "09_zone_test": {
+      "render_exit_code": 1,
+      "error_message": "ManimGL render failed: ImportError cannot import name ZoneTypeError from engines.manimgl components.zoned_scene",
+      "log_tail_last_60_lines": "[manimgl] Preparing scenes/09_zone_test/scene.py\n[manimgl] Layout snapshots enabled at: 0.0,3.0\n[manimgl] Render backend: d3d12\n[manimgl] D3D12 GPU acceleration (WSL2 DX12 passthrough)\n[manimgl] Writing video: scenes/09_zone_test/scene.py → .agent/tmp/09_zone_test/raw.mp4\nTraceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/home/lenovo/pynoob/MaCode/.venv-manimgl/lib/python3.13/site-packages/manimlib/__main__.py\", line 65, in <module>\n    main()\n    ~~~~^^\n  File \"/home/lenovo/pynoob/MaCode/.venv-manimgl/lib/python3.13/site-packages/manimlib/__main__.py\", line 61, in main\n    run_scenes()\n    ~~~~~~~~~~^^\n  File \"/home/lenovo/pynoob/MaCode/.venv-manimgl/lib/python3.13/site-packages/manimlib/__main__.py\", line 37, in run_scenes\n    scenes = manimlib.extract_scene.main(scene_config, run_config)\n  File \"/home/lenovo/pynoob/MaCode/.venv-manimgl/lib/python3.13/site-packages/manimlib/extract_scene.py\", line 173, in main\n    module = get_module(run_config.file_name, run_config.embed_line, run_config.is_reload)\n  File \"/home/lenovo/pynoob/MaCode/.venv-manimgl/lib/python3.13/site-packages/manimlib/extract_scene.py\", line 166, in get_module\n    module = ModuleLoader.get_module(file_name, is_reload)\n  File \"/home/lenovo/pynoob/MaCode/.venv-manimgl/lib/python3.13/site-packages/manimlib/module_loader.py\", line 49, in get_module\n    spec.loader.exec_module(module)\n    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^\n  File \"<frozen importlib._bootstrap_external>\", line 1023, in exec_module\n  File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\n  File \"/home/lenovo/pynoob/MaCode/scenes/09_zone_test/scene.py\", line 16, in <module>\n    from components.zoned_scene import ZoneScene, ZoneTypeError, PrimaryZoneEmptyError\nImportError: cannot import name 'ZoneTypeError' from 'components.zoned_scene' (/home/lenovo/pynoob/MaCode/engines/manimgl/src/components/zoned_scene.py)\nManimGL \u001b[32mv1.7.2\u001b[0m\n[manimgl] Video render failed with exit code 1"
+    }
+  }
+}

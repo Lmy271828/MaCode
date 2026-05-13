@@ -15,6 +15,10 @@ macode mc serve <scene_dir> [--port N]
 macode mc stop <scene_dir>
 macode shader list
 macode shader render <shader_dir>
+macode sourcemap validate [engine|--all]
+macode sourcemap generate-md [engine|--all]
+macode sourcemap scan-api [--all|engine ...]
+macode sourcemap version-check [--all]
 macode test [unit|integration|smoke]
 ```
 
@@ -38,7 +42,7 @@ pipeline/thumbnail.sh <mp4> <out.png> [time]
 bin/render-all.sh [--parallel [N]] [scene_prefix]
 bin/macode-run <task_id> [--timeout N] [--log <file>] [--tee] -- <command>
 bin/agent-run.sh <scene_dir> <command> [args...]
-bin/api-gate.py <scene_file> <sourcemap>
+bin/api-gate.py <scene_file> engines/<engine>/sourcemap.json [--engine <engine>]
 bin/cleanup-stale.py [--dry-run] [--ttl N]
 bin/dashboard-server.mjs [--port N]
 bin/cache-key.py <scene_dir>
@@ -52,9 +56,10 @@ bin/cache-restore.py <key> <output_dir>
 ```bash
 engines/manim/scripts/render.sh <scene.py> <out_dir> <fps> <duration> <w> <h>
 engines/manim/scripts/inspect.sh
-engines/motion_canvas/scripts/render-cli.mjs <scene_dir> [--fps N] [--duration S]
-engines/motion_canvas/scripts/serve.mjs <scene_dir> [--port N]
-engines/motion_canvas/scripts/stop.mjs <scene_dir>
+engines/motion_canvas/scripts/render.mjs <scene_dir> <frames_dir> <fps> <dur> <w> <h>   # batch
+engines/motion_canvas/scripts/render.mjs --serve-only <scene_dir> [--port N]
+engines/motion_canvas/scripts/render.mjs --stop <scene_dir>
+engines/motion_canvas/scripts/snapshot.mjs <scene.tsx> <out.png> [t] [fps] [w] [h]
 engines/motion_canvas/scripts/inspect.sh
 ```
 
@@ -79,7 +84,6 @@ bin/check-frames.py <scene_dir> [--output <file>]
 GET /              → HTML 仪表盘
 GET /api/state     → 全部场景状态 JSON
 GET /api/scene/:name → 单个场景状态 JSON
-GET /api/queue     → 任务队列 JSON
 GET /api/events    → SSE 实时流
 ```
 
@@ -87,7 +91,6 @@ GET /api/events    → SSE 实时流
 
 | 变量 | 说明 |
 |------|------|
-| `MACODE_AGENT_ID` | Agent 身份标识（写入 state.json） |
 | `MACODE_STATE_DIR` | macode-run 子进程状态目录 |
 | `MACODE_TIMEOUT` | macode-run 默认超时（秒） |
 | `MACODE_LOG_DIR` | 日志目录（默认 .agent/log） |
