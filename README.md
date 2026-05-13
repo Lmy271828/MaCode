@@ -408,6 +408,19 @@ curl -s http://localhost:3000/api/state | jq '.scenes[] | {name, status, phase}'
 
 ---
 
+## 深度文档
+
+| 文件 | 用途 |
+|------|------|
+| [`AGENTS.md`](AGENTS.md) | Host Agent 工作时的随手参考卡片（CLI 速查、引擎选型、反模式） |
+| [`docs/architecture.md`](docs/architecture.md) | 系统架构 / 安全模型深度 / WSL2 调优 / 仪表盘 / 人类介入 / 并发模型 |
+| [`docs/PRD-draft.md`](docs/PRD-draft.md) | 项目愿景、决策记录 |
+| [`docs/refactor-todo.md`](docs/refactor-todo.md) | Sprint 任务跟踪 |
+| [`CHANGELOG.md`](CHANGELOG.md) | 变更历史 |
+| [`tests/fixtures/scenes/README.md`](tests/fixtures/scenes/README.md) | 测试 fixture 命名约定 |
+
+---
+
 ## 许可
 
 MIT

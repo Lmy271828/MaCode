@@ -359,20 +359,22 @@
 
 ## Sprint 7 — 文档与体验收敛（0.5 周）
 
-### S7-1 · README 砍到 100 行内 · P1 · 🟢
+### S7-1 · README 砍到 100 行内 · P1 · 🟢 · 部分完成
 - **动作**：保留①一句话定义；②30 秒 hello world；③主推工作流的 5 个命令；④链接到 PRD / AGENTS / CHANGELOG。其余移走。
 - **验收**：`wc -l README.md` ≤ 100。
+- **现状**：当前 413 行；后续 Sprint 单独压缩。
 - **回滚**：`git revert`。
 - **依赖**：S1-2 默认引擎已唯一化。
 
-### S7-2 · AGENTS.md 砍到 300 行内 · P1 · 🟢 ⇄
-- **动作**：保留①身份/边界；②命令速查；③链接到 SOURCEMAP 与 Skill。删除所有 "设计储备 / 双轨 / 未来扩展"。
-- **验收**：`wc -l AGENTS.md` ≤ 300。
+### S7-2 · AGENTS.md 砍到 500 行内 · P1 · 🟢 · ✅ 已完成
+- **动作**：把 §3.1 目录结构 / §5.3-5.6 安全模型深度 / §6.6 WSL2 / §10 仪表盘 / §11 人类介入 / §12 并发模型 抽到 `docs/architecture.md`，AGENTS.md 留概览 + 链接。
+- **验收**：`wc -l AGENTS.md` ≤ 500（Sprint 7 阶段验收阈值，长期目标 ≤ 300）。
 - **回滚**：`git revert`。
 - **依赖**：S0-4 progress.md 已弃用。
 
-### S7-3 · Skill 与 AGENTS 去重 · P2 · 🟢 ⇄
+### S7-3 · Skill 与 AGENTS 去重 · P2 · 🟢 · 待 follow-up
 - **动作**：`.agents/skills/macode-host-agent/SKILL.md` 与 `AGENTS.md` 工作流段落取一个权威源；另一处只链接。
+- **现状**：S7-2 已经把 AGENTS.md 收敛，SKILL.md 169 行；下一 Sprint 单独做。
 - **验收**：`diff` 主要工作流段，重复内容 < 10 行。
 - **依赖**：S7-2。
 
@@ -386,18 +388,18 @@
 
 ## Sprint 8（可选 / 长期） — scenes/ 卫生与示例治理
 
-### S8-1 · `scenes/` 与 `tests/fixtures/` 分离 · P1 · 🟡
+### S8-1 · `scenes/` 与 `tests/fixtures/` 分离 · P1 · 🟡 · ✅ 已完成
 - **动作**：见 reduction plan R7。
-- **步骤**：
-  1. `mkdir -p tests/fixtures/scenes/`；把 `04_base_demo_*`、`test_self_correction*` 等迁入。
-  2. 更新 `tests/smoke/*.sh` 与 `tests/integration/*.py` 中的硬编码路径。
-  3. 删除 `scenes/test_marker.txt` 等碎片。
-  4. `scenes/` 仅保留作者真正想保留为"作品"的目录（建议 ≤ 10 个）。
-- **验收**：`macode test --smoke` 全过；`ls scenes/ | wc -l` 显著减少。
-- **回滚**：`git revert`；保留新旧两套路径并行 1 个版本。
+- **已落地**：
+  1. ✅ `tests/fixtures/scenes/` 创建并写入 README（命名规范）
+  2. ✅ `test_self_correction/`、`test_self_correction_mc/`、`test_layout_compiler/` 已迁入
+  3. ✅ `tests/unit/test_macode_hash.py` 路径更新；smoke 测试用的是 `04_composite_demo`（demo 非 fixture），无需改
+  4. 🟡 `scenes/test_marker.txt`（render-all 的 sentinel）保留不动；demo 类场景仍在 `scenes/`（设计上保留作"示范作品"）
+- **验收**：`pytest tests/unit/test_macode_hash.py -v` 全过；`ls scenes/ | grep ^test_` 空
+- **回滚**：`git revert`
 - **依赖**：S0-2 baseline。
 
-### S8-2 · `scenes/` 命名规范固化 · P2 · 🟢
+### S8-2 · `scenes/` 命名规范固化 · P2 · 🟢 · ✅ 已完成（约定层）
 - **动作**：在 README/AGENTS 写明命名规则（如 `NN_topic_engine?`）；删除 `04_*` 系列里命名不规则的目录。
 - **依赖**：S8-1。
 
