@@ -9,7 +9,7 @@ test_manim_single_render() {
     test_start "test_manim_single_render"
 
     cd "$PROJECT_ROOT"
-    ./bin/macode render scenes/01_test --fps 2 --duration 1 --no-review >/dev/null 2>&1
+    ./bin/macode render scenes/01_test --fps 2 --duration 1 >/dev/null 2>&1
     assert_exit_code 0
 
     assert_file_exists ".agent/tmp/01_test/final.mp4"
@@ -38,7 +38,7 @@ test_manim_param_override() {
     test_start "test_manim_param_override"
 
     cd "$PROJECT_ROOT"
-    ./bin/macode render scenes/01_test --fps 5 --duration 2 --no-review >/dev/null 2>&1
+    ./bin/macode render scenes/01_test --fps 5 --duration 2 >/dev/null 2>&1
     assert_exit_code 0
 
     local frame_count

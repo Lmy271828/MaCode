@@ -17,15 +17,15 @@ test_composite_render() {
     fi
 
     cd "$PROJECT_ROOT"
+    # type: composite now auto-routes to composite-unified (PRD D2); segment-level
+    # .agent/tmp/{shot}/state.json only exist with MACODE_USE_LEGACY_COMPOSITE=1.
     ./bin/macode composite render scenes/04_composite_demo --fps 2 --duration 1
     assert_exit_code 0
 
     assert_file_exists "output/04_composite_demo.mp4"
     assert_file_not_empty "output/04_composite_demo.mp4"
 
-    assert_state_json ".agent/tmp/00_intro/state.json" "completed"
-    assert_state_json ".agent/tmp/01_main/state.json" "completed"
-    assert_state_json ".agent/tmp/02_outro/state.json" "completed"
+    assert_state_json ".agent/tmp/04_composite_demo/state.json" "completed"
 
     test_end
 }
@@ -42,7 +42,7 @@ test_composite_unified_render() {
     fi
 
     cd "$PROJECT_ROOT"
-    ./bin/macode render scenes/04_composite_unified_demo --fps 2 --duration 1 --no-review
+    ./bin/macode render scenes/04_composite_unified_demo --fps 2 --duration 1
     assert_exit_code 0
 
     assert_file_exists "output/04_composite_unified_demo.mp4"
@@ -62,7 +62,7 @@ test_hybrid_overlay() {
     fi
 
     cd "$PROJECT_ROOT"
-    ./bin/macode render scenes/99_hybrid_demo --fps 2 --duration 1 --no-review
+    ./bin/macode render scenes/99_hybrid_demo --fps 2 --duration 1
     assert_exit_code 0
 
     assert_file_exists "output/99_hybrid_demo.mp4"

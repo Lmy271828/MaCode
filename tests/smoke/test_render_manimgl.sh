@@ -9,7 +9,7 @@ test_manimgl_headless_render() {
     test_start "test_manimgl_headless_render"
 
     cd "$PROJECT_ROOT"
-    MACODE_HEADLESS=1 ./bin/macode render scenes/09_zone_test --fps 2 --duration 1 --no-review >/dev/null 2>&1
+    MACODE_HEADLESS=1 ./bin/macode render scenes/09_zone_test --fps 2 --duration 1 >/dev/null 2>&1
     assert_exit_code 0
 
     local scene_name

@@ -12,6 +12,7 @@ import json
 import os
 import random
 import socket
+import subprocess
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _PIPELINE_DIR = os.path.dirname(_HERE)
@@ -23,10 +24,22 @@ def get_project_root() -> str:
 
 
 def get_python() -> str:
-    """Prefer project venv python, fall back to ``python3`` on PATH."""
+    """Prefer project venv python if it can run harness tools; else ``python3`` on PATH.
+
+    A broken/empty venv (e.g. missing PyYAML required by ``inspect-conf.py``) must not
+    shadow a working system/conda interpreter — otherwise smoke tests and renders fail
+    with opaque "failed to parse engine.conf" errors.
+    """
     venv_python = os.path.join(PROJECT_ROOT, ".venv", "bin", "python")
     if os.path.isfile(venv_python) and os.access(venv_python, os.X_OK):
-        return venv_python
+        r = subprocess.run(
+            [venv_python, "-c", "import yaml"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if r.returncode == 0:
+            return venv_python
     return "python3"
 
 

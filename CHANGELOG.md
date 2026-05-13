@@ -12,6 +12,8 @@
 - **PRD D2**：composite 双轨合并 — `type: composite` 自动路由到 `composite-unified-render.py` 并发出 deprecation warning；`composite-render.py` 转为 deprecated shim（`MACODE_USE_LEGACY_COMPOSITE=1` 仍可用作 escape hatch）
 - **S7 文档收敛**：`AGENTS.md` 抽出深度参考到 `docs/architecture.md`（目录结构 / 安全 §5.3–5.6 / WSL2 / 仪表盘 / 人类介入 / 并发模型）；AGENTS.md 减少到 ≤ 500 行
 - **S8 Scenes 卫生**：`test_self_correction*`、`test_layout_compiler` 从 `scenes/` 移到 `tests/fixtures/scenes/`；`tests/fixtures/scenes/README.md` 固化 `test_*` 前缀约定
+- **Smoke/integration 脚本**：移除已废弃的 `--no-review`；`test_composite_render` 断言改为 unified 路径下的 `.agent/tmp/04_composite_demo/state.json`
+- **`get_python()`**：若 `.venv` 存在但无法 `import yaml`（空 venv），回退到 `python3`，避免 smoke/渲染误用坏 venv
 
 ## 历史提交（最近 14 条）
 - 2026-05-13 feat(checks): auto-trigger Layer 2 + SOURCEMAP gaps + check system hardening (89507a2)

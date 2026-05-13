@@ -26,7 +26,7 @@ test_single_mc_webgl_render() {
 
     # Render 02_shader_mc with low quality for speed
     python3 "$RENDER_SCENE" "$PROJECT_ROOT/scenes/02_shader_mc" \
-        --fps 2 --duration 1 --width 640 --height 360 --no-review \
+        --fps 2 --duration 1 --width 640 --height 360 \
         2>&1 | tee /tmp/test_mc_webgl_single.log
 
     assert_exit_code 0
@@ -63,12 +63,12 @@ test_concurrent_mc_webgl_render() {
 
     # Render both concurrently in background
     python3 "$RENDER_SCENE" "$PROJECT_ROOT/.agent/tmp/test_mc_webgl_1" \
-        --fps 2 --duration 1 --width 640 --height 360 --no-review \
+        --fps 2 --duration 1 --width 640 --height 360 \
         > /tmp/test_mc_webgl_c1.log 2>&1 &
     local pid1=$!
 
     python3 "$RENDER_SCENE" "$PROJECT_ROOT/.agent/tmp/test_mc_webgl_2" \
-        --fps 2 --duration 1 --width 640 --height 360 --no-review \
+        --fps 2 --duration 1 --width 640 --height 360 \
         > /tmp/test_mc_webgl_c2.log 2>&1 &
     local pid2=$!
 
@@ -105,7 +105,7 @@ test_mc_webgl_no_shader_prepare() {
     _cleanup
 
     python3 "$RENDER_SCENE" "$PROJECT_ROOT/scenes/02_shader_mc" \
-        --fps 2 --duration 1 --width 640 --height 360 --no-review \
+        --fps 2 --duration 1 --width 640 --height 360 \
         > /tmp/test_mc_webgl_noprerep.log 2>&1
 
     assert_exit_code 0

@@ -31,7 +31,7 @@ test_mc_single_render() {
     test_start "test_mc_single_render"
 
     cd "$PROJECT_ROOT"
-    ./bin/macode render scenes/01_test_mc --fps 2 --duration 1 --no-review >/dev/null 2>&1
+    ./bin/macode render scenes/01_test_mc --fps 2 --duration 1 >/dev/null 2>&1
     assert_exit_code 0
 
     assert_file_exists ".agent/tmp/01_test_mc/frames/frame_0001.png"
@@ -130,7 +130,7 @@ test_mc_shaderframe() {
         return 0
     fi
 
-    ./bin/macode render scenes/02_shader_mc --fps 2 --duration 1 --no-review >/dev/null 2>&1
+    ./bin/macode render scenes/02_shader_mc --fps 2 --duration 1 >/dev/null 2>&1
     assert_exit_code 0
 
     assert_frame_count ".agent/tmp/02_shader_mc/frames/" 2 1

@@ -20,7 +20,7 @@ test_manim_cache_hit() {
 
     # ---- First render: cache miss ----
     cd "$PROJECT_ROOT"
-    ./bin/macode render scenes/01_test --fps 2 --duration 1 --no-review >/dev/null 2>&1
+    ./bin/macode render scenes/01_test --fps 2 --duration 1 >/dev/null 2>&1
     assert_exit_code 0
 
     assert_file_exists "$tmp_dir/final.mp4"
@@ -55,7 +55,7 @@ test_manim_cache_hit() {
     rm -f "$log_file"
 
     cd "$PROJECT_ROOT"
-    ./bin/macode render scenes/01_test --fps 2 --duration 1 --no-review >"$log_file" 2>&1
+    ./bin/macode render scenes/01_test --fps 2 --duration 1 >"$log_file" 2>&1
     assert_exit_code 0
 
     assert_file_exists "$tmp_dir/final.mp4"
@@ -133,7 +133,7 @@ test_mc_cache_hit() {
 
     # ---- First render: cache miss ----
     cd "$PROJECT_ROOT"
-    ./bin/macode render scenes/01_test_mc --fps 2 --duration 1 --no-review >/dev/null 2>&1
+    ./bin/macode render scenes/01_test_mc --fps 2 --duration 1 >/dev/null 2>&1
     assert_exit_code 0
 
     assert_file_exists "$tmp_dir/final.mp4"
@@ -166,7 +166,7 @@ test_mc_cache_hit() {
     rm -f "$log_file"
 
     cd "$PROJECT_ROOT"
-    ./bin/macode render scenes/01_test_mc --fps 2 --duration 1 --no-review >"$log_file" 2>&1
+    ./bin/macode render scenes/01_test_mc --fps 2 --duration 1 >"$log_file" 2>&1
     assert_exit_code 0
 
     assert_file_exists "$tmp_dir/final.mp4"
