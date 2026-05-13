@@ -65,12 +65,21 @@ if [[ "$JSON_OUTPUT" == true ]]; then
 fi
 
 # ── Route by type ─────────────────────────────────────
+# Per PRD D2: composite-unified is the canonical composite path (preserves
+# narrative state continuity). Legacy "composite" manifests are auto-routed
+# to composite-unified with a deprecation warning. The old split-render
+# composite-render.py remains available via MACODE_USE_LEGACY_COMPOSITE=1.
 
 case "$MANIFEST_TYPE" in
-    composite)
-        exec "$PROJECT_ROOT/pipeline/composite-render.py" "$SCENE_DIR" $json_arg
-        ;;
-    composite-unified)
+    composite|composite-unified)
+        if [[ "$MANIFEST_TYPE" == "composite" && "${MACODE_USE_LEGACY_COMPOSITE:-0}" == "1" ]]; then
+            echo "[render.sh] MACODE_USE_LEGACY_COMPOSITE=1 → using composite-render.py (deprecated)" >&2
+            exec "$PROJECT_ROOT/pipeline/composite-render.py" "$SCENE_DIR" $json_arg
+        fi
+        if [[ "$MANIFEST_TYPE" == "composite" ]]; then
+            echo "[render.sh] manifest.type='composite' is deprecated — auto-routing to composite-unified" >&2
+            echo "  Set 'type: composite-unified' in manifest.json to silence this warning." >&2
+        fi
         exec "$PROJECT_ROOT/pipeline/composite-unified-render.py" "$SCENE_DIR" $json_arg "${EXTRA_ARGS[@]}"
         ;;
     *)

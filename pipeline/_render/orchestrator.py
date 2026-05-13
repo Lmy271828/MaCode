@@ -48,16 +48,27 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--width", type=int, default=None, help="Override width")
     parser.add_argument("--height", type=int, default=None, help="Override height")
     parser.add_argument(
+        "--enable-review",
+        action="store_true",
+        help=(
+            "Write review_needed marker after render (default: off, "
+            "per PRD D1 the harness no longer self-gates on human approval)"
+        ),
+    )
+    parser.add_argument(
         "--no-review",
         action="store_true",
-        help="Skip review-needed marking (for batch testing)",
+        help=argparse.SUPPRESS,  # deprecated noop alias for backward compat
     )
     parser.add_argument(
         "--skip-checks",
         action="store_true",
         help="Skip static checks (for manual debugging)",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    # Default no_review=True per PRD D1. --enable-review flips it off.
+    args.no_review = not args.enable_review
+    return args
 
 
 def main() -> None:
@@ -105,7 +116,7 @@ def main() -> None:
                     "resolution": [rctx.width, rctx.height],
                     "final_size_bytes": final_size,
                     "log": rctx.log_file,
-                    "review_needed": not args.no_review,
+                    "review_needed": args.enable_review,
                 },
                 indent=2,
             )

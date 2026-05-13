@@ -62,6 +62,8 @@
 
 ## R2 — 默认人机 Review（review_needed / exit 3）
 
+> **状态（Sprint 7 / PRD D1 推荐路径已落地）**：orchestrator 默认不写 `review_needed`，渲染成功直接 exit 0。`--no-review` 保留为 deprecated noop alias；`--enable-review` 是新的显式开关。`render_scene_legacy.py` 保留原默认作为 `MACODE_USE_LEGACY_RENDER=1` 的回滚路径。
+
 ### 删除/降级对象
 
 - 成功渲染后默认 `touch review_needed`、`render` 在非 `--no-review` 下 exit 3 当文件已存在等行为（以当前代码为准逐项核对）
@@ -70,7 +72,7 @@
 ### 替代方案
 
 - **默认**：渲染成功即 exit 0，产物可用；质检用 `macode check`/`report` **显式**执行。
-- **可选**：`macode render --review` 或环境变量启用「完成后进入待审状态」。
+- **可选**：`macode render --enable-review` 启用「完成后进入待审状态」。
 
 ### 风险
 
@@ -82,6 +84,8 @@
 ---
 
 ## R3 — Composite 双轨（`composite` vs `composite-unified`）
+
+> **状态（Sprint 7 / PRD D2 推荐路径已落地）**：保留 `composite-unified`，`composite` 自动路由到 unified 并打印 deprecation warning。`pipeline/composite-render.py` 转为 deprecated shim（`MACODE_USE_LEGACY_COMPOSITE=1` 仍可用作 escape hatch）。
 
 ### 删除/降级对象
 

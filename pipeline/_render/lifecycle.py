@@ -110,7 +110,12 @@ def check_review_pending_or_exit(ctx: LifecycleContext) -> None:
 
 
 def mark_review_if_needed(ctx: LifecycleContext) -> None:
-    """Write ``review_needed`` marker unless ``--no-review`` was passed."""
+    """Write ``review_needed`` marker only when caller opted in.
+
+    Per PRD D1, the orchestrator no longer self-gates on human approval by
+    default. Callers wanting the legacy gate must pass ``--enable-review``,
+    which flips ``ctx.no_review`` to False.
+    """
     if ctx.no_review:
         return
     ctx.per_scene_dir.mkdir(parents=True, exist_ok=True)

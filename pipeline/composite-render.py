@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""pipeline/composite-render.py
-Composite scene orchestrator — pure orchestration layer.
+"""pipeline/composite-render.py — DEPRECATED.
 
-Replaces the mixed orchestration+execution in the original composite-render.py
-with strict separation of concerns:
-  - This file: decisions, scheduling, parameter computation
-  - bin/composite-assemble.py: sequential execution (overlay → concat/transition → audio → deliver)
+Per PRD D2, this split-render composite path is deprecated in favor of
+``composite-unified-render.py`` (single Scene instance preserves narrative
+state continuity across segments).
 
-Usage:
-    composite-render.py <scene_dir> [--json]
+Direct invocation is preserved only as an escape hatch when the user sets
+``MACODE_USE_LEGACY_COMPOSITE=1``. The canonical dispatcher
+``pipeline/render.sh`` auto-routes ``type: composite`` manifests to
+``composite-unified-render.py`` and emits a deprecation warning.
+
+This file may be removed in a future Sprint once all manifests migrate to
+``type: composite-unified``.
 """
 
 import argparse
