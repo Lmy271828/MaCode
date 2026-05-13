@@ -110,10 +110,10 @@
 - `docs/SOURCEMAP_SPEC.md`：`SHADER_PIPELINE`（两处）→ `DONE`
 
 **仍有效的 TODO（5项）**：
-- `macode shader preview` 预览模式
+- ~~`macode shader preview` 预览模式~~（已退役至 `experimental/shader-preview/`）
 - `ShaderFrame` 支持 `manifest.json` 的 `frame_count`
 - `pipeline/render.sh` 的 MC 分支迁移到 Harness 2.0
-- `snapshot.mjs` 清理确认（如不再使用）
+- ~~`snapshot.mjs` 清理~~（2026-05-13：已删文件，`dev.sh` 使用 `render.mjs --snapshot`）
 - 注册表继续扩展更多 LYGIA 素材
 
 ---
@@ -184,11 +184,11 @@
 - [x] **`bin/macode` 添加 MC 场景路由** — ✅ 已完成（2026-05-09），`render` 自动路由到 `render-cli.mjs`
 - [x] **Shader 依赖预渲染编排** — ✅ 已完成（2026-05-09），`render-cli.mjs` 启动前自动检查并预渲染
 - [x] **删除 `render.mjs` 及 fallback 逻辑** — ✅ 已完成（2026-05-09），jsdom 路径和 placeholder 已全部删除
-- [x] **清理 `engines/motion_canvas/scripts/` 目录** — 🟡 `render.mjs`/`render.sh`/`puppeteer-render.mjs` 已删除；`snapshot.mjs` 仍保留（需确认是否仍被使用）
+- [x] **清理 `engines/motion_canvas/scripts/` 目录** — ✅ `render.mjs` 统一入口；`snapshot.mjs` 已删除（`render.mjs --snapshot`）
 
 ### 低优先级（优化 & 文档）
 
-- [ ] **`macode shader preview` 预览模式** — 🟡 **P3 / 按需触发**。当前素材量 7 个，已有替代路径（`shader-render.py` + `macode dev`）。触发条件：素材量 >15 或出现自定义 shader（非 LYGIA）需求。设计储备见 `docs/shader-preview-design.md`
+- [x] **`macode shader preview` 预览模式** — **已从稳定 CLI 移除**（2026-05-13）；实验脚本见 `experimental/shader-preview/shader-preview.mjs`，主路径仍为 `shader-render.py` + `macode dev`。设计见 `docs/shader-preview-design.md`
 - [x] **Dev server 复用优化** — ✅ 已完成（2026-05-09），`render-cli.mjs` 支持 `--keep-server` / `--fresh`，`server-guardian.mjs` 自动回收空闲实例
 - [ ] **`ShaderFrame` 支持 `manifest.json` 的 `frame_count`** — 未开始。当前通过 `fetch` 读取帧序列，需支持从 manifest 的 `frame_count` 直接注入
 - [x] **文档更新** — ✅ CLAUDE.md 已更新（2026-05-09），AGENTS.md 未记录（可选）
@@ -292,7 +292,7 @@ macode mc stop scenes/xx/           仅停止 dev server（读取 .agent/tmp/xx/
 | `bin/macode` | 🆕 未提交（新增 `mc serve/stop`，`render` 自动路由 MC 场景） |
 | `engines/motion_canvas/scripts/browser-pool.mjs` | 🆕 未提交（新建：Browser Pool Server/Client） |
 | `engines/motion_canvas/scripts/playwright-render.mjs` | 🆕 未提交（已修改：接入 Browser Pool） |
-| `engines/motion_canvas/scripts/snapshot.mjs` | 🆕 未提交（已修改：接入 Browser Pool） |
+| `engines/motion_canvas/scripts/snapshot.mjs` | ~~历史行~~ **已删除**（2026-05-13）；请用 `render.mjs --snapshot` |
 | `engines/motion_canvas/scripts/server-guardian.mjs` | 🆕 未提交（新建：Dev Server 懒回收守护） |
 | `engines/motion_canvas/scripts/serve.mjs` | 🆕 未提交（已修改：lastUsedAt + 自动启动 guardian） |
 | `engines/motion_canvas/scripts/stop.mjs` | 🆕 未提交（新建：dev server 停止器） |
@@ -416,7 +416,7 @@ macode render scenes/05_demo/
 6. **并发配额队列** — `project.yaml` 配置 `max_concurrent_mc_scenes`
 
 ### P3 方向（长期）
-7. **`macode shader preview` 预览模式** — 实时 scrub 时间轴、调参 uniforms
+7. **Shader WebGL 预览（experimental）** — `node experimental/shader-preview/shader-preview.mjs`；非 `macode` 子命令
 8. ~~Motion Canvas ↔ Manim 混合场景（幕内实时混合）~~ — **已决策：舍弃 C，保留 A+B**
 
 ---
@@ -759,7 +759,7 @@ jq '.status' .agent/tmp/00_intro/state.json
 | 方向 | 说明 |
 |------|------|
 | **并发配额与队列** | `project.yaml` 配置 `max_concurrent_scenes`，超出配额的任务自动排队 |
-| **Shader Preview 模式** | `macode shader preview` — 轻量 HTTP 服务，支持 scrub 时间轴、实时调参 uniforms |
+| **Shader Preview（experimental）** | `node experimental/shader-preview/shader-preview.mjs` — 轻量 HTTP，调参 uniforms；非主路径 |
 | **引擎迁移完善** | `bin/migrate-engine.py` 增加更多规则覆盖，支持 Motion Canvas → Manim 的自动化迁移 |
 | **分布式渲染** | 远期：将 `composite-render.py` 的 `ThreadPoolExecutor` 扩展为支持多机分布式 |
 

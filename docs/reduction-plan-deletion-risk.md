@@ -28,8 +28,8 @@
 | R5 | `pipeline/render-scene.py` 上帝脚本 | 拆分为子 CLI 或保留薄壳 + 文档 | 中 |
 | R6 | `AGENTS.md` / README / Skill / progress 重复 | 合并信息架构，删 progress 中的设计混写 | 低 |
 | R7 | `scenes/` 内 demo 与 fixture 混杂 | 迁移到 `tests/fixtures` 或 `examples/` | 中 |
-| R8 | Motion Canvas 旁路复杂度（browser pool / guardian / 多脚本） | 保留最小路径，其余标 experimental | 中 |
-| R9 | SOURCEMAP 多工具链（sync / lint / scan / validate） | 保留核心，合并或删减维护脚本 | 低～中 |
+| R8 | Motion Canvas 旁路复杂度（browser pool / guardian / 多脚本） | **Sprint 3 已合并为 `render.mjs`**；2026-05-13 删除 `snapshot.mjs`，`dev.sh` 直调 `render.mjs --snapshot` | 中 |
+| R9 | SOURCEMAP 多工具链（sync / lint / scan / validate） | **`macode sourcemap` 为单入口**；`sourcemap-lint` 已删；`sync` / `scan-api` / `version-check` / `sourcemap-read` 正交保留 | 低～中 |
 
 ---
 
@@ -192,41 +192,47 @@
 
 ## R8 — Motion Canvas 工具链减法
 
-### 删除/降级对象（可选幅度）
+> **状态（2026-05-13）**：Sprint 3 已把 serve/stop/playwright 合并为 `engines/motion_canvas/scripts/render.mjs`（无 browser-pool）。**R8-a**：删除 `snapshot.mjs`，`engines/motion_canvas/scripts/dev.sh` 与 watch 模式改为直接调用 `render.mjs --snapshot …`。**主推路径**：`render.mjs`（Vite + Playwright）+ `macode mc serve|stop` 薄封装。
 
-- **激进**：browser pool、server guardian、多条 dev server 路径中仅保留 `render-cli.mjs` 所需最小闭环
-- **温和**：guardian/browser pool 标为 `--experimental`，默认关闭
+### 删除/降级对象（历史；多数已落地）
+
+- ~~browser pool、server guardian、独立 `serve.mjs` / `stop.mjs` / `playwright-render.mjs`~~：已移除
+- **`snapshot.mjs` 薄封装**：已删除（2026-05-13），避免与 `render.mjs --snapshot` 双入口
 
 ### 替代方案
 
-- 文档写明：MC 主推路径为 `render-cli.mjs + Playwright`，性能优化项可关。
+- **文档**：MC 主路径 = `render.mjs`；`macode dev <scene> --snapshot` → `dev.sh` → `render.mjs --snapshot`。
 
 ### 风险
 
 | 风险 | 可能性 | 影响 | 缓解 |
 |------|--------|------|------|
-| 多幕并发内存回升 | 中 | OOM | 文档建议降低并行度或减少 keep-server |
-| WSL2 长时间驻留进程 | 低 | 资源泄漏体感 | guardian 删减后用文档提醒手动 `mc stop` |
+| 多幕并发内存回升 | 中 | OOM | 文档建议降低并行度；`mc stop` 释放 dev server |
+| WSL2 长时间驻留进程 | 低 | 资源泄漏体感 | 文档提醒手动 `mc stop` |
 
 ---
 
 ## R9 — SOURCEMAP 工具链
 
-### 删除/降级对象
+> **状态（2026-05-13）**：**`macode sourcemap`**（`generate-md` / `validate` / `scan-api` / `version-check`）已是维护侧单入口编排。`engines/{engine}/sourcemap.json` 为机器真源；`SOURCEMAP.md` 与 `.agent/context/*` 由 `sourcemap-sync.py` 生成；**`sourcemap-lint.py` 已删除**（jsonschema 在 sync 内）。**不再计划**把 `sync` / `scan-api` / `version-check` / `sourcemap-read` 合并为单一大文件——职责正交、调用场景不同。
 
-- 合并 `sourcemap-lint`、`sourcemap-sync`、`sourcemap-scan-api`、`sourcemap-version-check` 中为同一维护动作重复的实现（非删协议本身）
+### 删除/降级对象（历史）
+
+- ~~合并 `sourcemap-lint`~~：已删；lint 语义并入 sync 校验
+- 四脚本并行保留：`sourcemap-sync.py`、`sourcemap-scan-api.py`、`sourcemap-version-check.py`、`bin/sourcemap-read`（查询 CLI）
 
 ### 替代方案
 
-- `macode sourcemap validate` 单入口编排：lint → sync → validate paths → version-check（已实现部分可扩充）
-- 或长期：Markdown 仅为人类读本，仓库内 **唯一真源为 JSON**，由 CI 生成 MD（方向性，改动大）
+- **人类/CI**：`macode sourcemap validate [engine|--all]`。
+- **Agent 查询**：`macode inspect` / `sourcemap-read`。
+- **长期**：Markdown 仅为人类视图；JSON 为唯一真源（与当前一致）。
 
 ### 风险
 
 | 风险 | 可能性 | 影响 | 缓解 |
 |------|--------|------|------|
-| 贡献者不知如何更新 whitelist | 中 | PR 被拒 | SKILL 增加「三步更新 SOURCEMAP」 |
-| api-gate 与 MD 脱节 | 低 | 假阴性/假阳性 | CI 强制 sync |
+| 贡献者不知如何更新 whitelist | 中 | PR 被拒 | SKILL / AGENTS §4.7「维护入口」段 |
+| api-gate 与 MD 脱节 | 低 | 假阴性/假阳性 | `sourcemap-sync --check` + CI |
 
 ---
 

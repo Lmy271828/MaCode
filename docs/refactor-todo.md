@@ -209,12 +209,12 @@
 - **回滚**：`git revert`；保留旧 mjs 至少 1 周以便对比。
 - **依赖**：S1-3（删除 `engine.conf` 装饰字段后字段集稳定）。
 
-### S3-2 · `snapshot.mjs` 评估去留 · P2 · 🟢 ⇄
-- **动机**：progress.md 已标"待确认是否仍被使用"。
+### S3-2 · `snapshot.mjs` 评估去留 · P2 · 🟢 · ✅ 已完成（2026-05-13）
+- **动机**：progress.md 曾标「待确认是否仍被使用」。
 - **步骤**：
-  1. `rg -n 'snapshot\.mjs' --type=sh --type=py --type=js`
-  2. 若无引用：删除并在 CHANGELOG 记录；若仍被 `macode dev` 引用：检查能否复用 `render.mjs --single-frame`。
-- **验收**：`macode dev scenes/02_shader_mc --snapshot 1.5` 仍能工作（若该路径还保留）。
+  1. `rg -n 'snapshot\.mjs'`
+  2. 删除 `engines/motion_canvas/scripts/snapshot.mjs`；`dev.sh` 改为直接 `node …/render.mjs --snapshot …`。
+- **验收**：`macode dev scenes/02_shader_mc --snapshot 1.5`；`pytest tests/unit` 通过。
 - **回滚**：`git revert`。
 - **依赖**：S3-1。
 
@@ -362,21 +362,22 @@
 ### S7-1 · README 砍到 100 行内 · P1 · 🟢 · 部分完成
 - **动作**：保留①一句话定义；②30 秒 hello world；③主推工作流的 5 个命令；④链接到 PRD / AGENTS / CHANGELOG。其余移走。
 - **验收**：`wc -l README.md` ≤ 100。
-- **现状**：当前 413 行；后续 Sprint 单独压缩。
+- **现状（2026-05-13 复测）**：**426 行**；未达 ≤100，后续 Sprint 单独压缩。
 - **回滚**：`git revert`。
 - **依赖**：S1-2 默认引擎已唯一化。
 
-### S7-2 · AGENTS.md 砍到 500 行内 · P1 · 🟢 · ✅ 已完成
+### S7-2 · AGENTS.md 砍到 500 行内 · P1 · 🟢 · 部分完成
 - **动作**：把 §3.1 目录结构 / §5.3-5.6 安全模型深度 / §6.6 WSL2 / §10 仪表盘 / §11 人类介入 / §12 并发模型 抽到 `docs/architecture.md`，AGENTS.md 留概览 + 链接。
 - **验收**：`wc -l AGENTS.md` ≤ 500（Sprint 7 阶段验收阈值，长期目标 ≤ 300）。
+- **现状（2026-05-13 复测）**：**614 行**（已抽架构文，仍超阈值）；**勿标「已完成」直至 ≤500**。
 - **回滚**：`git revert`。
 - **依赖**：S0-4 progress.md 已弃用。
 
 ### S7-3 · Skill 与 AGENTS 去重 · P2 · 🟢 · 待 follow-up
 - **动作**：`.agents/skills/macode-host-agent/SKILL.md` 与 `AGENTS.md` 工作流段落取一个权威源；另一处只链接。
-- **现状**：S7-2 已经把 AGENTS.md 收敛，SKILL.md 169 行；下一 Sprint 单独做。
+- **现状**：SKILL.md 169 行；AGENTS.md 仍偏长（见 S7-2）；下一 Sprint 单独做。
 - **验收**：`diff` 主要工作流段，重复内容 < 10 行。
-- **依赖**：S7-2。
+- **依赖**：S7-2（达标后）。
 
 ### S7-4 · 配置文件统一生成 · P2 · 🟢
 - **动作**：写一个 `bin/agent-config-render.py`：从 `docs/agent-config-source.md`（或 `project.yaml.agent` 段）渲染出 `.cursorrules` / `.windsurf/rules.md` / `.aider.conf.yml` / `.claude/settings.local.json`。
@@ -395,7 +396,7 @@
   2. ✅ `test_self_correction/`、`test_self_correction_mc/`、`test_layout_compiler/` 已迁入
   3. ✅ `tests/unit/test_macode_hash.py` 路径更新；smoke 测试用的是 `04_composite_demo`（demo 非 fixture），无需改
   4. 🟡 `scenes/test_marker.txt`（render-all 的 sentinel）保留不动；demo 类场景仍在 `scenes/`（设计上保留作"示范作品"）
-- **验收**：`pytest tests/unit/test_macode_hash.py -v` 全过；`ls scenes/ | grep ^test_` 空
+- **验收**：`pytest tests/unit/test_macode_hash.py -v` 全过；`ls scenes/ | grep ^test_` 排除 `test_marker.txt`（sentinel 文件）后为空；或无 `test_*` 子目录
 - **回滚**：`git revert`
 - **依赖**：S0-2 baseline。
 

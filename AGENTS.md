@@ -153,7 +153,7 @@ macode render scenes/02_shader_mc/ --fps 30 --duration 3 --width 1920 --height 1
 macode mc serve scenes/02_shader_mc/        # 启动 dev server，输出随机端口
 macode mc stop scenes/02_shader_mc/         # 停止 dev server
 
-# 单帧截图（snapshot.mjs 为 render.mjs 薄封装，或直接）
+# 单帧截图（`render.mjs --snapshot`）
 node engines/motion_canvas/scripts/render.mjs --snapshot \
   scenes/02_shader_mc/scene.tsx snapshot.png 1.5 30 1920 1080
 ```
@@ -340,7 +340,7 @@ pipeline/render.sh scenes/02_demo/
 | `sourcemap-sync.py` | JSON（真源）→ SOURCEMAP.md + `.agent/context` | `setup.sh` 自动调用；改 JSON 后手动 `sync` |
 | `engines/*/scripts/validate_sourcemap.sh` | WHITELIST/BLACKLIST 路径存在性 | 改路径后或与 CI 对齐时运行 |
 
-薄封装：`macode sourcemap validate|generate-md|scan-api|version-check`（见 `bin/macode`）。
+薄封装：`macode sourcemap validate|generate-md|scan-api|version-check`（见 `bin/macode`）。**维护入口**：日常改 JSON → `macode sourcemap validate <engine>` 或 `python3 bin/sourcemap-sync.py --check`；查询 WHITELIST/BLACKLIST 仍可用 `bash bin/sourcemap-read <engine> whitelist|blacklist ...`（消费 `.agent/context/*_sourcemap.json`）。`sourcemap-sync.py`、`sourcemap-scan-api.py`、`sourcemap-version-check.py`、`sourcemap-read` 四者职责正交，不设再合并为单文件；`sourcemap-lint.py` 已删除（jsonschema 校验在 sync 内）。
 
 ```bash
 # 快速健康检查（也见 macode sourcemap version-check）

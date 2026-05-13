@@ -59,7 +59,7 @@ engines/manim/scripts/inspect.sh
 engines/motion_canvas/scripts/render.mjs <scene_dir> <frames_dir> <fps> <dur> <w> <h>   # batch
 engines/motion_canvas/scripts/render.mjs --serve-only <scene_dir> [--port N]
 engines/motion_canvas/scripts/render.mjs --stop <scene_dir>
-engines/motion_canvas/scripts/snapshot.mjs <scene.tsx> <out.png> [t] [fps] [w] [h]
+engines/motion_canvas/scripts/render.mjs --snapshot <scene.tsx> <out.png> [t] [fps] [w] [h]   # 单帧（已无独立 snapshot.mjs）
 engines/motion_canvas/scripts/inspect.sh
 ```
 

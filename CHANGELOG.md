@@ -1,8 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+- **R8-a / R8-c**：删除 `engines/motion_canvas/scripts/snapshot.mjs`，`dev.sh` 直调 `render.mjs --snapshot`；`docs/reduction-plan-deletion-risk.md` R8 节更新为已落地状态
+- **R9-a / R9-c**：R9 清单与正文标注 `macode sourcemap` 单入口、四脚本正交保留；`AGENTS.md` §4.7 增补维护入口与「不再合并脚本」说明
+- **S7 状态修正**：`docs/refactor-todo.md` 复测 README **426 行**、AGENTS **614 行**，S7-1/S7-2 标为部分完成
 - Sprint 0 基线：见 docs/refactor-todo.md
-- Sprint 3：Motion Canvas `serve.mjs` / `stop.mjs` / `playwright-render.mjs` / Browser Pool / guardian 合并为 `render.mjs`；`snapshot.mjs` 为薄封装 `--snapshot`；MC `engine.conf` 去掉 `service_script` 与端口字段
+- Sprint 3：Motion Canvas `serve.mjs` / `stop.mjs` / `playwright-render.mjs` / Browser Pool / guardian 合并为 `render.mjs`；MC `engine.conf` 去掉 `service_script` 与端口字段；**2026-05-13** 删除冗余 `snapshot.mjs`（`render.mjs --snapshot` 为唯一单帧入口）
 - Sprint 4：`engines/*/sourcemap.json` 为 api-gate 与 sync 的机器真源；`sourcemap-lint.py` 删除；jsonschema 校验；`macode sourcemap` 整合 generate-md / validate / scan-api / version-check；`api-gate` 支持 `--engine` 并与路径对齐
 - Sprint 5.1：`bin/macode_layout` 统一 Zone/Narrative 校验与 mixin
 - Sprint 5.2：`pipeline/_render/{_paths,lifecycle,validate,engine,encode,orchestrator}.py` 真正拆分；orchestrator.py 118 行；composite-render 改用 `pipeline._render._paths` 的共享 helpers
@@ -10,10 +13,10 @@
 - Sprint 7-CLEAN：S5-2 验收修复（orchestrator 拆分到位）、`progress-write` CLI 契约回归修复、测试 cwd 污染修复、`bin/macode` 默认引擎 fail-loud、project.yaml YAML 转义修复、新增 5 个 render stage 单测文件（27 用例）
 - **PRD D1**：默认禁用 `review_needed` 标记 — orchestrator 默认 `--no-review` 行为；显式 `--enable-review` 才会写标记触发 exit 3 阻断流（`render_scene_legacy.py` 保持原默认作为回滚路径）
 - **PRD D2**：composite 双轨合并 — `type: composite` 自动路由到 `composite-unified-render.py` 并发出 deprecation warning；`composite-render.py` 转为 deprecated shim（`MACODE_USE_LEGACY_COMPOSITE=1` 仍可用作 escape hatch）
-- **S7 文档收敛**：`AGENTS.md` 抽出深度参考到 `docs/architecture.md`（目录结构 / 安全 §5.3–5.6 / WSL2 / 仪表盘 / 人类介入 / 并发模型）；AGENTS.md 减少到 ≤ 500 行
+- **S7 文档收敛（进行中）**：`AGENTS.md` 抽出深度参考到 `docs/architecture.md`；**行数 ≤500 仍为 S7-2 未结项目标**（见 `docs/refactor-todo.md` 复测）
 - **S8 Scenes 卫生**：`test_self_correction*`、`test_layout_compiler` 从 `scenes/` 移到 `tests/fixtures/scenes/`；`tests/fixtures/scenes/README.md` 固化 `test_*` 前缀约定
 - **Smoke/integration 脚本**：移除已废弃的 `--no-review`；`test_composite_render` 断言改为 unified 路径下的 `.agent/tmp/04_composite_demo/state.json`
-- **`get_python()`**：若 `.venv` 存在但无法 `import yaml`（空 venv），回退到 `python3`，避免 smoke/渲染误用坏 venv
+- **`macode shader preview` 退役**：WebGL 预览脚本迁至 `experimental/shader-preview/shader-preview.mjs`；移除 `macode shader preview` / `preview-stop` 与 Dashboard 中 Shader Previews 分组；主路径仍以 `macode shader render` + 场景渲染为准
 
 ## 历史提交（最近 14 条）
 - 2026-05-13 feat(checks): auto-trigger Layer 2 + SOURCEMAP gaps + check system hardening (89507a2)

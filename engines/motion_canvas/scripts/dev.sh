@@ -112,7 +112,7 @@ if $DO_SNAPSHOT; then
     PREVIEW_DIR="$TMP_DIR/dev_preview"
     mkdir -p "$PREVIEW_DIR"
     echo "[motion_canvas] Capturing snapshot @ ${SNAPSHOT_TIME}s ..."
-    node "$PROJECT_ROOT/engines/motion_canvas/scripts/snapshot.mjs" \
+    node "$PROJECT_ROOT/engines/motion_canvas/scripts/render.mjs" --snapshot \
         "$SCENE_TSX" \
         "$PREVIEW_DIR/latest.png" \
         "$SNAPSHOT_TIME" \
@@ -159,7 +159,7 @@ if $DO_WATCH; then
         if [[ "$CURRENT_MTIME" != "$LAST_MTIME" && -n "$LAST_MTIME" ]]; then
             echo "[motion_canvas] File changed: $SCENE_TSX"
             echo "[motion_canvas] Capturing preview snapshot..."
-            node "$PROJECT_ROOT/engines/motion_canvas/scripts/snapshot.mjs" \
+            node "$PROJECT_ROOT/engines/motion_canvas/scripts/render.mjs" --snapshot \
                 "$SCENE_TSX" \
                 "$PREVIEW_DIR/latest.png" \
                 "0" \

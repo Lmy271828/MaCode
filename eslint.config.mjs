@@ -61,7 +61,7 @@ export default tseslint.config(
 
   // Browser automation scripts (Playwright)
   {
-    files: ["engines/motion_canvas/scripts/render.mjs", "engines/motion_canvas/scripts/snapshot.mjs"],
+    files: ["engines/motion_canvas/scripts/render.mjs"],
     languageOptions: {
       globals: {
         ...globals.browser,
