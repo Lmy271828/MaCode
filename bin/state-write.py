@@ -28,12 +28,12 @@ import argparse
 import json
 import os
 import sys
-from datetime import UTC, datetime
 
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
 
-def iso_now() -> str:
-    """Return ISO 8601 UTC timestamp with Z suffix."""
-    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+from macode_state import write_task_state_v1_from_cli  # noqa: E402
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -73,58 +73,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def load_existing_state(state_path: str) -> dict:
-    """Load existing state.json if present, else empty dict."""
-    if os.path.exists(state_path):
-        try:
-            with open(state_path) as f:
-                return json.load(f)
-        except (json.JSONDecodeError, OSError):
-            pass
-    return {}
-
-
-def merge_outputs(existing: dict | None, new_outputs: dict | None) -> dict | None:
-    """Merge new outputs into existing outputs. New keys win."""
-    if existing is None:
-        return new_outputs
-    if new_outputs is None:
-        return existing
-    merged = dict(existing)
-    merged.update(new_outputs)
-    return merged
-
-
-def compute_duration(started_at: str | None, ended_at: str | None) -> float | None:
-    """Compute durationSec from startedAt and endedAt if not explicitly set."""
-    if not started_at or not ended_at:
-        return None
-    try:
-        # Parse ISO 8601 with or without Z suffix
-        fmt = "%Y-%m-%dT%H:%M:%SZ"
-        s = started_at.replace("+00:00", "Z")
-        e = ended_at.replace("+00:00", "Z")
-        if not s.endswith("Z"):
-            s = s[:19] + "Z"
-        if not e.endswith("Z"):
-            e = e[:19] + "Z"
-        ds = datetime.strptime(s, fmt)
-        de = datetime.strptime(e, fmt)
-        return (de - ds).total_seconds()
-    except (ValueError, TypeError):
-        return None
-
-
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
 
-    state_dir = args.state_dir
-    os.makedirs(state_dir, exist_ok=True)
-    state_path = os.path.join(state_dir, "state.json")
-
-    existing = load_existing_state(state_path)
-
-    # Parse outputs JSON if provided
     outputs = None
     if args.outputs:
         try:
@@ -133,68 +84,21 @@ def main(argv: list[str] | None = None) -> int:
             print(f"state-write: invalid --outputs JSON: {exc}", file=sys.stderr)
             return 1
 
-    # Determine timestamps
-    is_terminal = args.status in ("completed", "failed", "timeout")
-
-    started_at = args.started_at or existing.get("startedAt")
-    if args.status == "running" and not started_at:
-        started_at = iso_now()
-
-    ended_at = args.ended_at or existing.get("endedAt")
-    if is_terminal and not ended_at:
-        ended_at = iso_now()
-
-    # Determine duration
-    duration = args.duration
-    if duration is None and is_terminal:
-        duration = compute_duration(started_at, ended_at)
-        if duration is None:
-            duration = existing.get("durationSec")
-
-    # Build state object
-    state: dict = {
-        "version": "1.0",
-        "tool": args.tool or existing.get("tool", "unknown"),
-        "status": args.status,
-    }
-
-    if args.task_id or existing.get("taskId"):
-        state["taskId"] = args.task_id or existing.get("taskId")
-
-    if args.exit_code is not None:
-        state["exitCode"] = args.exit_code
-    elif "exitCode" in existing:
-        state["exitCode"] = existing["exitCode"]
-
-    if started_at:
-        state["startedAt"] = started_at
-    if ended_at:
-        state["endedAt"] = ended_at
-    if duration is not None:
-        state["durationSec"] = duration
-
-    merged_outputs = merge_outputs(existing.get("outputs"), outputs)
-    if merged_outputs:
-        state["outputs"] = merged_outputs
-
-    if args.error:
-        state["error"] = args.error
-    elif existing.get("error") and not is_terminal:
-        # Preserve existing error only if not terminal (we may be recovering)
-        state["error"] = existing["error"]
-    # If terminal and no new error, clear old error on success
-    if is_terminal and args.status == "completed":
-        state.pop("error", None)
-
-    # Atomic write
-    tmp_path = state_path + ".tmp"
     try:
-        with open(tmp_path, "w") as f:
-            json.dump(state, f, indent=2)
-            f.write("\n")
-        os.replace(tmp_path, state_path)
+        write_task_state_v1_from_cli(
+            args.state_dir,
+            args.status,
+            args.exit_code,
+            tool=args.tool,
+            outputs=outputs,
+            error=args.error,
+            started_at=args.started_at,
+            ended_at=args.ended_at,
+            duration=args.duration,
+            task_id=args.task_id,
+        )
     except OSError as exc:
-        print(f"state-write: failed to write {state_path}: {exc}", file=sys.stderr)
+        print(f"state-write: failed to write state: {exc}", file=sys.stderr)
         return 1
 
     return 0

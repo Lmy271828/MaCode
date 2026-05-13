@@ -18,15 +18,14 @@ bin/progress-write.py
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
-from datetime import UTC, datetime
 
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
 
-def iso_now() -> str:
-    """Return ISO 8601 UTC timestamp with Z suffix."""
-    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+from macode_state import write_progress_to_path  # noqa: E402
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -53,27 +52,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-
-    progress_dir = os.path.dirname(args.progress_file)
-    if progress_dir:
-        os.makedirs(progress_dir, exist_ok=True)
-
-    record: dict = {
-        "timestamp": iso_now(),
-        "phase": args.phase,
-        "status": args.status,
-    }
-    if args.message:
-        record["message"] = args.message
-
     try:
-        with open(args.progress_file, "a") as f:
-            f.write(json.dumps(record) + "\n")
+        write_progress_to_path(
+            args.progress_file, args.phase, args.status, message=args.message
+        )
     except OSError as exc:
         print(
             f"progress-write: failed to write {args.progress_file}: {exc}",
             file=sys.stderr,
         )
+        return 1
+    except TypeError as exc:
+        print(f"progress-write: {exc}", file=sys.stderr)
         return 1
 
     return 0

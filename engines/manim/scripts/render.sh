@@ -3,6 +3,7 @@ set -euo pipefail
 
 # engines/manim/scripts/render.sh
 # 接收 scene.py 路径和输出目录，调用 manim 输出帧序列
+# 渲染超时由上游 bin/macode-run 统一 enforce，本脚本不使用 GNU timeout。
 #
 # 用法: render.sh <scene.py> <output_dir> [fps] [duration] [width] [height]
 #   scene.py    - 场景源码路径
@@ -86,6 +87,14 @@ write_state "running" --task-id "$SCENE_NAME"
 # --media_dir 指定输出根目录
 # -o 指定输出文件名前缀
 
+# PYTHON 必须在 keyframes 段之前赋值（本脚本 set -u，keyframes 内会调用 $PYTHON）
+VENV_PYTHON="$PROJECT_ROOT/.venv/bin/python"
+if [[ -x "$VENV_PYTHON" ]]; then
+    PYTHON="$VENV_PYTHON"
+else
+    PYTHON="python3"
+fi
+
 # ── Layout snapshot keyframes ──
 MANIFEST_JSON="$SCENE_DIR/manifest.json"
 if [[ -f "$MANIFEST_JSON" ]]; then
@@ -112,9 +121,6 @@ fi
 echo "[manim] Rendering $SCENE_PY -> $OUTPUT_DIR"
 write_progress "render" "running" "Calling manim --format png"
 
-# 定位 Python：优先使用项目 .venv，回退系统 python3
-VENV_PYTHON="$PROJECT_ROOT/.venv/bin/python"
-
 # ── Backend selection ──
 BACKEND="gpu"
 if [[ -f "$PROJECT_ROOT/.agent/hardware_profile.json" ]]; then
@@ -134,36 +140,14 @@ elif [[ "$BACKEND" == "headless" ]]; then
     echo "[manim] HEADLESS mode. No OpenGL available."
     # Generate placeholder frames logic here if needed
 fi
-if [[ -x "$VENV_PYTHON" ]]; then
-    PYTHON="$VENV_PYTHON"
-else
-    PYTHON="python3"
-fi
 
 # 将引擎适配层加入 Python 路径，使场景可 import templates/utils
 ENGINE_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../src" && pwd)"
 export PYTHONPATH="${ENGINE_SRC}${PYTHONPATH:+:$PYTHONPATH}"
 
-# 读取渲染超时（默认 600 秒）
-MAX_TIME=600
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-if [[ -f "$PROJECT_ROOT/project.yaml" ]]; then
-    if command -v python3 >/dev/null 2>&1; then
-        MAX_TIME=$(python3 -c "
-try:
-    import yaml
-    with open('$PROJECT_ROOT/project.yaml') as f:
-        c = yaml.safe_load(f)
-    print(c.get('agent',{}).get('resource_limits',{}).get('max_render_time_sec',600))
-except: print(600)
-" 2>/dev/null || echo 600)
-    fi
-fi
-
 # manim 默认输出到 media/images/<module_name>/
 # 我们需要把帧移到指定输出目录
-timeout --foreground "$MAX_TIME" "$PYTHON" -m manim \
+"$PYTHON" -m manim \
     --format png \
     --fps "$FPS" \
     --media_dir "$OUTPUT_DIR/.media" \
@@ -171,13 +155,7 @@ timeout --foreground "$MAX_TIME" "$PYTHON" -m manim \
     2>&1 | tee "$OUTPUT_DIR/render.log"
 
 MANIM_EXIT=${PIPESTATUS[0]}
-if [[ $MANIM_EXIT -eq 124 ]]; then
-    echo "[manim] TIMEOUT: rendering exceeded ${MAX_TIME}s limit" >&2
-    echo "[fix]       Simplify the scene or increase max_render_time_sec in project.yaml" >&2
-    write_progress "render" "error" "Timeout after ${MAX_TIME}s"
-    write_state "timeout" 124 --error "Timeout after ${MAX_TIME}s"
-    exit 124
-elif [[ $MANIM_EXIT -ne 0 ]]; then
+if [[ $MANIM_EXIT -ne 0 ]]; then
     echo "[manim] FAILED (exit $MANIM_EXIT). Analyzing error..." >&2
     write_progress "render" "error" "Manim exit code $MANIM_EXIT"
     write_state "failed" "$MANIM_EXIT" --error "Manim exit code $MANIM_EXIT"

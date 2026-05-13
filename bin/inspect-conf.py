@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 """bin/inspect-conf.py
-Parse engine.conf and output structured JSON.
-
-Falls back to grep/awk parsing if yq is unavailable.
-Only handles flat string/integer fields and simple list fields.
+Parse engine.conf and output structured JSON (PyYAML only).
 
 Usage:
     inspect-conf.py <engine.conf>
@@ -13,132 +10,76 @@ Exit: 0 on success, 1 on error
 """
 
 import json
-import os
-import subprocess
 import sys
+from pathlib import Path
+
+import yaml
+
+STRING_KEYS = (
+    "render_script",
+    "pre_render_script",
+    "service_script",
+    "inspect_script",
+    "validate_script",
+    "sourcemap",
+)
+INT_KEYS = ("service_port_min", "service_port_max")
 
 
-def parse_with_yq(path: str) -> dict:
-    """Try yq first for robust YAML parsing."""
-    result = {}
-
-    # scene_extensions (list)
-    r = subprocess.run(
-        ["yq", "-r", '.scene_extensions[]', path],
-        capture_output=True, text=True, check=False,
-    )
-    if r.returncode == 0 and r.stdout.strip():
-        result["scene_extensions"] = [line.strip() for line in r.stdout.strip().split("\n") if line.strip()]
-
-    # mode
-    r = subprocess.run(
-        ["yq", "-r", '.mode // "batch"', path],
-        capture_output=True, text=True, check=False,
-    )
-    if r.returncode == 0 and r.stdout.strip():
-        result["mode"] = r.stdout.strip()
-
-    # Flat string fields
-    for key in ("render_script", "pre_render_script", "service_script",
-                "inspect_script", "validate_script", "sourcemap"):
-        r = subprocess.run(
-            ["yq", "-r", f'.{key} // ""', path],
-            capture_output=True, text=True, check=False,
-        )
-        if r.returncode == 0 and r.stdout.strip():
-            result[key] = r.stdout.strip()
-
-    # Integer fields
-    for key in ("service_port_min", "service_port_max"):
-        r = subprocess.run(
-            ["yq", "-r", f'.{key} // ""', path],
-            capture_output=True, text=True, check=False,
-        )
-        if r.returncode == 0 and r.stdout.strip():
-            try:
-                result[key] = int(r.stdout.strip())
-            except ValueError:
-                pass
-
-    return result
-
-
-def parse_with_grep(path: str) -> dict:
-    """Fallback: grep/awk for flat fields."""
-    result = {}
-
-    # scene_extensions
-    r = subprocess.run(
-        ["grep", "-oP", r"^scene_extensions:\s*\K.*", path],
-        capture_output=True, text=True, check=False,
-    )
-    if r.returncode == 0 and r.stdout.strip():
-        raw = r.stdout.strip()
-        raw = raw.lstrip("[").rstrip("]")
-        result["scene_extensions"] = [x.strip().strip('"').strip("'") for x in raw.split(",") if x.strip()]
-
-    if not result.get("scene_extensions"):
-        r = subprocess.run(
-            ["awk", "/scene_extensions:/{found=1; next} found && /^[[:space:]]*-/{print $2; next} found && /^[[:space:]]*[^#-]/{exit}", path],
-            capture_output=True, text=True, check=False,
-        )
-        if r.returncode == 0 and r.stdout.strip():
-            result["scene_extensions"] = [line.strip().strip('"').strip("'") for line in r.stdout.strip().split("\n") if line.strip()]
-
-    # mode
-    r = subprocess.run(
-        ["grep", "-oP", r"^mode:\s*\K\S+", path],
-        capture_output=True, text=True, check=False,
-    )
-    if r.returncode == 0 and r.stdout.strip():
-        result["mode"] = r.stdout.strip()
-
-    # Flat string fields
-    for key in ("render_script", "pre_render_script", "service_script",
-                "inspect_script", "validate_script", "sourcemap"):
-        r = subprocess.run(
-            ["grep", "-oP", rf'^{key}:\s*\K\S+', path],
-            capture_output=True, text=True, check=False,
-        )
-        if r.returncode == 0 and r.stdout.strip():
-            result[key] = r.stdout.strip()
-
-    # Integer fields
-    for key in ("service_port_min", "service_port_max"):
-        r = subprocess.run(
-            ["grep", "-oP", rf'^{key}:\s*\K\d+', path],
-            capture_output=True, text=True, check=False,
-        )
-        if r.returncode == 0 and r.stdout.strip():
-            try:
-                result[key] = int(r.stdout.strip())
-            except ValueError:
-                pass
-
-    return result
+def _normalize_scene_extensions(data: dict) -> list:
+    se = data.get("scene_extensions")
+    if se is None:
+        return [".py"]
+    if isinstance(se, list):
+        out = [str(x).strip() for x in se if x is not None and str(x).strip()]
+        return out if out else [".py"]
+    if isinstance(se, str):
+        s = se.strip()
+        if not s:
+            return [".py"]
+        if s.startswith("[") and s.endswith("]") and len(s) >= 2:
+            inner = s[1:-1].strip()
+            if not inner:
+                return [".py"]
+            parts = [p.strip().strip('"').strip("'") for p in inner.split(",") if p.strip()]
+            return parts if parts else [".py"]
+        return [s]
+    return [".py"]
 
 
 def parse_engine_conf(path: str) -> dict:
-    if not os.path.isfile(path):
+    if not Path(path).is_file():
         return {
             "scene_extensions": [".py"],
             "mode": "batch",
         }
 
-    result = {}
+    with Path(path).open(encoding="utf-8") as f:
+        raw = yaml.safe_load(f)
 
-    # Try yq first
-    try:
-        result = parse_with_yq(path)
-    except FileNotFoundError:
-        pass
+    data = raw if isinstance(raw, dict) else {}
 
-    # Fallback to grep/awk for missing fields
-    if not result.get("scene_extensions"):
-        result.update(parse_with_grep(path))
+    result = {
+        "scene_extensions": _normalize_scene_extensions(data),
+        "mode": (str(data.get("mode") or "batch").strip() or "batch"),
+    }
 
-    if not result.get("scene_extensions"):
-        result["scene_extensions"] = [".py"]
+    for key in STRING_KEYS:
+        val = data.get(key)
+        if val is None:
+            continue
+        s = str(val).strip()
+        if s:
+            result[key] = s
+
+    for key in INT_KEYS:
+        val = data.get(key)
+        if val is None:
+            continue
+        try:
+            result[key] = int(val)
+        except (TypeError, ValueError):
+            pass
 
     return result
 
@@ -156,7 +97,12 @@ def main():
         print("Exit: 0 on success, 1 on error")
         sys.exit(0 if len(sys.argv) >= 2 and sys.argv[1] in ("-h", "--help") else 1)
 
-    result = parse_engine_conf(sys.argv[1])
+    try:
+        result = parse_engine_conf(sys.argv[1])
+    except yaml.YAMLError as e:
+        print(f"Error: invalid YAML in engine.conf: {e}", file=sys.stderr)
+        sys.exit(1)
+
     print(json.dumps(result, indent=2))
 
 
