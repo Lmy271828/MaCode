@@ -50,9 +50,11 @@ def load_blacklist(sourcemap_path):
                 for item in data.get("blacklist", []):
                     path_raw = item.get("path_raw", "") if isinstance(item, dict) else ""
                     if path_raw:
-                        module = _path_to_module(path_raw)
-                        if module:
-                            patterns.append((path_raw, module))
+                        if path_raw.startswith("@"):
+                            module = path_raw
+                        else:
+                            module = _path_to_module(path_raw)
+                        patterns.append((path_raw, module))
                 return patterns
             except (json.JSONDecodeError, OSError, KeyError, TypeError) as e:
                 print(f"WARN: Failed to load JSON sourcemap: {e}", file=sys.stderr)
@@ -82,9 +84,11 @@ def load_blacklist(sourcemap_path):
         if len(parts) >= 4:
             path_raw = parts[2].strip('`').strip()
             if path_raw and path_raw != '路径/命令':
-                module = _path_to_module(path_raw)
-                if module:
-                    patterns.append((path_raw, module))
+                if path_raw.startswith("@"):
+                    module = path_raw
+                else:
+                    module = _path_to_module(path_raw)
+                patterns.append((path_raw, module))
 
     return patterns
 
@@ -130,10 +134,12 @@ def _path_to_module(path_raw):
     return module
 
 
-def check_scene_content(code, blacklist):
+def check_python_imports(code, blacklist):
     """检查场景源码是否包含 BLACKLIST 中的违规导入。"""
     violations = []
     for raw_path, module in blacklist:
+        if module is None:
+            continue
         # 匹配两种导入模式：
         #   PREFIX: import <module>...  /  from <module>... import ...
         #   SUBMOD: from <parent>.<module>... import ... / import <parent>.<module>
@@ -144,6 +150,30 @@ def check_scene_content(code, blacklist):
             violations.append(
                 f"BLACKLIST import: {module} (pattern: {raw_path})"
             )
+
+    return violations
+
+
+def check_js_imports(code: str, blacklist_raw_paths: list[str]) -> list[str]:
+    """检查 TS/JS 场景源码是否包含 BLACKLIST 中的违规导入。"""
+    violations = []
+    imported = set()
+    for match in re.finditer(r"\bfrom\s+['\"]([^'\"]+)['\"]", code):
+        imported.add(match.group(1))
+    for match in re.finditer(r"\brequire\s*\(\s*['\"]([^'\"]+)['\"]\s*\)", code):
+        imported.add(match.group(1))
+
+    for pkg in imported:
+        for pattern in blacklist_raw_paths:
+            # Strip backticks that may surround path_raw in SOURCEMAP markdown
+            clean = pattern.strip().strip('`').strip()
+            if not clean:
+                continue
+            if pkg == clean or pkg.startswith(clean + "/"):
+                violations.append(
+                    f"BLACKLIST JS import: {pkg} (pattern: {pattern})"
+                )
+                break
 
     return violations
 
@@ -257,8 +287,14 @@ def main():
     blacklist = load_blacklist(sourcemap_path)
     all_violations = []
 
+    is_js = scene_file.endswith(('.ts', '.tsx', '.js', '.mjs'))
+
     # 1. BLACKLIST 导入检查
-    all_violations.extend(check_scene_content(code, blacklist))
+    if is_js:
+        js_blacklist = [raw for raw, _ in blacklist]
+        all_violations.extend(check_js_imports(code, js_blacklist))
+    else:
+        all_violations.extend(check_python_imports(code, blacklist))
 
     # 2. Sandbox 危险调用检查
     all_violations.extend(check_sandbox(code))

@@ -1,8 +1,8 @@
 # MaCode Engine Source Map: Motion Canvas
 
-> 生成日期: 2026-05-07
+> 生成日期: 2026-05-12
 > 引擎版本: 3.17.2
-> 适配层版本: 1.0.0
+> 适配层版本: 1.0.1
 > 源码根目录: `node_modules/@motion-canvas/core/lib/`, `node_modules/@motion-canvas/2d/lib/`
 
 ## WHITELIST: 推荐探索路径
@@ -37,6 +37,18 @@
 | TEST_SUITE | `node_modules/@motion-canvas/*/src/**/__tests__/` | 测试代码，非 API |
 | VENV_DIR | `.venv/` | Python 虚拟环境，非 JS 引擎目录 |
 | BUILD_ARTIFACT | `.agent/tmp/` | 中间产物，非源码 |
+| DIRECT_EVAL | `eval(` | Arbitrary code execution in browser/Node |
+| DIRECT_EVAL_FUNCTION | `new Function(` | Arbitrary code execution in browser/Node |
+| FETCH_API | `fetch(` | Network requests break reproducibility |
+| FETCH_API_XHR | `XMLHttpRequest` | Network requests break reproducibility |
+| WEBSOCKET | `WebSocket` | Raw network socket access |
+| DOM_WRITE | `document.write` | DOM access breaks Playwright screenshot consistency |
+| DOM_LOCATION | `document.location` | Navigation breaks Playwright screenshot consistency |
+| WINDOW_LOCATION | `window.location` | Navigation breaks Playwright screenshot consistency |
+| PROCESS_EXIT | `process.exit(` | Premature Node.js termination |
+| CHILD_PROCESS | `child_process` | Arbitrary command execution in Node |
+| BYPASS_BROWSER_POOL_PUPPETEER | `puppeteer-core` | Bypass managed browser lifecycle |
+| BYPASS_BROWSER_POOL_PLAYWRIGHT | `playwright-core` | Bypass managed browser lifecycle |
 
 ## EXTENSION: 待补充/可添加
 
@@ -54,3 +66,7 @@ When you find yourself writing the left column, use the right column instead.
 | Pitfall | Correct Approach | Reason |
 |---------|-----------------|--------|
 | Hand-write `gl_Position = ...` | `utils.shader_builder.Shader().node(...)` | GLSL compile errors decoupled from causes |
+| Use `fetch()` for external data | Pre-load data into `assets/` and import statically | Network requests in scene code break reproducibility |
+| Use `eval()` or `new Function()` | Use static imports and MaCode helper functions | Arbitrary execution bypasses sandbox |
+| Direct `document.*` manipulation | Use Motion Canvas Node API (`<Node>`, `<Txt>`, etc.) | DOM access breaks Playwright screenshot consistency |
+| Import `puppeteer-core` or `playwright-core` directly | Use `macode mc serve` + `playwright-render.mjs` | Browser pool manages lifecycle and isolation |

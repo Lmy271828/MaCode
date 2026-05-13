@@ -38,12 +38,29 @@ SANDBOX_PATTERNS = [
     (r'\bsys\.exit\s*\(', 'sys.exit() — premature process termination'),
 ]
 
+TS_SANDBOX_PATTERNS = [
+    (r'\beval\s*\(', 'eval() — arbitrary code execution'),
+    (r'\bnew\s+Function\s*\(', 'new Function() — arbitrary code execution'),
+    (r'\bfetch\s*\(', 'fetch() — HTTP client in scene code'),
+    (r'\bXMLHttpRequest\b', 'XMLHttpRequest — HTTP client'),
+    (r'\bWebSocket\b', 'WebSocket — raw network socket'),
+    (r'\bdocument\.write\s*\(', 'document.write() — DOM manipulation'),
+    (r'\bdocument\.location\b', 'document.location — navigation'),
+    (r'\bwindow\.location\b', 'window.location — navigation'),
+    (r'\bprocess\.exit\s*\(', 'process.exit() — premature termination'),
+    (r'\bchild_process\b', 'child_process — arbitrary command execution'),
+]
 
-def check(code: str) -> list[str]:
+
+def check(code: str, is_js: bool = False) -> list[str]:
     violations = []
     for pattern, description in SANDBOX_PATTERNS:
         if re.search(pattern, code):
             violations.append(description)
+    if is_js:
+        for pattern, description in TS_SANDBOX_PATTERNS:
+            if re.search(pattern, code):
+                violations.append(description)
     return violations
 
 
@@ -62,7 +79,8 @@ def main() -> int:
         print(f'FATAL: Cannot read scene: {e}', file=sys.stderr)
         return 2
 
-    violations = check(code)
+    is_js = args.scene_file.endswith(('.ts', '.tsx', '.js', '.mjs'))
+    violations = check(code, is_js=is_js)
     if violations:
         print('SANDBOX_VIOLATIONS:')
         for v in violations:

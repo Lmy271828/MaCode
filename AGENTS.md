@@ -349,9 +349,9 @@ macode composite render scenes/09_lecture
 
 > **统一渲染路由**：`composite-unified` 不通过独立 CLI 入口调用。运行 `macode composite render <scene_dir>` 或 `pipeline/render.sh <scene_dir>` 时，`render.sh` 自动读取 `manifest.json` 的 `type` 字段并分发到 `pipeline/composite-unified-render.py`。
 
-### 4.5 Zone/Region Constraint System（ManimGL 特有）
+### 4.5 Zone/Region Constraint System（ManimGL + ManimCE）
 
-> **引擎绑定声明**：本节描述的所有组件（ZoneScene、NarrativeScene、布局模板、叙事模板）均为 **ManimGL 引擎特有**。Motion Canvas 和 ManimCE 无等价实现。这是有意的设计选择 —— 高阶语义抽象绑定到最适合它的引擎，而非强行统一。
+> **引擎支持声明**：ZoneScene 布局系统已在 **ManimGL** 和 **ManimCE** 中实现（`engines/manimgl/src/components/zoned_scene.py` 和 `engines/manim/src/components/zoned_scene.py`）。Motion Canvas 无等价实现 —— 其声明式 React 节点模型与命令式 zone placement 没有自然映射。
 
 声明式空间约束系统，确保数学对象在场景中按语义区域放置，避免视觉混乱。
 
@@ -378,9 +378,9 @@ class MyScene(ZoneScene):
         self.validate_primary_zone()  # 确保主视觉区有非文本对象
 ```
 
-### 4.6 Narrative Mode Library（ManimGL 特有）
+### 4.6 Narrative Mode Library（ManimGL + ManimCE）
 
-> **引擎绑定声明**：与 §4.5 Zone 系统相同，Narrative Mode 是 **ManimGL 特有** 的高阶抽象。Motion Canvas 和 ManimCE 无等价实现。
+> **引擎支持声明**：NarrativeScene 已在 **ManimGL** 和 **ManimCE** 中实现（`engines/manimgl/src/components/narrative_scene.py` 和 `engines/manim/src/components/narrative_scene.py`）。动画原语自动映射到各引擎的正确名称（ManimGL 的 `ShowCreation` → ManimCE 的 `Create`）。Motion Canvas 无等价实现。
 
 叙事模板驱动的场景编排，将数学讲解抽象为可复用的叙事阶段（stage）。
 
