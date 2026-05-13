@@ -281,9 +281,11 @@ class TestComputeHash:
 class TestRealProjectIntegration:
     def test_test_layout_compiler_has_transitive_deps(self):
         """The real test_layout_compiler scene should resolve transitive engine deps."""
-        scene_dir = os.path.join(PROJECT_ROOT, "scenes", "test_layout_compiler")
+        scene_dir = os.path.join(
+            PROJECT_ROOT, "tests", "fixtures", "scenes", "test_layout_compiler"
+        )
         if not os.path.isdir(scene_dir):
-            pytest.skip("test_layout_compiler scene not found")
+            pytest.skip("test_layout_compiler fixture not found")
 
         hash_str, deps = macode_hash.compute_hash(scene_dir, PROJECT_ROOT)
         assert len(hash_str) == 32
