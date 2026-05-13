@@ -1,8 +1,8 @@
-# Host Agent Skill 规划 — MaCode Multi-Agent Coordinator
+# Host Agent Skill 规划 — MaCode Host Agent 工作流
 
 > **状态**: 设计储备（Design Reserve）  
 > **目标**: 为 Kimi / Claude Code / Cursor 等 Host Agent 提供一套可复用的 MaCode 工作流 Skill  
-> **范围**: 单 Agent 场景编写 + Multi-Agent 任务协调
+> **范围**: 单 Agent 场景编写为主；**Harness 内 Multi-Agent claim/队列已按 PRD 移除**（见 `docs/reduction-plan-deletion-risk.md` R1、`AGENTS.md`）
 
 ---
 
@@ -25,7 +25,7 @@ skills/macode-host-agent/
 ├── SKILL.md              # 主文档：工作流、CLI 速查、安全规则
 ├── workflows/
 │   ├── single-scene.md   # 单场景完整工作流（manifest → render → check → fix → commit）
-│   ├── multi-agent.md    # Multi-Agent 协调工作流（claim → render → 监控 → 冲突处理）
+│   ├── multi-agent.md    # （历史）Multi-Agent 协调；PRD 已不做 claim/队列，可删或改为「多终端并行注意事项」
 │   └── self-correction.md # Check report 解读 + 自动修复决策树
 ├── prompts/
 │   ├── system-prompt.md  # 系统提示模板（注入到 Agent 上下文）
@@ -213,10 +213,10 @@ cp docs/host-agent-skill-plan.md ~/.kimi/skills/macode-host-agent/SKILL.md
    - 选项 B: 只注入 P0 API + BLACKLIST 模块名（当前推荐）
    - 选项 C: 不注入，让 Agent 按需调用 `macode inspect`
 
-3. **Multi-Agent 通信协议**: 除了文件系统 claim，是否需要 Agent 间直接通信？
-   - 选项 A: 纯文件系统（当前实现，UNIX 哲学）
-   - 选项 B: Dashboard WebSocket（Agent → Dashboard → Agent）
-   - 选项 C: 共享 SQLite / JSON 数据库
+3. **多进程 / 并行**: PRD 不在 Harness 内维护跨 Agent 队列。若仍有多终端同时渲染，依赖文件系统与操作者协调；参见 `reduction-plan-deletion-risk.md` R1。
+   - 选项 A: 纯文件系统 + 约定（当前）
+   - 选项 B: 外层任务系统（CI / 调度器）
+   - 选项 C: ~~共享队列~~（非目标）
 
 ---
 
@@ -224,6 +224,6 @@ cp docs/host-agent-skill-plan.md ~/.kimi/skills/macode-host-agent/SKILL.md
 
 - [ ] Host Agent 能在零人类干预下完成单场景的 write → check → fix → render → commit
 - [ ] Host Agent 能正确解读 Schema v2 的 fix 块并执行修改
-- [ ] 3 个 Host Agent 同时运行，各自处理不同 scene，无冲突、无重复工作
-- [ ] Host Agent 能识别并处理 `exit 4`（claimed）和 `exit 5`（queued）
+- [ ] 多个终端或 CI Job 并行处理**不同场景目录**时，不因共享 `.agent/tmp/{同一场景}` 而损坏输出（文档化 flock / 单场景串行约定）
+- [ ] ~~Host Agent 能识别并处理 `exit 4`（claimed）和 `exit 5`（queued）~~ **已废弃**：PRD 已移除 claim 与上述 exit 码
 - [ ] Skill 文档随 MaCode 版本更新自动同步

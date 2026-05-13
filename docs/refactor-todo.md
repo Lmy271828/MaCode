@@ -187,6 +187,9 @@
 **目标**：把 7 个 `.mjs` + 1809 行 Motion Canvas 工具链合并为 2 个文件 + ~500 行。
 
 ### S3-1 · R-C 合并 serve / stop / playwright-render · P0 · 🟡
+
+> **落地（2026-05）**：统一入口已交付为 `engines/motion_canvas/scripts/render.mjs`；下表「删除/合并」为工单原文留档。行数 ≤800 等目标见 `docs/baseline/SPRINT3-SUBAGENTS.md`（内联模板可能抬高 `wc -l`）。
+
 - **动机**：每次渲染需要协调 3 个 mjs 与 1 份 state.json；启动顺序 race condition 多次出现在 progress.md。
 - **影响文件**：
   - **删除**：`engines/motion_canvas/scripts/serve.mjs`、`stop.mjs`、`browser-pool.mjs`、`server-guardian.mjs`

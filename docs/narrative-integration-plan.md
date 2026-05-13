@@ -129,7 +129,7 @@ export default makeScene2D(function* (view) {
 
 **关键原则**：MC 端不引入 `NarrativeScene` 基类，而是：
 1. 保留同样的 `content_manifest.json` 契约
-2. 由 `engines/motion_canvas/scripts/render-cli.mjs` 在渲染前读取 `narrative_profile`
+2. 由编排层（`pipeline/render-scene.py` → MC 时调用 `engines/motion_canvas/scripts/render.mjs`）在渲染前读取 `narrative_profile`（实现时需落在 manifest 解析或预检步骤）
 3. 调用一个轻量的 `narrative-to-jsx.mjs` 生成器，将 JSON 模板转为 `Layout` props 和 `yield*` 时间轴
 4. 最终输出与 Manim 端帧序列一致的 PNG 文件
 

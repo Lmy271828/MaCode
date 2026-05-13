@@ -4,6 +4,8 @@
 
 Source scan: `bin/`, `pipeline/`, `engines/` with `--glob '!**/node_modules/**'`.
 
+> **读法（维护者）**：本文件为一次 `rg` 输出的**冻结快照**。Group 2 等段落中若仍出现 `server-guardian.mjs`、`serve.mjs`、`stop.mjs` 等路径，表示扫描当时或归档引用仍存在；**当前 Motion Canvas 统一入口为 `engines/motion_canvas/scripts/render.mjs`**。需要最新清单时请在本机重新执行下方相同 `rg` 命令，必要时替换本文件全文。
+
 ## Table of contents
 
 - [Group 1 — CLI flags (`--no-claim`, `--no-review`, `--skip-checks`, `--fresh`, `--keep-server`)](#group-1--cli-flags---no-claim---no-review---skip-checks---fresh---keep-server)
@@ -89,9 +91,9 @@ pipeline/render-scene.py:152:            print(f"[review] Warning: corrupt overr
 pipeline/render-scene.py:153:            override_path.unlink(missing_ok=True)
 pipeline/render-scene.py:155:    # ── If review is pending and no override yet, skip re-render ──
 pipeline/render-scene.py:397:        # Clean up any stale service state for this scene
-bin/shader-preview.mjs:212:    <textarea class="signal-reason" id="signalReason" placeholder="Reason / override / suggested fix (optional)"></textarea>
-bin/shader-preview.mjs:439:            const override = {
-bin/shader-preview.mjs:445:            fs.writeFileSync(path.join(sceneDir, 'human_override.json'), JSON.stringify(override, null, 2));
+experimental/shader-preview/shader-preview.mjs:211:    <textarea class="signal-reason" id="signalReason" placeholder="Reason / override / suggested fix (optional)"></textarea>
+experimental/shader-preview/shader-preview.mjs:438:            const override = {
+experimental/shader-preview/shader-preview.mjs:444:            fs.writeFileSync(path.join(sceneDir, 'human_override.json'), JSON.stringify(override, null, 2));
 bin/detect-hardware.sh:204:            # Remove stale llvmpipe/software renderer warnings — D3D12 is now active
 bin/security-advise.py:22:        "why": "os.system() executes arbitrary shell commands, bypassing MaCode's process lifecycle management (macode-run) and audit trails.",
 bin/shader-render.py:56:    parser.add_argument("--fps", type=float, default=None, help="Frames per second (override shader.json)")

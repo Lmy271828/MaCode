@@ -1,5 +1,8 @@
 # MaCode 路线图
 
-当前路线与拆解基线请优先参考 `docs/refactor-todo.md`；产品需求草案请参考 `docs/PRD-draft.md`。
+- **执行工单**：[`docs/refactor-todo.md`](./refactor-todo.md)（按 Sprint 维护）
+- **产品草案**：[`docs/PRD-draft.md`](./PRD-draft.md)
+- **减法与风险**：[`docs/reduction-plan-deletion-risk.md`](./reduction-plan-deletion-risk.md)
+- **变更日志**：仓库根目录 [`CHANGELOG.md`](../CHANGELOG.md)
 
-## 占位 待从产品 PRD 与 reduction plan 同步
+历史长文见 [`docs/progress.md`](./progress.md)（非唯一权威）。

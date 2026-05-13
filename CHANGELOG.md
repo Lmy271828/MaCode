@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- **文档**：新增 `docs/README.md` 索引；更新 `roadmap.md`、`adr-012`（当前 `render.mjs` 说明）、`narrative-integration-plan`、`test-plan`、`baseline/escape-hatches` 读法、`shader-preview-design` 进程段、`host-agent-skill-plan`（PRD 与 exit 码）；**未修改** `docs/progress.md`
 - **R8-a / R8-c**：删除 `engines/motion_canvas/scripts/snapshot.mjs`，`dev.sh` 直调 `render.mjs --snapshot`；`docs/reduction-plan-deletion-risk.md` R8 节更新为已落地状态
 - **R9-a / R9-c**：R9 清单与正文标注 `macode sourcemap` 单入口、四脚本正交保留；`AGENTS.md` §4.7 增补维护入口与「不再合并脚本」说明
 - **S7 状态修正**：`docs/refactor-todo.md` 复测 README **426 行**、AGENTS **614 行**，S7-1/S7-2 标为部分完成

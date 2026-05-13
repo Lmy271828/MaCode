@@ -1,9 +1,11 @@
 # ADR-012: Motion Canvas 引擎编排/执行拆分（路径 B）
 
-**状态**: Accepted  
+**状态**: Accepted（讨论归档）  
 **日期**: 2026-05-10  
 **决策者**: agent (Kimi Code CLI)  
 **影响范围**: `engines/motion_canvas/`, `pipeline/render-scene.py`, `bin/macode`
+
+> **当前实现补充（2026-05）**：Motion Canvas 侧已合并为单一入口 **`engines/motion_canvas/scripts/render.mjs`**（批量渲染 / `--serve-only` / `--stop` / `--snapshot`）。`render-cli.mjs`、`serve.mjs`、`stop.mjs`、`playwright-render.mjs`、`browser-pool.mjs`、`server-guardian.mjs` 等旧文件已从仓库移除。下文保留当时的**问题陈述与方案推演**，便于理解决策脉络；具体 CLI 以 `render.mjs --help` 与 `AGENTS.md` Motion Canvas 小节为准。
 
 ---
 
