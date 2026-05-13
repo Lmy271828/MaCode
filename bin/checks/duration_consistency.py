@@ -22,6 +22,7 @@ if _SCRIPT_DIR not in sys.path:
 from checks._utils import (
     calc_animation_time,
     calc_animation_time_mc,
+    extract_animation_calls,
     extract_segments_from_source,
     find_function_blocks,
     find_source_file,
@@ -48,7 +49,7 @@ def check(scene_dir: str) -> dict:
             'scene': os.path.basename(os.path.normpath(scene_dir)),
             'status': 'error',
             'segments': [],
-            'issues': [{'type': 'source_missing', 'message': 'scene source not found'}],
+            'issues': [{'type': 'source_missing', 'severity': 'error', 'message': 'scene source not found'}],
         }
 
     manifest_segments = manifest.get('segments', [])
@@ -74,6 +75,7 @@ def check(scene_dir: str) -> dict:
             seg_status = 'warning'
             issues.append({
                 'type': 'segment_missing',
+                'severity': 'warning',
                 'message': f'Segment "{seg_id}" missing in manifest or source',
                 'suggested_lines': [e_seg.get('line_start', 0), e_seg.get('line_end', 0)] if e_seg else [0, 0],
             })
@@ -109,8 +111,15 @@ def check(scene_dir: str) -> dict:
 
         if abs(computed_duration - declared_duration) > 0.5:
             seg_status = 'warning'
+            excess = computed_duration - declared_duration
+            calls = extract_animation_calls(code_block, is_mc=is_mc)
+            # Map relative line numbers to absolute
+            for c in calls:
+                c['line'] += block_start - 1
+            hint = _build_duration_hint(calls, excess, is_mc, declared_duration)
             issues.append({
                 'type': 'duration_mismatch',
+                'severity': 'warning',
                 'message': (
                     f'声明时长 {declared_duration:.2f}s '
                     f'与计算动画时间 {computed_duration:.2f}s 偏差超过 0.5s'
@@ -118,12 +127,17 @@ def check(scene_dir: str) -> dict:
                 'declared': declared_duration,
                 'computed': computed_duration,
                 'suggested_lines': suggested_lines,
+                'details': {
+                    'animation_calls': calls,
+                    'excess': round(excess, 2),
+                },
                 'fixable': True,
                 'fix_confidence': 0.9,
                 'fix': {
                     'strategy': 'adjust_wait',
-                    'action': 'modify_wait_duration',
+                    'action': 'adjust_animation_duration' if is_mc else 'modify_wait_duration',
                     'params': {'target_duration': declared_duration},
+                    'hint': hint,
                 },
             })
 
@@ -142,6 +156,7 @@ def check(scene_dir: str) -> dict:
                 if sr['id'] in (ov['seg_a'], ov['seg_b']):
                     sr.setdefault('issues', []).append({
                         'type': 'animation_overlap',
+                        'severity': 'warning',
                         'message': ov['message'],
                         'overlap_duration': ov['overlap'],
                         'fixable': True,
@@ -150,6 +165,10 @@ def check(scene_dir: str) -> dict:
                             'strategy': 'adjust_wait',
                             'action': 'reduce_overlap',
                             'params': {'overlap': ov['overlap']},
+                            'hint': (
+                                f'缩短 "{ov["seg_a"]}" 的结束时间或推迟 "{ov["seg_b"]}" 的开始时间，'
+                                f'消除 {ov["overlap"]:.2f}s 重叠'
+                            ),
                         },
                     })
                     if sr['status'] == 'pass':
@@ -184,6 +203,37 @@ def _detect_overlap(segments: list) -> list:
                 ),
             })
     return issues
+
+
+def _build_duration_hint(calls: list[dict], excess: float, is_mc: bool, target: float) -> str:
+    """Generate a human-readable hint for fixing duration mismatch."""
+    if not calls or excess <= 0:
+        return f'调整动画时长使总时长等于 {target:.2f}s'
+    # Sort by duration descending
+    sorted_calls = sorted(calls, key=lambda x: x['duration'], reverse=True)
+    biggest = sorted_calls[0]
+    if len(calls) == 1:
+        new_dur = max(0.0, biggest['duration'] - excess)
+        return (
+            f'第 {biggest["line"]} 行的 `{biggest["expr"]}` 是唯一的动画调用，'
+            f'将其 duration 从 {biggest["duration"]:.2f}s 改为 {new_dur:.2f}s'
+        )
+    # Multiple calls: suggest trimming the biggest one
+    hints = []
+    remaining = excess
+    for c in sorted_calls:
+        if remaining <= 0:
+            break
+        reducible = min(c['duration'] - 0.1, remaining)  # keep at least 0.1s
+        if reducible > 0.05:
+            new_dur = c['duration'] - reducible
+            hints.append(
+                f'第 {c["line"]} 行的 `{c["expr"]}` 从 {c["duration"]:.2f}s 改为 {new_dur:.2f}s'
+            )
+            remaining -= reducible
+    if hints:
+        return '建议调整以下动画调用：' + '；'.join(hints)
+    return f'调整动画时长使总时长等于 {target:.2f}s'
 
 
 def main():

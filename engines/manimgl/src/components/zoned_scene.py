@@ -65,6 +65,7 @@ class ZoneScene(Scene):
             self.camera.frame.get_width(),
             self.camera.frame.get_height(),
         )
+        self._setup_layout_snapshots()
 
     def _inject_component_path(self):
         """Ensure engines/manimgl/src/ is on *sys.path*."""
@@ -165,6 +166,87 @@ class ZoneScene(Scene):
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Layout snapshot (runtime text-overlap detection)
+    # ------------------------------------------------------------------
+    def _setup_layout_snapshots(self):
+        """Register updater to capture layout at keyframe times.
+
+        Activated via environment variables:
+            MACODE_KEYFRAMES  - comma-separated timestamps (e.g. "0,1.5,3")
+            MACODE_SNAPSHOT_DIR - output directory for layout_snapshots.jsonl
+        """
+        import os
+        kf_str = os.environ.get('MACODE_KEYFRAMES', '')
+        if not kf_str:
+            return
+        self._snapshot_keyframes = [float(x) for x in kf_str.split(',') if x]
+        self._snapshot_dir = os.environ.get('MACODE_SNAPSHOT_DIR', '.agent/tmp/snapshots')
+        os.makedirs(self._snapshot_dir, exist_ok=True)
+        self.add_updater(self._snapshot_updater)
+
+    def _snapshot_updater(self, dt):
+        """Capture layout snapshot when current time crosses a keyframe."""
+        if not getattr(self, '_snapshot_keyframes', None):
+            return
+        t = self.time
+        fps = getattr(self.camera, 'fps', 30)
+        for kf in list(self._snapshot_keyframes):
+            if abs(t - kf) < 0.5 / fps:
+                self._take_snapshot(t)
+                self._snapshot_keyframes.remove(kf)
+
+    def _take_snapshot(self, timestamp: float):
+        """Write normalized layout snapshot to JSONL (recursively scans submobjects)."""
+        snapshot = {
+            'timestamp': round(timestamp, 2),
+            'engine': 'manimgl',
+            'canvas': list(self._frame_size),
+            'objects': [],
+        }
+        canvas_w, canvas_h = self._frame_size
+
+        def traverse(mobj, depth=0):
+            if not mobj or depth > 20:
+                return
+            if hasattr(mobj, 'get_center'):
+                cx, cy, _ = mobj.get_center()
+                w = mobj.get_width()
+                h = mobj.get_height()
+
+                # Normalize to [0,1] with origin at top-left
+                norm_x = (cx - w / 2 + canvas_w / 2) / canvas_w
+                norm_y = (canvas_h / 2 - (cy + h / 2)) / canvas_h
+
+                class_name = mobj.__class__.__name__
+                obj_type = 'unknown'
+                if class_name in ('Tex', 'MathTex', 'TexText', 'ChineseMathTex'):
+                    obj_type = 'formula'
+                elif class_name == 'Text':
+                    obj_type = 'text'
+
+                snapshot['objects'].append({
+                    'id': f"{getattr(mobj, 'name', class_name)}_d{depth}",
+                    'type': obj_type,
+                    'bbox': {
+                        'x': max(0.0, min(1.0, norm_x)),
+                        'y': max(0.0, min(1.0, norm_y)),
+                        'w': min(1.0, w / canvas_w),
+                        'h': min(1.0, h / canvas_h),
+                    },
+                })
+
+            # Recurse into submobjects (VGroup, Axes, etc.)
+            for child in getattr(mobj, 'submobjects', []):
+                traverse(child, depth + 1)
+
+        for mobj in self.mobjects:
+            traverse(mobj)
+
+        path = Path(self._snapshot_dir) / 'layout_snapshots.jsonl'
+        with open(path, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(snapshot, ensure_ascii=False) + '\n')
+
     def _load_layout(self, profile: str) -> None:
         """Load a JSON layout profile from *templates/layouts/*."""
         layouts_dir = Path(__file__).parent.parent / "templates" / "layouts"

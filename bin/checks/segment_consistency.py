@@ -15,7 +15,7 @@ _SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _SCRIPT_DIR not in sys.path:
     sys.path.insert(0, _SCRIPT_DIR)
 
-from checks._utils import extract_segments_from_source, load_manifest, segments_equal
+from checks._utils import extract_segments_from_source, find_source_file, load_manifest, segments_equal
 
 
 def fail(msg: str):
@@ -25,15 +25,15 @@ def fail(msg: str):
 
 def check(scene_dir: str) -> dict:
     manifest = load_manifest(scene_dir)
-    source_path = os.path.join(scene_dir, 'scene.py')
-    if not os.path.exists(source_path):
+    source_path = find_source_file(scene_dir)
+    if not source_path:
         return {
             'check': 'segment_consistency',
             'layer': 'layer1',
             'scene': os.path.basename(os.path.normpath(scene_dir)),
             'status': 'error',
             'segments': [],
-            'issues': [{'type': 'source_missing', 'message': 'scene.py not found'}],
+            'issues': [{'type': 'source_missing', 'severity': 'error', 'message': 'scene source not found (scene.py or scene.tsx)'}],
         }
 
     manifest_segments = manifest.get('segments', [])
@@ -55,6 +55,7 @@ def check(scene_dir: str) -> dict:
             seg_status = 'warning'
             issues.append({
                 'type': 'manifest_missing',
+                'severity': 'warning',
                 'message': f'Segment "{seg_id}" 存在于源码注释但不在 manifest.json 中',
                 'suggested_lines': [e_seg.get('line_start', 0), e_seg.get('line_end', 0)] if e_seg else [0, 0],
                 'fixable': True,
@@ -68,6 +69,7 @@ def check(scene_dir: str) -> dict:
             seg_status = 'warning'
             issues.append({
                 'type': 'source_missing',
+                'severity': 'warning',
                 'message': f'Segment "{seg_id}" 存在于 manifest.json 但不在源码注释中',
                 'suggested_lines': [m_seg.get('line_start', 0), m_seg.get('line_end', 0)],
                 'fixable': True,
@@ -81,6 +83,7 @@ def check(scene_dir: str) -> dict:
             seg_status = 'warning'
             issues.append({
                 'type': 'comment_manifest_mismatch',
+                'severity': 'warning',
                 'message': f'Segment "{seg_id}" 的注释与 manifest.json 内容不一致',
                 'suggested_lines': [e_seg.get('line_start', 0), e_seg.get('line_end', 0)],
                 'fixable': True,

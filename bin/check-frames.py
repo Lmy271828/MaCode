@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """bin/check-frames.py
-基于幕 keyframes 的采样帧检查。（DEPRECATED — Layer 2 checks removed）
+基于幕 keyframes 的运行时布局检查（Layer 2）。
 
 用法:
     check-frames.py scenes/04_base_demo/
 
 NOTE:
-    Layer 2 pixel-based checks (overlap, boundary, readability) have been removed.
-    Layout correctness is now enforced by the Layout Compiler at build time.
-    This script remains as a backward-compatible thin wrapper over check-runner.py.
+    Layer 2 现在通过运行时布局快照（layout_snapshots.jsonl）检测文本重叠。
+    本脚本是 check-runner.py --layer layer2 的 backward-compatible 包装器。
 """
 
 import argparse
@@ -36,7 +35,7 @@ def run_registry_checks(scene_dir: str, engine: str = None) -> dict:
     if engine:
         cmd += ['--engine', engine]
     result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode in (0, 1):
+    if result.returncode in (0, 1, 2):
         return json.loads(result.stdout)
     fail(f"check-runner.py failed: {result.stderr.strip()}")
 

@@ -15,6 +15,9 @@
 | CORE_TEXT | `node_modules/@motion-canvas/2d/lib/components/` | 文本节点：Txt, Latex, CodeBlock | P1 |
 | CORE_MEDIA | `node_modules/@motion-canvas/2d/lib/components/` | 媒体节点：Img, Video, SVG | P1 |
 | CORE_VIEW | `node_modules/@motion-canvas/2d/lib/components/` | 视口节点：Camera, Grid, View2D | P1 |
+| CORE_LAYOUT | `node_modules/@motion-canvas/2d/lib/components/Layout.js` | 布局节点：Layout, FlexLayout, Rect (布局容器) | P1 |
+| CORE_TEXT_DETAIL | `node_modules/@motion-canvas/2d/lib/components/Txt.js` | 文本节点 Txt（精确路径） | P1 |
+| CORE_LATEX_DETAIL | `node_modules/@motion-canvas/2d/lib/components/Latex.js` | LaTeX 节点 Latex（精确路径） | P1 |
 | FLOW_SEQUENCE | `node_modules/@motion-canvas/core/lib/flow/sequence.js` | 顺序执行动画 | P0 |
 | FLOW_ALL | `node_modules/@motion-canvas/core/lib/flow/all.js` | 并行执行动画 | P0 |
 | FLOW_DELAY | `node_modules/@motion-canvas/core/lib/flow/delay.js` | 延迟与等待 | P1 |

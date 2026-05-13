@@ -62,16 +62,14 @@ engines/motion_canvas/scripts/inspect.sh
 
 ```bash
 bin/checks/duration_consistency.py --scene-dir <dir>
-bin/checks/layout_params.py --scene-dir <dir>
 bin/checks/segment_consistency.py --scene-dir <dir>
+bin/checks/duration_consistency.py --scene-dir <dir>
 bin/checks/formula_density.py --scene-dir <dir>
-bin/checks/no_overlap.py --scene-dir <dir>
-bin/checks/formula_readable.py --scene-dir <dir>
-bin/checks/boundary_margin.py --scene-dir <dir>
+bin/checks/shader_registry.py --scene-dir <dir>
+bin/checks/layout_overlap.py --scene-dir <dir>
 
 # 注册表方式（推荐）
-bin/check-runner.py <scene_dir> [--layer layer1|layer2]
-bin/check-static.py <scene_dir> [--output <file>]
+bin/check-runner.py <scene_dir> [--layer layer1|layer2] [--format unified|raw]
 bin/check-frames.py <scene_dir> [--output <file>]
 ```
 

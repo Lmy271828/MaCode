@@ -81,6 +81,29 @@ write_progress "init" "running" "manimgl prepare"
 
 echo "[manimgl] Preparing $SCENE_PY"
 
+# ── Layout snapshot keyframes ──
+MANIFEST_JSON="$(dirname "$SCENE_PY")/manifest.json"
+if [[ -f "$MANIFEST_JSON" ]]; then
+    KEYFRAMES=$("$VENV_PYTHON" -c "
+import json, sys
+try:
+    m = json.load(open('$MANIFEST_JSON'))
+    kf = m.get('keyframes', [])
+    if not kf and m.get('duration'):
+        kf = [0.0, float(m['duration'])]
+    print(','.join(str(x) for x in kf))
+except Exception:
+    pass
+" 2>/dev/null)
+    if [[ -n "$KEYFRAMES" ]]; then
+        export MACODE_KEYFRAMES="$KEYFRAMES"
+        export MACODE_SNAPSHOT_DIR="$OUTPUT_DIR"
+        # Clean old snapshots to avoid stale data
+        rm -f "$OUTPUT_DIR/layout_snapshots.jsonl"
+        echo "[manimgl] Layout snapshots enabled at: $KEYFRAMES"
+    fi
+fi
+
 # 检查 ManimGL 是否安装
 FALLBACK=0
 if [[ ! -x "$VENV_PYTHON" ]]; then

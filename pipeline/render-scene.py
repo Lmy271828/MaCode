@@ -504,6 +504,32 @@ def main():
         run_engine()
         write_progress(scene_name, "capture", "completed", {"message": "Frame capture completed"})
 
+    # ── Layer 2 checks (runtime layout overlap) ───────
+    snapshot_path = os.path.join(output_dir, "layout_snapshots.jsonl")
+    if os.path.isfile(snapshot_path):
+        print("[layer2] Running runtime layout checks...")
+        layer2_report_path = os.path.join(check_reports_dir, f"{scene_name}_layer2.json")
+        result = subprocess.run(
+            [python, os.path.join(project_root, "bin", "check-runner.py"),
+             scene_dir, "--layer", "layer2", "--format", "raw"],
+            capture_output=True, text=True,
+        )
+        try:
+            layer2_data = json.loads(result.stdout)
+            with open(layer2_report_path, "w", encoding="utf-8") as f:
+                json.dump(layer2_data, f, indent=2, ensure_ascii=False)
+                f.write("\n")
+            severity = layer2_data.get("severity_summary", {})
+            if severity.get("error"):
+                print("[layer2] ERROR: Blocking issues found. See report.")
+                sys.exit(1)
+            elif severity.get("warning"):
+                print("[layer2] WARNING: Layout issues found. See report.")
+            else:
+                print("[layer2] OK")
+        except json.JSONDecodeError:
+            print(f"[layer2] Failed to parse output: {result.stderr}", file=sys.stderr)
+
     # ── Stop background service ───────────────────────
     if service_state:
         stop_script = os.path.join(project_root, "engines", engine, "scripts", "stop.mjs")

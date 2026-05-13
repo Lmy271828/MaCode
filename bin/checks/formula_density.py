@@ -19,6 +19,7 @@ from checks._utils import (
     count_formulas,
     extract_segments_from_source,
     find_function_blocks,
+    find_source_file,
     get_code_block,
     load_manifest,
 )
@@ -31,15 +32,15 @@ def fail(msg: str):
 
 def check(scene_dir: str) -> dict:
     manifest = load_manifest(scene_dir)
-    source_path = os.path.join(scene_dir, 'scene.py')
-    if not os.path.exists(source_path):
+    source_path = find_source_file(scene_dir)
+    if not source_path:
         return {
             'check': 'formula_density',
             'layer': 'layer1',
             'scene': os.path.basename(os.path.normpath(scene_dir)),
             'status': 'error',
             'segments': [],
-            'issues': [{'type': 'source_missing', 'message': 'scene.py not found'}],
+            'issues': [{'type': 'source_missing', 'severity': 'error', 'message': 'scene source not found (scene.py or scene.tsx)'}],
         }
 
     resolution = manifest.get('resolution', [1920, 1080])
@@ -48,7 +49,8 @@ def check(scene_dir: str) -> dict:
     manifest_segments = manifest.get('segments', [])
     extracted_segments = extract_segments_from_source(source_path)
     manifest_by_id = {s['id']: s for s in manifest_segments}
-    func_blocks = find_function_blocks(source_path)
+    is_python = source_path.endswith('.py')
+    func_blocks = find_function_blocks(source_path) if is_python else {}
     sorted_funcs = sorted(func_blocks.values(), key=lambda x: x[0])
 
     segment_results = []
@@ -62,14 +64,19 @@ def check(scene_dir: str) -> dict:
 
         block_start = m_seg['line_start']
         block_end = m_seg['line_end']
-        for fs, fe, _fname in sorted_funcs:
-            if fs > m_seg['line_start']:
-                block_start = fs
-                block_end = fe
-                break
+        if is_python:
+            for fs, fe, _fname in sorted_funcs:
+                if fs > m_seg['line_start']:
+                    block_start = fs
+                    block_end = fe
+                    break
+        else:
+            # For .tsx, extend to end of file (single scene per file)
+            with open(source_path, encoding='utf-8') as f:
+                block_end = len(f.readlines())
 
         code_block = get_code_block(source_path, block_start, block_end)
-        formula_count = count_formulas(code_block)
+        formula_count = count_formulas(code_block, is_mc=not is_python)
         seg_status = 'pass'
         issues = []
 
@@ -77,8 +84,15 @@ def check(scene_dir: str) -> dict:
             pixels_per_formula = area / formula_count
             if pixels_per_formula < 50000:
                 seg_status = 'warning'
+                max_formulas = int(area / 50000)
+                excess = formula_count - max_formulas
+                hint = (
+                    f'当前分辨率 {resolution} 下最多支持 {max_formulas} 个公式，'
+                    f'建议删除 {excess} 个公式，或提升分辨率至更大尺寸'
+                )
                 issues.append({
                     'type': 'formula_density',
+                    'severity': 'warning',
                     'message': (
                         f'公式密度过高：{formula_count} 个公式，'
                         f'每公式仅 {pixels_per_formula:.0f} 像素（建议 ≥ 50000）'
@@ -89,7 +103,11 @@ def check(scene_dir: str) -> dict:
                     'fix': {
                         'strategy': 'adjust_scale',
                         'action': 'reduce_formula_count_or_increase_resolution',
-                        'params': {'pixels_per_formula': pixels_per_formula},
+                        'params': {
+                            'pixels_per_formula': pixels_per_formula,
+                            'max_formulas': max_formulas,
+                        },
+                        'hint': hint,
                     },
                 })
 

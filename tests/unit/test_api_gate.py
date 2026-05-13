@@ -55,35 +55,35 @@ class TestPathToModule:
         assert api_gate._path_to_module(".") is None
 
 
-class TestCheckSceneContent:
+class TestCheckPythonImports:
     def test_detects_blacklisted_import(self):
         code = "import manimlib\n"
         blacklist = [("manimlib/", "manimlib")]
-        v = api_gate.check_scene_content(code, blacklist)
+        v = api_gate.check_python_imports(code, blacklist)
         assert len(v) == 1
         assert "manimlib" in v[0]
 
     def test_detects_from_import(self):
         code = "from manimlib import Scene\n"
         blacklist = [("manimlib/", "manimlib")]
-        v = api_gate.check_scene_content(code, blacklist)
+        v = api_gate.check_python_imports(code, blacklist)
         assert len(v) == 1
 
     def test_detects_submodule_import(self):
         code = "import foo.manimlib.bar\n"
         blacklist = [("manimlib/", "manimlib")]
-        v = api_gate.check_scene_content(code, blacklist)
+        v = api_gate.check_python_imports(code, blacklist)
         assert len(v) == 1
 
     def test_allows_whitelisted_import(self):
         code = "import numpy\n"
         blacklist = [("manimlib/", "manimlib")]
-        v = api_gate.check_scene_content(code, blacklist)
+        v = api_gate.check_python_imports(code, blacklist)
         assert len(v) == 0
 
     def test_empty_blacklist_no_violations(self):
         code = "import anything\n"
-        v = api_gate.check_scene_content(code, [])
+        v = api_gate.check_python_imports(code, [])
         assert len(v) == 0
 
 

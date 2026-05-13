@@ -1,9 +1,9 @@
 """bin/checks/_frame_utils.py
 Shared frame-processing utilities for check scripts.
 
-NOTE: Pixel-based visual checks (overlap, readability, camera focus) have been
-removed. Layout correctness is now guaranteed by the Layout Compiler via
-bounding-box contracts. This module retains general-purpose frame/video helpers.
+NOTE: Layer 2 runtime checks (text overlap via layout snapshots) are handled by
+layout_overlap.py. This module retains general-purpose frame/video helpers
+for composite timing and frame extraction.
 """
 
 import json

@@ -29,10 +29,11 @@
 
 ## check-runner.py
 
-| 退出码 | 含义 |
-|--------|------|
-| 0 | 全部通过 |
-| 1 | 发现问题 |
+| 退出码 | 含义 | 触发条件 |
+|--------|------|----------|
+| 0 | 全部通过 | 所有检查 status == pass |
+| 1 | 只有 warning | 存在 warning 但无 error（Agent 可自行判断是否继续渲染） |
+| 2 | 存在 error | 必须修复后才能渲染（如 source_missing、shader_missing） |
 
 ## api-gate.py
 

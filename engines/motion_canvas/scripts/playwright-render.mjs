@@ -90,6 +90,14 @@ try {
   // Optionally set viewport size (may help with HiDPI consistency)
   await page.setViewportSize({ width: 960, height: 540 });
 
+  // Layout snapshot keyframes
+  const kfEnv = process.env.MACODE_KEYFRAMES || '';
+  const keyframeFrames = kfEnv
+    ? kfEnv.split(',').map(s => Math.round(parseFloat(s) * fps)).filter(f => f >= 0 && f < totalFrames)
+    : [];
+  const snapshotDir = process.env.MACODE_SNAPSHOT_DIR || outputDir;
+  const snapshotPath = path.join(snapshotDir, 'layout_snapshots.jsonl');
+
   for (let frame = 0; frame < totalFrames; frame++) {
     const dataUrl = await page.evaluate(
       (f) => window.__MCODE_CAPTURE__(f),
@@ -101,6 +109,25 @@ try {
     const fileName = `frame_${String(frame + 1).padStart(4, '0')}.png`;
     const filePath = path.join(outputDir, fileName);
     fs.writeFileSync(filePath, buffer);
+
+    // Capture layout snapshot at keyframe frames
+    if (keyframeFrames.includes(frame)) {
+      try {
+        const snapshot = await page.evaluate(() => {
+          if (typeof window.__MCODE_SNAPSHOT__ === 'function') {
+            return window.__MCODE_SNAPSHOT__();
+          }
+          return null;
+        });
+        if (snapshot) {
+          snapshot.timestamp = parseFloat((frame / fps).toFixed(2));
+          fs.appendFileSync(snapshotPath, JSON.stringify(snapshot) + '\n');
+          console.log(`[playwright] Layout snapshot at frame ${frame + 1} (t=${snapshot.timestamp}s)`);
+        }
+      } catch (e) {
+        console.error(`[playwright] Snapshot failed at frame ${frame + 1}: ${e.message}`);
+      }
+    }
 
     if ((frame + 1) % 30 === 0 || frame === totalFrames - 1) {
       console.log(`[playwright] Frame ${frame + 1}/${totalFrames}`);

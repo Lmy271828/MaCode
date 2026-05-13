@@ -152,6 +152,60 @@ playback.setup([scene]);
 
 (window as any).__MCODE_GET_DURATION__ = () => playback.duration;
 (window as any).__MCODE_GET_FPS__ = () => playback.fps;
+
+// Layout snapshot for runtime text-overlap detection
+(window as any).__MCODE_SNAPSHOT__ = () => {
+  const currentScene = playback.currentScene;
+  if (!currentScene || !currentScene.view) {
+    return null;
+  }
+  const view = currentScene.view;
+  const canvas = currentScene.settings?.size || new Vector2(1920, 1080);
+  const [cw, ch] = [canvas.x, canvas.y];
+  const objects = [];
+
+  function traverse(node, depth = 0) {
+    if (!node || depth > 20) return;
+
+    const w = node.width?.() || node.size?.().x || 0;
+    const h = node.height?.() || node.size?.().y || 0;
+    const pos = node.position?.() || { x: 0, y: 0 };
+    const cx = pos.x;
+    const cy = pos.y;
+
+    const normX = (cx - w / 2 + cw / 2) / cw;
+    const normY = (ch / 2 - (cy + h / 2)) / ch;
+
+    const className = node.constructor?.name;
+    let type = 'unknown';
+    if (className === 'Txt') type = 'text';
+    if (className === 'Latex') type = 'formula';
+
+    objects.push({
+      id: node.key || className || 'obj_' + depth,
+      type,
+      bbox: {
+        x: Math.max(0, Math.min(1, normX)),
+        y: Math.max(0, Math.min(1, normY)),
+        w: Math.min(1, w / cw),
+        h: Math.min(1, h / ch),
+      },
+    });
+
+    const children = node.children?.();
+    if (children && Array.isArray(children)) {
+      children.forEach((c) => traverse(c, depth + 1));
+    }
+  }
+
+  traverse(view);
+  return {
+    timestamp: playback.currentScene?.time ?? 0,
+    engine: 'motion_canvas',
+    canvas: [cw, ch],
+    objects,
+  };
+};
 `;
 
 fs.writeFileSync(path.join(ENGINE_DIR, 'capture.ts'), captureTs);

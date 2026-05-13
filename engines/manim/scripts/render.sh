@@ -86,6 +86,29 @@ write_state "running" --task-id "$SCENE_NAME"
 # --media_dir 指定输出根目录
 # -o 指定输出文件名前缀
 
+# ── Layout snapshot keyframes ──
+MANIFEST_JSON="$SCENE_DIR/manifest.json"
+if [[ -f "$MANIFEST_JSON" ]]; then
+    KEYFRAMES=$("$PYTHON" -c "
+import json, sys
+try:
+    m = json.load(open('$MANIFEST_JSON'))
+    kf = m.get('keyframes', [])
+    if not kf and m.get('duration'):
+        kf = [0.0, float(m['duration'])]
+    print(','.join(str(x) for x in kf))
+except Exception:
+    pass
+" 2>/dev/null)
+    if [[ -n "$KEYFRAMES" ]]; then
+        export MACODE_KEYFRAMES="$KEYFRAMES"
+        export MACODE_SNAPSHOT_DIR="$OUTPUT_DIR"
+        # Clean old snapshots to avoid stale data
+        rm -f "$OUTPUT_DIR/layout_snapshots.jsonl"
+        echo "[manim] Layout snapshots enabled at: $KEYFRAMES"
+    fi
+fi
+
 echo "[manim] Rendering $SCENE_PY -> $OUTPUT_DIR"
 write_progress "render" "running" "Calling manim --format png"
 

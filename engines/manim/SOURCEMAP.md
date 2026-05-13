@@ -24,6 +24,8 @@
 | UTIL_NUMBER_LINE | `$(.venv/bin/python -c "import manim; print(manim.__path__[0])")/mobject/graphing/number_line.py` | NumberLine, Axes 坐标轴 | P1 |
 | UTIL_COORDINATE | `$(.venv/bin/python -c "import manim; print(manim.__path__[0])")/mobject/graphing/coordinate_systems.py` | CoordinateSystem, Axes, ComplexPlane | P1 |
 | UTIL_COLOR | `$(.venv/bin/python -c "import manim; print(manim.__path__[0])")/utils/color/` | 颜色常量与工具（core.py, manim_colors.py） | P1 |
+| CORE_3D | `$(.venv/bin/python -c "import manim; print(manim.__path__[0])")/mobject/three_d/` | Sphere, Cube, Prism3D, Cylinder, Cone 等 3D 对象 | P1 |
+| CORE_TABLE | `$(.venv/bin/python -c "import manim; print(manim.__path__[0])")/mobject/table.py` | Table, MobjectTable 数据表格 | P1 |
 | ADAPTER_TEMPLATES | `engines/manim/src/templates/` | MaCode 场景基类模板（待创建） | P2 |
 | ADAPTER_AUDIO_SYNC | `engines/manim/src/utils/audio_sync.py` | 音频节拍同步读取器 | P2 |
 | ADAPTER_UTILS | `engines/manim/src/utils/` | ffmpeg_pipe 等工具封装（待创建） | P2 |

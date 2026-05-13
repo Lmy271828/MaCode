@@ -24,6 +24,8 @@
 | CORE_NUMBER_LINE | `manimlib/mobject/number_line.py` | NumberLine 数轴 | P1 |
 | CORE_COORDINATE | `manimlib/mobject/coordinate_systems.py` | Axes, ComplexPlane 坐标系 | P1 |
 | CORE_COLOR | `manimlib/utils/color.py` | 颜色常量与工具 | P1 |
+| CORE_3D | `manimlib/mobject/three_dimensions.py` | Sphere, Cube, Prism, Cylinder 等 3D 对象 | P1 |
+| CORE_TABLE | `manimlib/mobject/table.py` | Table, MobjectTable 数据表格 | P1 |
 | ADAPTER_TEMPLATES | `engines/manimgl/src/templates/` | MaCode 场景基类模板 | P2 |
 | ADAPTER_UTILS | `engines/manimgl/src/utils/` | 音频同步等工具封装（待创建） | P2 |
 

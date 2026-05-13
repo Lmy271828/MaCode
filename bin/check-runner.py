@@ -174,8 +174,38 @@ def main():
             'segments': merged_segments,
         }
 
+    # Severity summary for actionable exit codes
+    has_error = False
+    has_warning = False
+    for cr in check_results:
+        for seg in cr.get('segments', []):
+            for issue in seg.get('issues', []):
+                sev = issue.get('severity', 'warning')
+                if sev == 'error':
+                    has_error = True
+                elif sev == 'warning':
+                    has_warning = True
+        for issue in cr.get('issues', []):
+            sev = issue.get('severity', 'warning')
+            if sev == 'error':
+                has_error = True
+            elif sev == 'warning':
+                has_warning = True
+
+    output['severity_summary'] = {
+        'error': has_error,
+        'warning': has_warning,
+    }
+
     print(json.dumps(output, indent=2, ensure_ascii=False))
-    sys.exit(0 if output.get('status') == 'pass' else 1)
+
+    # Use severity_summary for exit code (works for both unified and raw formats)
+    if not has_error and not has_warning:
+        sys.exit(0)
+    elif has_error:
+        sys.exit(2)
+    else:
+        sys.exit(1)
 
 
 if __name__ == '__main__':
