@@ -66,14 +66,14 @@ else
     exit 2
 fi
 
-SOURCEMAP="$PROJECT_ROOT/engines/$ENGINE/SOURCEMAP.md"
+SOURCEMAP_JSON="$PROJECT_ROOT/engines/$ENGINE/sourcemap.json"
 
 # ── Run checks in parallel ──
 RESULTS=()
 
 # api-gate (import/API blacklist)
-if [[ -f "$SOURCEMAP" ]]; then
-    python3 "$SCRIPT_DIR/api-gate.py" "$SCENE_FILE" "$SOURCEMAP" >/dev/null 2>&1 &
+if [[ -f "$SOURCEMAP_JSON" ]]; then
+    python3 "$SCRIPT_DIR/api-gate.py" "$SCENE_FILE" "$SOURCEMAP_JSON" --engine "$ENGINE" >/dev/null 2>&1 &
     PIDS=($!)
 else
     PIDS=()
@@ -110,8 +110,8 @@ if [[ "$FAILED" -gt 0 ]]; then
     # Use temp files to avoid subshell pipeline issues
     TMP_OUT=$(mktemp)
 
-    if [[ -f "$SOURCEMAP" ]]; then
-        python3 "$SCRIPT_DIR/api-gate.py" "$SCENE_FILE" "$SOURCEMAP" >"$TMP_OUT" 2>&1 || true
+    if [[ -f "$SOURCEMAP_JSON" ]]; then
+        python3 "$SCRIPT_DIR/api-gate.py" "$SCENE_FILE" "$SOURCEMAP_JSON" --engine "$ENGINE" >"$TMP_OUT" 2>&1 || true
         while IFS= read -r line || [[ -n "$line" ]]; do
             if [[ "$line" == "  -"* ]]; then
                 violation="${line#  - }"
@@ -148,7 +148,7 @@ if [[ "$FAILED" -gt 0 ]]; then
 
     echo ""
     echo "If you believe this is a false positive, run individual checkers for raw output:"
-    echo "  api-gate.py $SCENE_FILE $SOURCEMAP"
+    echo "  api-gate.py $SCENE_FILE $SOURCEMAP_JSON --engine $ENGINE"
     echo "  sandbox-check.py $SCENE_FILE"
     echo "  primitive-gate.py $SCENE_DIR"
     echo "  fs-guard.py $SCENE_DIR"

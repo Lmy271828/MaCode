@@ -7,7 +7,7 @@
  *   1. 只读文件系统，不写入任何状态
  *   2. 文本流是唯一真相源（.agent/progress/*.jsonl、.agent/log/*.log 等）
  *   3. Agent 不依赖本服务器，崩溃后自动重建视图
- *   4. 兼容 subagents 并发开发（显示多场景并行状态）
+ *   4. PRD excludes Multi-Agent claim/queue wiring; filesystem view only
  *
  * 用法:
  *   node bin/dashboard-server.mjs [--port 3000] [--root .]
@@ -73,6 +73,18 @@ function readJson(filePath) {
   try { return JSON.parse(fs.readFileSync(filePath, 'utf-8')); } catch { return null; }
 }
 
+const ALLOWED_STATE_VERSIONS = new Set(['1.0', '1.1']);
+
+function warnStateSchemaVersion(statePath, state) {
+  if (!state || typeof state !== 'object') return;
+  const v = state.version;
+  if (v === undefined || v === null || !ALLOWED_STATE_VERSIONS.has(String(v))) {
+    console.warn(
+      `[dashboard] state.json version not in {1.0,1.1} at ${statePath}: ${String(v)}`,
+    );
+  }
+}
+
 function _tailLog(filePath, n = 20) {
   if (!fs.existsSync(filePath)) return [];
   try {
@@ -96,6 +108,7 @@ function listShaderPreviews() {
     if (fs.existsSync(statePath)) {
       try {
         const state = readJson(statePath);
+        warnStateSchemaVersion(statePath, state);
         if (state?.pid) {
           try { process.kill(state.pid, 0); hasPreviewServer = true; } catch {}
         }
@@ -153,24 +166,13 @@ function listScenes() {
 
     // 检查是否有活跃的 dev server（MC）
     let hasDevServer = false;
-    let agentId = null;
     if (fs.existsSync(statePath)) {
       try {
         const state = readJson(statePath);
+        warnStateSchemaVersion(statePath, state);
         if (state?.pid) {
           try { process.kill(state.pid, 0); hasDevServer = true; } catch {}
         }
-        agentId = state?.agentId || null;
-      } catch {}
-    }
-
-    // Check claim status
-    let claimedBy = null;
-    const claimPath = path.join(TMP_DIR, dir, '.claimed_by');
-    if (fs.existsSync(claimPath)) {
-      try {
-        const claim = readJson(claimPath);
-        if (claim?.agent_id) claimedBy = claim.agent_id;
       } catch {}
     }
 
@@ -205,8 +207,6 @@ function listScenes() {
       frameCount,
       hasFinalMp4: fs.existsSync(finalMp4),
       hasDevServer,
-      agentId,
-      claimedBy,
       issues: issues.length > 0 ? issues : undefined,
       logPath: path.join(LOG_DIR, `*_${dir}.log`),
     });
@@ -256,25 +256,6 @@ function getDiskUsage() {
   } catch { return { bytes: 0, gb: '0.00' }; }
 }
 
-function getQueue() {
-  const queueDir = path.join(AGENT_DIR, 'queue');
-  const result = { pending: [], claimed: [], done: [] };
-  if (!fs.existsSync(queueDir)) return result;
-  for (const sub of ['pending', 'claimed', 'done']) {
-    const subDir = path.join(queueDir, sub);
-    if (!fs.existsSync(subDir)) continue;
-    for (const file of fs.readdirSync(subDir)) {
-      if (!file.endsWith('.json')) continue;
-      const fp = path.join(subDir, file);
-      try {
-        const data = readJson(fp);
-        if (data) result[sub].push({ file, ...data });
-      } catch {}
-    }
-  }
-  return result;
-}
-
 function buildState() {
   return {
     timestamp: new Date().toISOString(),
@@ -282,7 +263,6 @@ function buildState() {
     shaderPreviews: listShaderPreviews(),
     signals: getSignals(),
     disk: getDiskUsage(),
-    queue: getQueue(),
   };
 }
 
@@ -632,9 +612,6 @@ const server = http.createServer((req, res) => {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Scene not found' }));
     }
-  } else if (url.pathname === '/api/queue') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(getQueue(), null, 2));
   } else if (url.pathname === '/api/events') {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',

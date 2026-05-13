@@ -242,12 +242,12 @@ if [[ $SOURCEMAP_WARN -gt 0 || $SOURCEMAP_DRIFT -gt 0 ]]; then
     echo ""
     echo "WARNING: SOURCEMAP may be outdated." >&2
     if [[ $SOURCEMAP_DRIFT -gt 0 ]]; then
-        echo "  → Engine version drift detected. Update '引擎版本' in engines/*/SOURCEMAP.md" >&2
+        echo "  → Engine version drift detected. Bump version in engines/*/sourcemap.json" >&2
     fi
     if [[ $SOURCEMAP_WARN -gt 0 ]]; then
         echo "  → Invalid paths found. Run validate_sourcemap.sh for details." >&2
     fi
-    echo "  After updating SOURCEMAP.md, run: python3 bin/sourcemap-sync.py --all" >&2
+    echo "  After updating sourcemap.json, run: python3 bin/sourcemap-sync.py --all" >&2
 fi
 # ────────────────────────────────────────────────────
 
@@ -277,3 +277,4 @@ echo "  node_modules/  → Motion Canvas (browser HMR)"
 echo ""
 echo "For development/testing, run: bin/setup-dev.sh"
 echo ""
+# Optional: 0 3 * * * cd $REPO_ROOT && python3 bin/cleanup-stale.py --logs

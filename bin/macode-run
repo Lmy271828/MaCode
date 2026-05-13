@@ -14,14 +14,14 @@ bin/macode-run
     macode-run <task_id> [options] -- <command...>
 
 选项：
-    --timeout <sec>      超时秒数（默认 600，0 表示无限制）
+    --timeout <sec>      超时秒数（默认见 project.yaml agent.resource_limits.max_render_time_sec，缺省 600；0 表示无限制）
     --log <file>         日志文件路径
     --tee                同时输出到终端
     --no-state           不写入 state.json
     --state-dir <dir>    state.json 目录（默认 .agent/tmp/<task_id>）
 
 环境变量：
-    MACODE_TIMEOUT       默认超时秒数
+    MACODE_TIMEOUT       默认超时秒数（纯数字时优先于 project.yaml）
     MACODE_LOG_DIR       日志目录（默认 .agent/log）
 
 示例：
@@ -32,27 +32,51 @@ bin/macode-run
 import argparse
 import json
 import os
-import random
 import signal
-import string
 import sys
 import time
 from datetime import datetime, timezone
-from pathlib import Path
 from subprocess import Popen, PIPE, TimeoutExpired
+
+import yaml
+
+_BIN_DIR = os.path.dirname(os.path.abspath(__file__))
+if _BIN_DIR not in sys.path:
+    sys.path.insert(0, _BIN_DIR)
+from macode_state import atomic_write_json, write_progress as macode_write_progress  # noqa: E402
 
 
 def get_project_root() -> str:
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def write_state(state_path: str, data: dict):
-    """原子写入 state.json。"""
-    tmp = state_path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-        f.write("\n")
-    os.replace(tmp, state_path)
+def default_timeout_from_project_yaml(project_root: str) -> int:
+    """Read agent.resource_limits.max_render_time_sec from project.yaml; fallback 600."""
+    fallback = 600
+    path = os.path.join(project_root, "project.yaml")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        if not isinstance(data, dict):
+            return fallback
+        agent = data.get("agent")
+        if not isinstance(agent, dict):
+            return fallback
+        limits = agent.get("resource_limits")
+        if not isinstance(limits, dict):
+            return fallback
+        val = limits.get("max_render_time_sec")
+        if isinstance(val, bool):
+            return fallback
+        if isinstance(val, int):
+            return val if val >= 0 else fallback
+        if isinstance(val, float):
+            return int(val) if val >= 0 else fallback
+        if isinstance(val, str) and val.isdigit():
+            return int(val)
+        return fallback
+    except (OSError, yaml.YAMLError, TypeError, ValueError):
+        return fallback
 
 
 def format_iso(dt: datetime) -> str:
@@ -116,43 +140,29 @@ def main():
         if env_timeout.isdigit():
             timeout = int(env_timeout)
         else:
-            timeout = 600
-
-    # Agent identity
-    agent_id = os.environ.get("MACODE_AGENT_ID") or "agent-" + "".join(random.choices(string.ascii_lowercase + string.digits, k=6))
+            timeout = default_timeout_from_project_yaml(project_root)
 
     # Write initial state (MaCode Task State v1)
     started_at = datetime.now(timezone.utc)
     state = {
         "version": "1.0",
         "taskId": args.task_id,
-        "agentId": agent_id,
         "cmd": args.cmd,
         "status": "running",
         "startedAt": format_iso(started_at),
         "outputs": {},
     }
     if not args.no_state:
-        write_state(state_path, state)
+        atomic_write_json(state_path, state)
 
-    def write_progress(phase: str, status: str, message: str = ""):
+    def emit_progress(phase: str, status: str, message: str = ""):
         if not args.progress:
             return
-        progress_dir = os.path.join(".agent", "progress")
-        os.makedirs(progress_dir, exist_ok=True)
-        progress_path = os.path.join(progress_dir, f"{args.task_id}.jsonl")
-        record = {
-            "timestamp": format_iso(datetime.now(timezone.utc)),
-            "phase": phase,
-            "status": status,
-        }
-        if message:
-            record["message"] = message
-        with open(progress_path, "a", encoding="utf-8") as f:
-            json.dump(record, f)
-            f.write("\n")
+        macode_write_progress(
+            args.task_id, phase, status, message=message if message else "",
+        )
 
-    write_progress("init", "running", f"cmd: {' '.join(args.cmd)}")
+    emit_progress("init", "running", f"cmd: {' '.join(args.cmd)}")
 
     # Open log file
     log_fp = open(log_file, "w", encoding="utf-8")
@@ -160,7 +170,6 @@ def main():
     # Start subprocess with MACODE_STATE_DIR so child can write task.json
     env = os.environ.copy()
     env["MACODE_STATE_DIR"] = state_dir
-    env["MACODE_AGENT_ID"] = agent_id
     child = Popen(
         args.cmd,
         stdout=PIPE,
@@ -171,7 +180,7 @@ def main():
 
     state["pid"] = child.pid
     if not args.no_state:
-        write_state(state_path, state)
+        atomic_write_json(state_path, state)
 
     if args.tee:
         print(f"[macode-run] Task '{args.task_id}' started (pid={child.pid}, timeout={timeout}s)")
@@ -269,9 +278,9 @@ def main():
         "outputs": child_outputs,
     })
     if not args.no_state:
-        write_state(state_path, state)
+        atomic_write_json(state_path, state)
 
-    write_progress("cleanup", status, f"exit={exit_code}")
+    emit_progress("cleanup", status, f"exit={exit_code}")
 
     if args.tee:
         print(f"[macode-run] Task '{args.task_id}' {status} (exit={exit_code})")

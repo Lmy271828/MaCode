@@ -124,11 +124,11 @@ generate_prompt() {
 11. 修复 issue 后 git add scenes/<scene_name>/ && git commit
 12. 后处理通过 pipeline/*.sh 完成（ffmpeg 拼接、音频、压缩）
 
-【Multi-Agent 协调】
-- 设置 export MACODE_AGENT_ID="agent-$$" 标识自己
-- 渲染前 scene 自动 claim，冲突时 exit 4（claimed）或 exit 5（queued）
-- 通过 curl localhost:3456/api/state 监控其他 Agent
-- 定期运行 python3 bin/cleanup-stale.py 清理残留
+【本机并行】
+- PRD 不做 Multi-Agent：`render-scene.py` 无 scene claim，无 exit 4/5
+- 多场并行优先 `render-all` / composite（`max_concurrent_scenes`）
+- 可选 `curl localhost:<port>/api/state`（dashboard）观察进度
+- 定期运行 `python3 bin/cleanup-stale.py` 修复 stalled state
 
 【安全约束】
 - 禁止导入 SOURCEMAP BLACKLIST 中的模块（manimlib、manim._config 等）

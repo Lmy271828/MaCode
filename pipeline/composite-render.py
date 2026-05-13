@@ -17,24 +17,19 @@ import os
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import UTC, datetime
 
-
-def get_project_root() -> str:
-    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-
-def get_python() -> str:
-    project_root = get_project_root()
-    venv_python = os.path.join(project_root, ".venv", "bin", "python")
-    if os.path.isfile(venv_python) and os.access(venv_python, os.X_OK):
-        return venv_python
-    return "python3"
-
-
-def read_manifest(manifest_path: str) -> dict:
-    with open(manifest_path, encoding="utf-8") as f:
-        return json.load(f)
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_BIN_DIR = os.path.join(_PROJECT_ROOT, "bin")
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+if _BIN_DIR not in sys.path:
+    sys.path.insert(0, _BIN_DIR)
+from macode_state import write_progress, write_state  # noqa: E402
+from pipeline._render._paths import (  # noqa: E402
+    get_project_root,
+    get_python,
+    read_manifest,
+)
 
 
 def get_max_concurrent(project_root: str, python: str) -> int:
@@ -56,38 +51,6 @@ print(d.get('agent', {{}}).get('resource_limits', {{}}).get('max_concurrent_scen
         return 4
 
 
-def write_progress(scene_name: str, phase: str, status: str, message: str = ""):
-    progress_dir = ".agent/progress"
-    os.makedirs(progress_dir, exist_ok=True)
-    progress_path = os.path.join(progress_dir, f"{scene_name}.jsonl")
-    ts = datetime.now(UTC).isoformat()
-    record = {"timestamp": ts, "phase": phase, "status": status, "message": message}
-    with open(progress_path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(record) + "\n")
-
-
-def write_state(scene_name: str, status: str, exit_code: int = 0):
-    state_dir = os.path.join(".agent", "tmp", scene_name)
-    os.makedirs(state_dir, exist_ok=True)
-    state_path = os.path.join(state_dir, "state.json")
-    ts = datetime.now(UTC).isoformat()
-    data = {
-        "version": "1.0",
-        "taskId": scene_name,
-        "status": status,
-        "exitCode": exit_code,
-    }
-    if status == "running":
-        data["startedAt"] = ts
-    else:
-        data["endedAt"] = ts
-    tmp = state_path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-        f.write("\n")
-    os.replace(tmp, state_path)
-
-
 def render_segment(project_root: str, full_dir: str, seg_name: str) -> tuple:
     """Render a single segment by invoking render.sh.
 
@@ -95,8 +58,14 @@ def render_segment(project_root: str, full_dir: str, seg_name: str) -> tuple:
     """
     try:
         result = subprocess.run(
-            ["bash", os.path.join(project_root, "pipeline", "render.sh"), full_dir],
-            capture_output=True, text=True, check=False,
+            [
+                python,
+                os.path.join(project_root, "pipeline", "render-scene.py"),
+                full_dir,
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
             timeout=660,
         )
         log = result.stdout + result.stderr
@@ -135,11 +104,11 @@ def main():
 
     if count == 0:
         print("Error: composite manifest has no segments", file=sys.stderr)
-        write_state(scene_name, "failed", 1)
+        write_state(scene_name, "failed", exit_code=1)
         sys.exit(1)
 
     write_state(scene_name, "running")
-    write_progress(scene_name, "composite_init", "running", f"{count} segments")
+    write_progress(scene_name, "composite_init", "running", message=f"{count} segments")
 
     max_concurrent = get_max_concurrent(project_root, python)
     print(
@@ -238,7 +207,7 @@ def main():
                 if not ok:
                     print(f"[composite] Segment '{seg_id}' render FAILED. Log:", file=sys.stderr)
                     print(log, file=sys.stderr)
-                    write_state(scene_name, "failed", 1)
+                    write_state(scene_name, "failed", exit_code=1)
                     sys.exit(1)
                 seg_output = meta["output"]
                 if not os.path.isfile(seg_output):
@@ -246,7 +215,7 @@ def main():
                         f"[composite] Segment '{seg_id}' output not found: {seg_output}",
                         file=sys.stderr,
                     )
-                    write_state(scene_name, "failed", 1)
+                    write_state(scene_name, "failed", exit_code=1)
                     sys.exit(1)
                 print(f"[composite] [job] Segment '{seg_id}' OK")
 
@@ -258,7 +227,7 @@ def main():
         scene_name,
         "composite_init",
         "running",
-        f"Rendering {count} segments (max_concurrent={max_concurrent})",
+        message=f"Rendering {count} segments (max_concurrent={max_concurrent})",
     )
 
     # ── Build segments JSON for composite-assemble.py ───
@@ -285,7 +254,7 @@ def main():
 
     # ── Delegate to composite-assemble.py (pure execution) ──
     print("[composite] Delegating assembly to composite-assemble.py...")
-    write_progress(scene_name, "assemble", "running", "Delegating to composite-assemble.py")
+    write_progress(scene_name, "assemble", "running", message="Delegating to composite-assemble.py")
 
     assemble_cmd = [
         python,
@@ -300,14 +269,14 @@ def main():
     result = subprocess.run(assemble_cmd, capture_output=True, text=True)
     if result.returncode != 0:
         print(f"[composite] Assembly failed:\n{result.stderr}", file=sys.stderr)
-        write_state(scene_name, "failed", 1)
+        write_state(scene_name, "failed", exit_code=1)
         sys.exit(1)
 
     # Print assemble stdout (progress messages only, no JSON)
     print(result.stdout.strip())
 
-    write_progress(scene_name, "composite_done", "completed", f"Output: {output_dir}/final.mp4")
-    write_state(scene_name, "completed", 0)
+    write_progress(scene_name, "composite_done", "completed", message=f"Output: {output_dir}/final.mp4")
+    write_state(scene_name, "completed", exit_code=0)
 
     if args.json:
         final_size = (

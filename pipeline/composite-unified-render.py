@@ -9,45 +9,15 @@ Usage:
 """
 
 import argparse
-import datetime
 import json
 import os
 import subprocess
 import sys
 
-
-def write_progress(scene_name: str, phase: str, status: str, message: str = ""):
-    progress_dir = ".agent/progress"
-    os.makedirs(progress_dir, exist_ok=True)
-    progress_path = os.path.join(progress_dir, f"{scene_name}.jsonl")
-    ts = datetime.datetime.now(datetime.UTC).isoformat()
-    record = {"timestamp": ts, "phase": phase, "status": status, "message": message}
-    with open(progress_path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(record) + "\n")
-
-
-def write_state(scene_name: str, status: str, exit_code: int = 0):
-    state_dir = os.path.join(".agent", "tmp", scene_name)
-    os.makedirs(state_dir, exist_ok=True)
-    state_path = os.path.join(state_dir, "state.json")
-    ts = datetime.datetime.now(datetime.UTC).isoformat()
-    data = {
-        "version": "1.0",
-        "taskId": scene_name,
-        "status": status,
-        "exitCode": exit_code,
-    }
-    if status == "running":
-        data["startedAt"] = ts
-    else:
-        data["endedAt"] = ts
-    tmp = state_path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-        f.write("\n")
-    os.replace(tmp, state_path)
-
-
+_BIN_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "bin")
+if _BIN_DIR not in sys.path:
+    sys.path.insert(0, _BIN_DIR)
+from macode_state import write_progress, write_state  # noqa: E402
 def get_project_root() -> str:
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -88,7 +58,7 @@ def main():
     output_mp4 = f".agent/tmp/{scene_name}/final.mp4"
 
     write_state(scene_name, "running")
-    write_progress(scene_name, "composite_init", "running", "generating orchestrator")
+    write_progress(scene_name, "composite_init", "running", message="generating orchestrator")
 
     # ── Generate orchestrator ─────────────────────────
     print(f"[composite-unified] Generating orchestrator for '{scene_name}'...")
@@ -99,8 +69,8 @@ def main():
     if result.returncode != 0:
         print("[composite-unified] Orchestrator generation failed", file=sys.stderr)
         print(result.stderr, file=sys.stderr)
-        write_state(scene_name, "failed", 1)
-        write_progress(scene_name, "composite_init", "failed", "orchestrator generation failed")
+        write_state(scene_name, "failed", exit_code=1)
+        write_progress(scene_name, "composite_init", "failed", message="orchestrator generation failed")
         sys.exit(1)
     print(result.stdout.strip())
 
@@ -133,13 +103,13 @@ def main():
     if args.height is not None:
         render_cmd.extend(["--height", str(args.height)])
 
-    write_progress(scene_name, "composite_render", "running", "unified scene render")
+    write_progress(scene_name, "composite_render", "running", message="unified scene render")
     result = subprocess.run(render_cmd, capture_output=True, text=True, env=env)
     if result.returncode != 0:
         print("[composite-unified] Unified render failed", file=sys.stderr)
         print(result.stderr, file=sys.stderr)
-        write_state(scene_name, "failed", 1)
-        write_progress(scene_name, "composite_render", "failed", "unified render failed")
+        write_state(scene_name, "failed", exit_code=1)
+        write_progress(scene_name, "composite_render", "failed", message="unified render failed")
         sys.exit(1)
     print(result.stdout.strip())
 
@@ -153,8 +123,8 @@ def main():
         subprocess.run(["cp", unified_output, output_mp4], check=True)
     else:
         print(f"[composite-unified] Expected output not found: {unified_output}", file=sys.stderr)
-        write_state(scene_name, "failed", 1)
-        write_progress(scene_name, "composite_assemble", "failed", "output not found")
+        write_state(scene_name, "failed", exit_code=1)
+        write_progress(scene_name, "composite_assemble", "failed", message="output not found")
         sys.exit(1)
 
     # ── Deliver ───────────────────────────────────────
@@ -164,8 +134,8 @@ def main():
     )
 
     # ── Output ────────────────────────────────────────
-    write_state(scene_name, "completed", 0)
-    write_progress(scene_name, "composite_done", "completed", f"Output: {output_mp4}")
+    write_state(scene_name, "completed", exit_code=0)
+    write_progress(scene_name, "composite_done", "completed", message=f"Output: {output_mp4}")
 
     if args.json:
         final_size = os.path.getsize(output_mp4) if os.path.isfile(output_mp4) else 0
