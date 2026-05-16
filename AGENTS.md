@@ -281,6 +281,8 @@ scenes/
 | `bin/install-hooks.sh [--check]` | 安装/检查 git hooks | `bin/install-hooks.sh --check` | 安装报告 |
 | `bin/macode dry-run <scene_file>` | 预渲染验证（语法、导入、LaTeX） | `macode dry-run scenes/01_test/scene.py` | 通过/失败 + 问题列表 |
 | `bin/macode inspect --grep <re>` | 查询引擎 API 是否在白名单 | `macode inspect --grep "Circle\|MathTex"` | 匹配的 WHITELIST 条目 |
+| `macode sourcemap health` | SOURCEMAP 快速健康检查 | `macode sourcemap health` | 版本漂移 + 一致性摘要 |
+| `macode sourcemap validate <engine>` | SOURCEMAP 深度校验 | `macode sourcemap validate manim` | 校验 + 路径检查 |
 | `bin/api-gate.py <scene.py> <sourcemap.json> [--engine]` | 手动运行导入审查 | `bin/api-gate.py scenes/01_test/scene.py engines/manim/sourcemap.json --engine manim` | 退出码 0/1/2 |
 | `bin/calc-preview-duration.py <manifest>` | 计算预览时长 | `calc-preview-duration.py scenes/01_test/manifest.json` | 秒数（如 `3.0`） |
 | `bin/patch-manifest.py <manifest>` | 原子修改 manifest | `patch-manifest.py m.json --duration 3 --fps 10` | 原子写回，支持 `--backup` |

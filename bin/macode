@@ -384,6 +384,39 @@ PY
                 echo "Then: engines/$ENGINE/scripts/validate_sourcemap.sh  after macode sourcemap validate $ENGINE"
                 echo "SOURCEMAP.md is a generated human view (macode sourcemap generate-md $ENGINE)."
                 ;;
+            health)
+                echo "=== SOURCEMAP Health Check ==="
+                echo ""
+
+                echo "[1/2] Version drift check..."
+                python3 "$PROJECT_ROOT/bin/sourcemap-version-check.py" --all 2>&1 | sed 's/^/  /'
+                echo ""
+
+                echo "[2/2] Consistency check (JSON ↔ MD + path validity)..."
+                for engine_dir in "$PROJECT_ROOT"/engines/*/; do
+                    en=$(basename "$engine_dir")
+                    [[ -f "$engine_dir/sourcemap.json" ]] || continue
+
+                    status_line="  $en: "
+
+                    if python3 "$PROJECT_ROOT/bin/sourcemap-sync.py" --check "$en" >/dev/null 2>&1; then
+                        status_line+="sync ✓"
+                    else
+                        status_line+="sync ✗"
+                    fi
+
+                    if bash "$PROJECT_ROOT/engines/$en/scripts/validate_sourcemap.sh" >/dev/null 2>&1; then
+                        status_line+=" | paths ✓"
+                    else
+                        status_line+=" | paths ✗"
+                    fi
+
+                    echo "$status_line"
+                done
+                echo ""
+                echo "Tip: run 'macode sourcemap scan-api --all' to check API coverage gaps."
+                ;;
+
             validate)
                 ENGINE="${3:-$DEFAULT_ENGINE}"
                 if [[ "$ENGINE" == "--all" ]]; then
@@ -404,6 +437,7 @@ PY
                 ;;
             help|*)
                 echo "Usage: macode sourcemap <SUBCOMMAND> [args]"
+                echo "  health                       Quick read-only health check (version + consistency)"
                 echo "  generate-md [engine|--all]   Regenerate SOURCEMAP.md + .agent/context from sourcemap.json (default: project default engine)"
                 echo "  validate [engine|--all]      sourcemap-sync --check + validate_sourcemap.sh"
                 echo "  scan-api [engine ...]        Forward to sourcemap-scan-api.py"
@@ -667,7 +701,7 @@ Commands:
     --blacklist                   Show BLACKLIST instead
     --level P0|P1|P2              Filter by priority
     --format text|json            Output format (default: text)
-  sourcemap <init|validate> [engine]
+  sourcemap <health|init|validate> [engine]
                                   Manage SOURCEMAP.md
   help                            Show this help
 

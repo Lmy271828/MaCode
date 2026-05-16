@@ -1,3 +1,5 @@
+> **文档状态**：本文件部分引用组件可能已删除或重构。以 `AGENTS.md` §9 CLI 速查表和 `.agents/skills/` 为当前真源。发现引用过时组件？请直接修复。
+
 # MaCode Shader Preview 设计
 
 > **CLI / Dashboard 状态（2026-05-13）**：`macode shader preview` / `preview-stop` 与 Dashboard「Shader Previews」分组已**移除**；实现脚本迁至 **`experimental/shader-preview/shader-preview.mjs`**，非稳定接口。

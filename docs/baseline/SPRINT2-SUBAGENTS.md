@@ -1,3 +1,5 @@
+> **文档状态**：本文件引用的部分组件可能已删除或重构。以 `AGENTS.md` §9 CLI 速查表和 `.agents/skills/` 为当前真源。发现引用过时组件？请直接修复。
+
 # Sprint 2 — 子智能体工单（S2-1〜S2-3）
 
 > **来源**：[`docs/refactor-todo.md` § Sprint 2](../refactor-todo.md)  
