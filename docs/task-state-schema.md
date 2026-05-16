@@ -1,6 +1,6 @@
 # MaCode 任务状态 JSON 约定
 
-本文件描述写入 `.agent/tmp/<scene_or_task>/state.json` 的两类载荷。**读端**（如 `bin/dashboard-server.mjs`）应同时容忍 `version` 为 `1.0` 与 `1.1`（编排态），以及 **`macode-run` /Task** 的 v1.0 富形态。
+本文件描述写入 `.agent/tmp/<scene_or_task>/state.json` 的两类载荷。**读端**应同时容忍 `version` 为 `1.0` 与 `1.1`（编排态），以及 **`macode-run` /Task** 的 v1.0 富形态。
 
 ## 编排态（Orchestration）— `macode_state.write_state`
 

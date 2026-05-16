@@ -30,9 +30,9 @@ def fail(msg: str):
     sys.exit(1)
 
 
-def run_registry_checks(scene_dir: str, engine: str = None) -> dict:
-    """Delegate to check-runner.py for layer1 checks."""
-    cmd = [sys.executable, os.path.join(_SCRIPT_DIR, 'check-runner.py'), scene_dir, '--layer', 'layer1']
+def run_registry_checks(scene_dir: str, engine: str = None, layer: str = 'layer1') -> dict:
+    """Delegate to check-runner.py for layer checks."""
+    cmd = [sys.executable, os.path.join(_SCRIPT_DIR, 'check-runner.py'), scene_dir, '--layer', layer]
     if engine:
         cmd += ['--engine', engine]
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -97,6 +97,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument('scene_dir', help='Path to scene directory')
+    parser.add_argument('--layer', default='layer1', choices=['layer1', 'layer2', 'layer3'],
+                        help='Check layer to run (default: layer1)')
     parser.add_argument('--output', default=None, help='Write report to file (with locking)')
     args = parser.parse_args()
 
@@ -111,14 +113,15 @@ def main():
     with open(manifest_path, encoding='utf-8') as f:
         manifest = json.load(f)
 
+    layer = args.layer
     manifest_type = manifest.get('type', 'scene')
-    if manifest_type == 'composite-unified':
+    if manifest_type == 'composite-unified' and layer == 'layer1':
         check_composite_or_unified(scene_dir, manifest, manifest_type)
         return
 
     project_root = find_project_root(scene_dir)
     engine = resolve_engine_from_manifest(manifest, scene_dir, project_root)
-    report = run_registry_checks(scene_dir, engine=engine)
+    report = run_registry_checks(scene_dir, engine=engine, layer=layer)
 
     # Backward-compatible output format
     output = {

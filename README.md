@@ -73,12 +73,6 @@ bin/render-all.sh
 # 并行渲染（最多 4 个场景同时）
 bin/render-all.sh --parallel 4
 
-# 启动实时仪表盘（人类监控，Agent 零感知）
-node bin/dashboard-server.mjs --port 3000
-# → 浏览器打开 http://localhost:3000/
-# → curl http://localhost:3000/api/state | jq .
-```
-
 > 开发/测试环境请使用 `bin/setup-dev.sh`（额外安装 pytest、ruff 并自动运行 smoke 测试）。
 
 ### 可选：渲染时人工标记坏帧（Copilot feedback）

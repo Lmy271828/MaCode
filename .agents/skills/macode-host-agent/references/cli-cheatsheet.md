@@ -44,7 +44,6 @@ bin/macode-run <task_id> [--timeout N] [--log <file>] [--tee] -- <command>
 bin/agent-run.sh <scene_dir> <command> [args...]
 bin/api-gate.py <scene_file> engines/<engine>/sourcemap.json [--engine <engine>]
 bin/cleanup-stale.py [--dry-run] [--ttl N]
-bin/dashboard-server.mjs [--port N]
 bin/cache-key.py <scene_dir>
 bin/cache-check.py <key>
 bin/cache-store.py <key> <output_dir>

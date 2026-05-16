@@ -205,54 +205,7 @@ cat .agent/hardware_profile.json | jq '.opengl.renderer'
 
 ---
 
-## 4. 实时仪表盘
-
-MaCode 仪表盘是**文件系统的可选可视化皮肤**，不是 Agent 的必需通信管道。
-
-### 4.1 架构原则
-
-| 原则 | 实现 |
-|------|------|
-| **文本流是唯一真相源** | Agent 只写 `.agent/progress/*.jsonl`，不感知仪表盘 |
-| **仪表盘只读文件系统** | `dashboard-server.mjs` 不写入任何状态，重启后重建视图 |
-| **仪表盘是可选消费者** | 人类可用 `tail -f` 也可用浏览器，Agent 永远 `cat` |
-| **仪表盘暴露底层路径** | 每个 UI 元素都可追溯到具体文件路径 |
-
-### 4.2 启动仪表盘
-
-```bash
-# 独立进程，Agent 完全不感知
-node bin/dashboard-server.mjs --port 3000 &
-
-# 浏览器打开（人类监控）
-open http://localhost:3000/
-
-# CLI 消费（同样有效）
-curl -s http://localhost:3000/api/state | jq '.scenes[] | select(.status == "running")'
-```
-
-### 4.3 进度文本流
-
-```bash
-# Agent 渲染时自动写入
-.agent/progress/05_new.jsonl
-# → {"timestamp":"...","phase":"capture","status":"running","progress":0.67,"frames_rendered":60,"frames_total":90}
-
-# 人类用 UNIX 工具处理
-tail -f .agent/progress/*.jsonl | jq '.phase'
-```
-
-### 4.4 API 端点
-
-| 端点 | 说明 |
-|------|------|
-| `GET /` | HTML 仪表盘页面 |
-| `GET /api/state` | 当前所有场景状态 JSON |
-| `GET /api/events` | SSE 实时推送流 |
-
----
-
-## 5. 人类介入协议
+## 4. 人类介入协议
 
 MaCode 提供文件系统信号机制，人类可随时监控和介入。
 
@@ -272,7 +225,7 @@ MaCode 提供文件系统信号机制，人类可随时监控和介入。
         └── human_override.json  # 该 scene 的覆盖决策
 ```
 
-### 5.1 Host Agent 义务（每次执行动作前）
+### 4.1 Host Agent 义务（每次执行动作前）
 1. 检查 per-scene 信号（`.agent/signals/per-scene/{scene}/pause|abort`）— 存在则针对该 scene 暂停/退出
 2. 回退检查全局信号（`.agent/signals/global/pause|abort`）— 存在则全部暂停/退出
 3. 检查 `.agent/signals/human_override.json` — 存在则遵守覆盖决策
@@ -290,22 +243,20 @@ python3 bin/signal-check.py --global-only
 python3 bin/signal-check.py --scene 01_test
 ```
 
-### 5.2 Host Agent 权利
-1. 渲染完成后自动运行 check，生成报告
-2. 生成 HTML 画面报告到 `.agent/reports/`
-3. ~~发现严重问题时创建 `review_needed` 请求人类审核~~ — **已移除（P0-3）**；问题通过 check report 暴露，人类通过 `human_override.json` 干预
-4. 读取 `@human:` 注释并优先处理
+### 4.2 Host Agent 权利
+1. 渲染完成后自动运行 check，生成 JSON 报告到 `.agent/check_reports/`
+2. ~~发现严重问题时创建 `review_needed` 请求人类审核~~ — **已移除（P0-3）**；问题通过 check report 暴露，人类通过 `human_override.json` 干预
+3. 读取 `@human:` 注释并优先处理
 
-### 5.3 人类权利
+### 4.3 人类权利
 1. 随时 `touch .agent/signals/global/pause` 暂停所有 Agent
 2. 随时 `touch .agent/signals/per-scene/01_test/pause` 只暂停 scene 01_test
 3. 随时直接编辑 `scenes/` 下的文件
-4. 随时用浏览器打开 `.agent/reports/*.html` 查看画面
-5. 随时 `rm .agent/signals/per-scene/01_test/review_needed` 让特定 scene 继续
+4. 随时 `rm .agent/signals/per-scene/01_test/review_needed` 让特定 scene 继续
 
 ---
 
-## 6. 并发与宿主模型
+## 5. 并发与宿主模型
 
 PRD 不包含跨进程 Multi-Agent：**不在 Harness 层做 scene claim、排队或 exit 4/5**。同一项目内若要并行渲染，请自行用外层编排（或通过 `render-all`/composite 的线程池在本机并行**不同目录**）。
 

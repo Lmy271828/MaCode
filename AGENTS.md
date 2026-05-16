@@ -534,7 +534,6 @@ scenes/
 | `macode mc stop <scene_dir>` | 停止 MC dev server | `macode mc stop scenes/02_shader_mc/` | SIGTERM → SIGKILL |
 | `macode shader list` | 列出 Layer 2 shader 素材 | `macode shader list` | 注册表中的所有素材 |
 | `macode shader render <dir>` | 预渲染 shader 到 PNG | `macode shader render assets/shaders/lygia_fire/` | 输出到 `shader_dir/frames/` |
-| `node bin/dashboard-server.mjs` | 启动实时仪表盘 | `node bin/dashboard-server.mjs --port 3000` | 浏览器/CLI 消费 `.agent/progress/*.jsonl` |
 
 ### 退出码约定
 
@@ -558,11 +557,10 @@ scenes/
 
 ---
 
-## 10-12. 仪表盘 / 人类介入 / 并发模型
+## 9-10. 人类介入 / 并发模型
 
-- **实时仪表盘**：`node bin/dashboard-server.mjs --port 3000` — 见 → [`docs/architecture.md#4-实时仪表盘`](docs/architecture.md#4-实时仪表盘)
-- **人类介入协议**：`.agent/signals/{global,per-scene}/*` — 见 → [`docs/architecture.md#5-人类介入协议`](docs/architecture.md#5-人类介入协议)
-- **并发模型**：`project.yaml` → `agent.resource_limits.max_concurrent_scenes`（本机并行；PRD 已删除 Multi-Agent 协调）— 见 → [`docs/architecture.md#6-并发与宿主模型`](docs/architecture.md#6-并发与宿主模型)
+- **人类介入协议**：`.agent/signals/{global,per-scene}/*` — 见 → [`docs/architecture.md#4-人类介入协议`](docs/architecture.md#4-人类介入协议)
+- **并发模型**：`project.yaml` → `agent.resource_limits.max_concurrent_scenes`（本机并行；PRD 已删除 Multi-Agent 协调）— 见 → [`docs/architecture.md#5-并发与宿主模型`](docs/architecture.md#5-并发与宿主模型)
 
 ---
 
