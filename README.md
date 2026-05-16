@@ -140,11 +140,6 @@ macode/
 │   ├── macode-run           #   统一进程生命周期管理器（Harness 2.0）
 │   ├── api-gate.py          #   BLACKLIST 导入扫描
 │   ├── composite-init.py    #   macode composite init / add-segment
-│   ├── composite-assemble.py #   Composite 组装执行层（overlay → transition → audio）
-│   ├── composite-transition.py
-│   ├── composite-overlay.py
-│   ├── composite-audio.py
-│   ├── composite-cache.py
 │   ├── render-all.sh        #   批量渲染（支持 --parallel）
 │   └── discover             #   交互式项目结构探索
 ├── project.yaml            # 全局配置（引擎、分辨率、安全策略）

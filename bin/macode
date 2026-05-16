@@ -560,10 +560,6 @@ Commands:
   check <scene_dir>               Run static + frame checks
     --static                      Run only static check
     --frames                      Run only frame check
-  report <scene_dir>              Generate HTML report for scene
-    --open                        Open report in browser
-  timeline                        Generate project timeline (all scenes)
-    --open                        Open timeline in browser
   shader <list|render|extract>    Manage shader assets (Layer 2 → Layer 1)
     list                          List available shader assets
     render <dir> [opts]           Compile shader to PNG frames

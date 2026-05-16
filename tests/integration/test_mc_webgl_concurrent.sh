@@ -8,9 +8,9 @@ set -euo pipefail
 # context conflicts, and that ShaderFrame's real-time WebGL rendering produces
 # valid output frames.
 
-source "$(dirname "$0")/lib.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 RENDER_SCENE="$PROJECT_ROOT/pipeline/render-scene.py"
 
 _cleanup() {
