@@ -203,20 +203,15 @@ macode composite init scenes/09_lecture --template intro-main-outro
 macode composite add-segment scenes/09_lecture bonus --after main
 ```
 
-**Composite manifest 契约**：
+**Composite manifest 契约**（当前仅支持硬切拼接，不支持转场/音频/叠加）：
 ```json
 {
   "type": "composite-unified",
   "segments": [
-    {"id": "intro", "scene_dir": "shots/00_intro",
-     "transition": {"type": "fade", "duration": 0.3}},
-    {"id": "main", "scene_dir": "shots/01_main",
-     "transition": {"type": "wipeleft", "duration": 0.5}},
+    {"id": "intro", "scene_dir": "shots/00_intro"},
+    {"id": "main", "scene_dir": "shots/01_main"},
     {"id": "outro", "scene_dir": "shots/02_outro"}
   ],
-  "audio": {
-    "tracks": [{"file": "assets/bg.mp3", "loop": true, "volume": 0.2}]
-  },
   "params": {"theme_color": "#1E90FF", "title_text": "讲座标题"}
 }
 ```

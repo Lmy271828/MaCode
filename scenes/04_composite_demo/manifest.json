@@ -6,22 +6,14 @@
       "scene_dir": "shots/00_intro",
       "keyframes": [
         0.5
-      ],
-      "transition": {
-        "type": "fade",
-        "duration": 0.3
-      }
+      ]
     },
     {
       "id": "main",
       "scene_dir": "shots/01_main",
       "keyframes": [
         0.5
-      ],
-      "transition": {
-        "type": "wipeleft",
-        "duration": 0.5
-      }
+      ]
     },
     {
       "id": "outro",
@@ -31,17 +23,6 @@
       ]
     }
   ],
-  "audio": {
-    "tracks": [
-      {
-        "file": "assets/bg_music.mp3",
-        "loop": true,
-        "volume": 0.2,
-        "fade_in": 0.5,
-        "fade_out": 1.0
-      }
-    ]
-  },
   "params": {
     "theme_color": "#1E90FF",
     "title_text": "Composite Demo"

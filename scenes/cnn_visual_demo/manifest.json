@@ -3,43 +3,35 @@
   "segments": [
     {
       "id": "intro",
-      "scene_dir": "shots/00_intro",
-      "transition": {"type": "fade", "duration": 0.5}
+      "scene_dir": "shots/00_intro"
     },
     {
       "id": "motivation",
-      "scene_dir": "shots/01_motivation",
-      "transition": {"type": "fade", "duration": 0.5}
+      "scene_dir": "shots/01_motivation"
     },
     {
       "id": "input",
-      "scene_dir": "shots/02_input",
-      "transition": {"type": "fade", "duration": 0.5}
+      "scene_dir": "shots/02_input"
     },
     {
       "id": "main",
-      "scene_dir": "shots/01_main",
-      "transition": {"type": "fade", "duration": 0.5}
+      "scene_dir": "shots/01_main"
     },
     {
       "id": "activation",
-      "scene_dir": "shots/04_activation",
-      "transition": {"type": "fade", "duration": 0.5}
+      "scene_dir": "shots/04_activation"
     },
     {
       "id": "pooling",
-      "scene_dir": "shots/05_pooling",
-      "transition": {"type": "fade", "duration": 0.5}
+      "scene_dir": "shots/05_pooling"
     },
     {
       "id": "stacking",
-      "scene_dir": "shots/06_stacking",
-      "transition": {"type": "fade", "duration": 0.5}
+      "scene_dir": "shots/06_stacking"
     },
     {
       "id": "fc",
-      "scene_dir": "shots/07_fc",
-      "transition": {"type": "fade", "duration": 0.5}
+      "scene_dir": "shots/07_fc"
     },
     {
       "id": "outro",
@@ -53,6 +45,10 @@
   "meta": {
     "title": "cnn_visual_demo",
     "author": "agent",
-    "tags": ["intro-main-outro", "cnn", "deep-learning"]
+    "tags": [
+      "intro-main-outro",
+      "cnn",
+      "deep-learning"
+    ]
   }
 }

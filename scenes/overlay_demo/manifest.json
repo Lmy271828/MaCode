@@ -10,17 +10,6 @@
       "scene_dir": "shots/01_foreground"
     }
   ],
-  "overlays": [
-    {
-      "base_segment": "base",
-      "foreground_segment": "foreground",
-      "blend": "overlay",
-      "start": 0.5,
-      "duration": 2.5,
-      "x": "W/2-w/2",
-      "y": "H/2-h/2"
-    }
-  ],
   "params": {
     "theme_color": "#1E90FF"
   }

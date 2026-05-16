@@ -232,13 +232,10 @@ pipeline/render.sh scenes/04_composite_demo/
 {
   "type": "composite-unified",
   "segments": [
-    {"id": "intro", "scene_dir": "shots/00_intro", "transition": {"type": "fade", "duration": 0.3}},
-    {"id": "main", "scene_dir": "shots/01_main", "transition": {"type": "wipeleft", "duration": 0.5}},
+    {"id": "intro", "scene_dir": "shots/00_intro"},
+    {"id": "main", "scene_dir": "shots/01_main"},
     {"id": "outro", "scene_dir": "shots/02_outro"}
   ],
-  "audio": {
-    "tracks": [{"file": "assets/bg.mp3", "loop": true, "volume": 0.2, "fade_in": 0.5}]
-  },
   "params": {"theme_color": "#1E90FF", "title_text": "讲座标题"}
 }
 ```
