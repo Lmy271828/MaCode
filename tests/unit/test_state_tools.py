@@ -47,7 +47,7 @@ class TestStateWrite(unittest.TestCase):
         result = run_script("state-write.py", [self.state_dir, "running", "--tool", "test-tool"])
         self.assertEqual(result.returncode, 0, result.stderr)
         state = self._load_state()
-        self.assertEqual(state["version"], "1.0")
+        self.assertEqual(state["version"], "1.1")
         self.assertEqual(state["tool"], "test-tool")
         self.assertEqual(state["status"], "running")
         self.assertIn("startedAt", state)
@@ -69,6 +69,7 @@ class TestStateWrite(unittest.TestCase):
         self.assertEqual(state["exitCode"], 0)
         self.assertIn("endedAt", state)
         self.assertIn("durationSec", state)
+        self.assertEqual(state["version"], "1.1")
 
     def test_outputs(self):
         """Should parse and write outputs JSON."""
@@ -165,6 +166,7 @@ class TestStateWrite(unittest.TestCase):
         self.assertEqual(state["startedAt"], "2026-05-01T12:00:00Z")
         self.assertEqual(state["endedAt"], "2026-05-01T12:00:05Z")
         self.assertEqual(state["durationSec"], 5.0)
+        self.assertEqual(state["version"], "1.1")
 
     def test_clear_error_on_success(self):
         """Should clear error field when transitioning to completed."""
@@ -240,9 +242,10 @@ class TestStateRead(unittest.TestCase):
         self.state_dir = os.path.join(self.tmpdir, "state")
         os.makedirs(self.state_dir, exist_ok=True)
         state = {
-            "version": "1.0",
+            "version": "1.1",
             "tool": "render.sh",
             "status": "completed",
+            "exitCode": 0,
             "outputs": {"framesRendered": 90, "port": 8080},
         }
         with open(os.path.join(self.state_dir, "state.json"), "w") as f:

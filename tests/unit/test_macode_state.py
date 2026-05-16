@@ -20,7 +20,7 @@ from macode_state import (  # noqa: E402
     read_state,
     write_progress,
     write_state,
-    write_task_state_v1_from_cli,
+    write_state_to_path,
 )
 
 
@@ -93,17 +93,34 @@ def test_atomic_write_json_creates_parent_dirs(tmp_path, monkeypatch):
     assert json.loads((tmp_path / "nested" / "state.json").read_text()) == {"a": 1}
 
 
-def test_write_task_state_v1_cli_merge(tmp_path, monkeypatch):
+def test_write_state_to_path_preserves_extended_fields(tmp_path, monkeypatch):
+    """Extended fields (cmd, pid, tool, durationSec) should be preserved across writes."""
     monkeypatch.chdir(tmp_path)
     sd = str(tmp_path / ".agent" / "tmp" / "job")
-    write_task_state_v1_from_cli(sd, "running", None, tool="t", task_id="job")
-    write_task_state_v1_from_cli(
-        sd,
-        "completed",
-        0,
-        outputs={"framesRendered": 3},
-    )
-    with open(os.path.join(sd, "state.json"), encoding="utf-8") as f:
+    sp = os.path.join(sd, "state.json")
+    os.makedirs(sd, exist_ok=True)
+
+    write_state_to_path(sp, "job", "running", cmd=["bash", "render.sh"], tool="render.sh")
+    write_state_to_path(sp, "job", "running", pid=12345)
+    write_state_to_path(sp, "job", "completed", exit_code=0, outputs={"frames": 90}, duration_sec=5.0)
+
+    with open(sp, encoding="utf-8") as f:
         data = json.load(f)
-    assert data["version"] == "1.0"
-    assert data["outputs"]["framesRendered"] == 3
+
+    assert data["version"] == ORCHESTRATION_VERSION
+    assert data["cmd"] == ["bash", "render.sh"]
+    assert data["pid"] == 12345
+    assert data["tool"] == "render.sh"
+    assert data["durationSec"] == 5.0
+    assert data["outputs"]["frames"] == 90
+
+
+def test_write_state_extended_fields_round_trip(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    write_state("s2", "running", cmd=["node", "render.mjs"], tool="mc")
+    write_state("s2", "completed", exit_code=0, duration_sec=3.5)
+    st = read_state("s2")
+    assert st is not None
+    assert st["cmd"] == ["node", "render.mjs"]
+    assert st["tool"] == "mc"
+    assert st["durationSec"] == 3.5

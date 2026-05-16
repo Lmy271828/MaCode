@@ -2,7 +2,7 @@
 """
 bin/state-write.py
 
-生成标准 v1.0 state.json（MaCode Task State Schema）。
+写入 OrchestrationState v1.1 state.json。
 支持原子写入和已有 state 的合并。
 
 用法:
@@ -19,7 +19,7 @@ bin/state-write.py
     state-write.py .agent/tmp/01_test completed 0 \
         --outputs '{"framesRendered": 90}'
     state-write.py .agent/tmp/01_test failed 1 \
-        --error "ModuleNotFoundError: No module named 'manim'"
+        --error "ModuleNotFoundError: no module named 'manim'"
 """
 
 from __future__ import annotations
@@ -33,12 +33,12 @@ _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if _SCRIPT_DIR not in sys.path:
     sys.path.insert(0, _SCRIPT_DIR)
 
-from macode_state import write_task_state_v1_from_cli  # noqa: E402
+from macode_state import write_state_to_path  # noqa: E402
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Write MaCode Task State v1.0 state.json",
+        description="Write OrchestrationState v1.1 state.json",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
@@ -84,18 +84,21 @@ def main(argv: list[str] | None = None) -> int:
             print(f"state-write: invalid --outputs JSON: {exc}", file=sys.stderr)
             return 1
 
+    state_path = os.path.join(args.state_dir, "state.json")
+    task_id = args.task_id or os.path.basename(os.path.normpath(args.state_dir))
+
     try:
-        write_task_state_v1_from_cli(
-            args.state_dir,
+        write_state_to_path(
+            state_path,
+            task_id,
             args.status,
-            args.exit_code,
-            tool=args.tool,
+            exit_code=args.exit_code if args.exit_code is not None else 0,
             outputs=outputs,
-            error=args.error,
-            started_at=args.started_at,
-            ended_at=args.ended_at,
-            duration=args.duration,
-            task_id=args.task_id,
+            error=args.error or None,
+            started_at=args.started_at or None,
+            ended_at=args.ended_at or None,
+            duration_sec=args.duration,
+            tool=args.tool or None,
         )
     except OSError as exc:
         print(f"state-write: failed to write state: {exc}", file=sys.stderr)

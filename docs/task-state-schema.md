@@ -1,21 +1,45 @@
 # MaCode 任务状态 JSON 约定
 
-本文件描述写入 `.agent/tmp/<scene_or_task>/state.json` 的两类载荷。**读端**应同时容忍 `version` 为 `1.0` 与 `1.1`（编排态），以及 **`macode-run` /Task** 的 v1.0 富形态。
+本文件描述写入 `.agent/tmp/<scene_or_task>/state.json` 的统一载荷格式。
 
-## 编排态（Orchestration）— `macode_state.write_state`
+**版本**：`1.1`（OrchestrationState）
 
-- **写入方**：`pipeline/composite-unified-render.py` 等编排脚本。
-- **`version`**：当前为 **`"1.1"`**（Sprint 2 起；与旧 `1.0` 文件可并存直至被下次写入覆盖）。
-- **必选字段**：`taskId`（字符串，通常等于场景目录名）、`status`（`running` | `completed` | `failed` | `timeout`）、`exitCode`（整数）。
-- **常见可选字段**：`startedAt`、`endedAt`（ISO 8601 字符串）、`outputs`（对象，可与旧 state 浅合并）、`error`（字符串；`completed` 成功时会清除）。
-- **TypedDict**：`OrchestrationStateV11` 定义于 `bin/macode_state/__init__.py`，写入前经类型校验。
+**写入方**：`pipeline/composite-unified-render.py`、`bin/macode-run`、`bin/state-write.py` 等全部统一走 `macode_state.write_state_to_path()`。
 
-## Task 态（MaCode Task State）— `macode-run` 与 `bin/state-write.py`
+**读取方**：`bin/state-read.py`、`pipeline/deliver.py`、任意 `jq`/`cat` 工具。
 
-- **写入方**：`bin/macode-run`（子命令生命周期）、`engines/*/scripts/render.sh` 通过 `state-write.py` 等。
-- **`version`**：**`"1.0"`**（`state-write.py` / CLI 契约）。
-- **额外常见字段**：`tool`、`cmd`（仅 `macode-run`）、`pid`、`durationSec`、`startedAt` / `endedAt`（`macode-run` 使用带偏移的 ISO）、嵌套 `outputs`、合并自子进程 `task.json` 的信息等。（历史文件可能仍含已弃用的 `agentId`。）
-- **与编排态关系**：同一 `state.json` 路径上，**同一时间**只应有一类写入者占主导。
+## 必选字段
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `version` | `string` | 固定为 `"1.1"` |
+| `taskId` | `string` | 任务标识（通常等于场景目录名） |
+| `status` | `string` | `running` \| `completed` \| `failed` \| `timeout` |
+| `exitCode` | `int` | 进程退出码（`running` 时通常为 `0`） |
+
+## 常见可选字段
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `startedAt` | `string` | ISO 8601 开始时间戳 |
+| `endedAt` | `string` | ISO 8601 结束时间戳（终端状态才有） |
+| `outputs` | `object` | 任意键值对，新写入会与旧 state 浅合并 |
+| `error` | `string` | 错误信息；`completed` 成功时会自动清除 |
+
+## 扩展字段（历史 v1.0 兼容）
+
+以下字段由 `macode-run` / CLI 工具写入，属于 v1.1 的扩展：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `cmd` | `string[]` | macode-run 执行的原始命令数组 |
+| `pid` | `int` | 子进程 PID |
+| `durationSec` | `number` | 墙钟运行时长（秒） |
+| `tool` | `string` | 工具名称（如 `render.sh`） |
+
+## TypedDict
+
+`OrchestrationStateV11` 定义于 `bin/macode_state/__init__.py`，写入前经 `_validate_orchestration` 校验。
 
 ## 进度 JSONL
 

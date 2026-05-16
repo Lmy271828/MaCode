@@ -5,7 +5,7 @@ bin/macode-run
 
 替代 bash trap + nohup + & wait，为所有渲染/处理任务提供：
 - 可靠超时（SIGTERM → SIGKILL）
-- 统一状态外化（state.json，MaCode Task State v1）
+- 统一状态外化（state.json，OrchestrationState v1.1）
 - 日志捕获（stdout/stderr 自动写入 .agent/log/，可选 tee）
 - 信号转发（SIGINT/SIGTERM 转发给子进程）
 - 子进程 task.json 合并（执行工具通过 MACODE_STATE_DIR 环境变量发现状态目录）
@@ -43,7 +43,7 @@ import yaml
 _BIN_DIR = os.path.dirname(os.path.abspath(__file__))
 if _BIN_DIR not in sys.path:
     sys.path.insert(0, _BIN_DIR)
-from macode_state import atomic_write_json, write_progress as macode_write_progress  # noqa: E402
+from macode_state import atomic_write_json, write_progress as macode_write_progress, write_state_to_path  # noqa: E402
 
 
 def get_project_root() -> str:
@@ -142,18 +142,17 @@ def main():
         else:
             timeout = default_timeout_from_project_yaml(project_root)
 
-    # Write initial state (MaCode Task State v1)
+    # Write initial state (OrchestrationState v1.1)
     started_at = datetime.now(timezone.utc)
-    state = {
-        "version": "1.0",
-        "taskId": args.task_id,
-        "cmd": args.cmd,
-        "status": "running",
-        "startedAt": format_iso(started_at),
-        "outputs": {},
-    }
     if not args.no_state:
-        atomic_write_json(state_path, state)
+        write_state_to_path(
+            state_path,
+            args.task_id,
+            "running",
+            cmd=args.cmd,
+            outputs={},
+            started_at=format_iso(started_at),
+        )
 
     def emit_progress(phase: str, status: str, message: str = ""):
         if not args.progress:
@@ -178,9 +177,13 @@ def main():
         env=env,
     )
 
-    state["pid"] = child.pid
     if not args.no_state:
-        atomic_write_json(state_path, state)
+        write_state_to_path(
+            state_path,
+            args.task_id,
+            "running",
+            pid=child.pid,
+        )
 
     if args.tee:
         print(f"[macode-run] Task '{args.task_id}' started (pid={child.pid}, timeout={timeout}s)")
@@ -270,15 +273,16 @@ def main():
     child_outputs = merge_task_json(state_dir)
 
     ended_at = datetime.now(timezone.utc)
-    state.update({
-        "status": status,
-        "exitCode": exit_code,
-        "endedAt": format_iso(ended_at),
-        "durationSec": round((ended_at - started_at).total_seconds(), 2),
-        "outputs": child_outputs,
-    })
     if not args.no_state:
-        atomic_write_json(state_path, state)
+        write_state_to_path(
+            state_path,
+            args.task_id,
+            status,
+            exit_code=exit_code,
+            outputs=child_outputs,
+            ended_at=format_iso(ended_at),
+            duration_sec=round((ended_at - started_at).total_seconds(), 2),
+        )
 
     emit_progress("cleanup", status, f"exit={exit_code}")
 

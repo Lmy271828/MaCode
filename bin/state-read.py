@@ -2,7 +2,7 @@
 """
 bin/state-read.py
 
-读取 MaCode Task State v1.0 state.json，支持字段提取和简单 jq 风格查询。
+读取 OrchestrationState v1.1 state.json，支持字段提取和简单 jq 风格查询。
 
 用法:
     state-read.py <state_dir> [--field FIELD] [--jq EXPR]
@@ -24,7 +24,7 @@ import sys
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Read MaCode Task State v1.0 state.json",
+        description="Read OrchestrationState v1.1 state.json",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
