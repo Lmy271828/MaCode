@@ -163,7 +163,7 @@ cat .agent/check_reports/05_new_scene_frames.json | jq .
 1. 读取 check report 中的 `fix` 块
 2. 判断 `fix_confidence`：
    - `>= 0.8` → 按 `fix.params` 自动修改
-   - `< 0.8` → 请求人类确认（`touch .agent/signals/review_needed`）
+   - `< 0.8` → 请求人类确认（记录问题并等待人工决策）
 3. 修改源码
 4. **清除缓存**（重要！修改后必须重新渲染）：
    ```bash

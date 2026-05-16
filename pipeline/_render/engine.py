@@ -26,16 +26,13 @@ class EngineResult:
 
 
 def _resolve_engine_script(ctx: RenderContext) -> str:
-    """Resolve engine entry script with backward-compat fallback to old paths."""
+    """Resolve engine entry script with backward-compat fallback to legacy render.sh."""
     rel = ctx.engine_conf.get("render_script")
     if rel:
         return os.path.join(PROJECT_ROOT, rel)
-    legacy_mjs = os.path.join(PROJECT_ROOT, "engines", ctx.engine, "scripts", "render-cli.mjs")
-    legacy_sh = os.path.join(PROJECT_ROOT, "engines", ctx.engine, "scripts", "render.sh")
-    if os.path.isfile(legacy_mjs):
-        return legacy_mjs
-    if os.path.isfile(legacy_sh):
-        return legacy_sh
+    legacy_script = os.path.join(PROJECT_ROOT, "engines", ctx.engine, "scripts", "render.sh")
+    if os.path.isfile(legacy_script):
+        return legacy_script
     print(f"Error: engine script not found for '{ctx.engine}'", file=sys.stderr)
     sys.exit(1)
 

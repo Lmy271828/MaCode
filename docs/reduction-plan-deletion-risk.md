@@ -62,17 +62,21 @@
 
 ## R2 — 默认人机 Review（review_needed / exit 3）
 
-> **状态（Sprint 7 / PRD D1 推荐路径已落地）**：orchestrator 默认不写 `review_needed`，渲染成功直接 exit 0。`--no-review` 保留为 deprecated noop alias；`--enable-review` 是新的显式开关。`render_scene_legacy.py` 保留原默认作为 `MACODE_USE_LEGACY_RENDER=1` 的回滚路径。
+> **状态（P0-3 已落地）**：`review_needed` 阻塞式审查机制已彻底移除；`--enable-review` 与 `--no-review` 参数已删除；`macode-review` CLI 已删除。保留 `human_override.json`（approve/reject/retry）作为人类干预通道，`handle_override_or_exit` 继续提供 exit 0/1/2。
 
-### 删除/降级对象
+### 删除/降级对象（已执行）
 
-- 成功渲染后默认 `touch review_needed`、`render` 在非 `--no-review` 下 exit 3 当文件已存在等行为（以当前代码为准逐项核对）
-- 文档中「每次渲染必经人工」的叙事
+- `pipeline/_render/lifecycle.py` 中的 `review_path`、`check_review_pending_or_exit`、`mark_review_if_needed`
+- `pipeline/_render/orchestrator.py` 中的 `--enable-review`、`--no-review` 参数及 `review_needed` JSON 字段
+- `pipeline/composite-unified-render.py` 中的 `--no-review` 参数及透传逻辑
+- `bin/macode-review` 脚本
+- `bin/macode` 中的 `review` 子命令
+- `tests/unit/test_render_lifecycle.py` 中 review marker 相关测试
 
 ### 替代方案
 
 - **默认**：渲染成功即 exit 0，产物可用；质检用 `macode check`/`report` **显式**执行。
-- **可选**：`macode render --enable-review` 启用「完成后进入待审状态」。
+- **人类干预**：通过 `human_override.json`（action=approve/reject/retry）在渲染前介入，由 `handle_override_or_exit` 处理。
 
 ### 风险
 
@@ -85,7 +89,7 @@
 
 ## R3 — Composite 双轨（`composite` vs `composite-unified`）
 
-> **状态（Sprint 7 / PRD D2 推荐路径已落地）**：保留 `composite-unified`，`composite` 自动路由到 unified 并打印 deprecation warning。`pipeline/composite-render.py` 转为 deprecated shim（`MACODE_USE_LEGACY_COMPOSITE=1` 仍可用作 escape hatch）。
+> **状态（已清理）**：仅保留 `composite-unified`，`composite` 类型已彻底删除。所有示例场景、测试夹具、文档中的 `type: composite` 均已迁移为 `type: composite-unified`。`pipeline/composite-render.py` 已删除，`pipeline/render.sh` 不再接受 `composite` 类型。
 
 ### 删除/降级对象
 
@@ -110,22 +114,31 @@
 
 ## R4 — Zone / Narrative / Layout Compiler 重叠
 
-### 删除/降级对象（择一策略）
+> **状态（已落地）**：策略 C 已执行。ZoneScene + NarrativeScene 为默认布局抽象；Layout Compiler 已归档。
 
-- **策略 A**：只保留 **手写 scene +（可选）MaCodeScene 基类**；Zone/Narrative/Compiler 全部标 `experimental/` 或移出主文档。
-- **策略 B**：只保留 **Layout Compiler + 一种布局模板**；Zone/Narrative 降级为示例。
-- **策略 C**：只保留 **Zone + Narrative**（仅 Manim 系），删除 Compiler。
+### 决策结果
 
-### 替代方案
+- **保留**：**ZoneScene + NarrativeScene**（ManimCE / ManimGL）作为默认布局与叙事抽象。
+  - `self.place(mobj, zone_name)` 自动处理坐标计算
+  - `self.stage(stage_id, *mobjects)` 提供叙事模板驱动编排
+  - `check-layout.py` / `check-narrative.py` / `check-density.py` 在渲染前自动验证
+- **归档**：**Layout Compiler**（`experimental/archived-layout-compiler/layout-compile.py` + `scene-compile.py` + `SKILL.md`）
+  - 文件已移至 `experimental/archived-layout-compiler/`，相关测试与夹具已删除
+  - 已从 SKILL.md / AGENTS.md 的推荐路径移除
+  - 归档原因：与 ZoneScene 功能重叠，增加认知负担；ZoneScene + check 体系已覆盖相同约束
 
-- 文档中仅保留一条「推荐抽象」；其余移入 `docs/archive/` 或删除代码路径上的自动检查（避免未继承某基类就跳过检查造成行为分裂）。
+### 替代方案（已实施）
 
-### 风险
+- AGENTS.md §4.8 重写为 "Zone/Region 布局工作流（默认路径）"
+- `macode-host-agent/SKILL.md` Step 3 将 ZoneScene 提升为"方式一（推荐）"，Layout Compiler 降级为"方式二（已归档）"
+- `layout-compiler/SKILL.md` 头部添加 ARCHIVED 声明
+
+### 风险（已缓解）
 
 | 风险 | 可能性 | 影响 | 缓解 |
 |------|--------|------|------|
-| 已有场景 `check-layout`/`check-narrative` 行为变化 | 中 | CI 失败 | 分阶段：先改默认不强制，再删代码 |
-| 教育向用户喜爱 Zone 约束 | 低 | 社区反馈 | 以 plugin 或 `engines/manimgl` 扩展形式保留最小集 |
+| 已有场景 `check-layout`/`check-narrative` 行为变化 | 低 | CI 失败 | 未删除任何代码，仅文档降级； ZoneScene 检查逻辑保持不变 |
+| 教育向用户喜爱 Zone 约束 | 低 | 社区反馈 | ZoneScene 本身保留且强化，无影响 |
 
 ---
 

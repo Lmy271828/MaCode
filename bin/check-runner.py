@@ -21,6 +21,7 @@ if _SCRIPT_DIR not in sys.path:
     sys.path.insert(0, _SCRIPT_DIR)
 
 from checks._utils import load_manifest
+from project_engine import find_project_root, resolve_engine_from_manifest
 
 
 def fail(msg: str):
@@ -140,7 +141,8 @@ def main():
         fail(f"Error: directory not found: {scene_dir}")
 
     manifest = load_manifest(scene_dir)
-    engine = args.engine or manifest.get('engine', 'manim')
+    project_root = find_project_root(scene_dir)
+    engine = args.engine or resolve_engine_from_manifest(manifest, scene_dir, project_root)
     registry = load_registry(engine)
     checks = discover_checks(registry, layer=args.layer, check_ids=args.check_ids)
 

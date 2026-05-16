@@ -2,7 +2,7 @@
 
 > **Ma**th + **Code**. Make it work, then make it right, then make it fast.
 
-MaCode 是一个 Bash-First 的数学动画 Agent 工作流系统。它不封装高级 API，而是提供一个**透明的、可被 `ls / cat / grep` 完全理解的文件系统环境**，让 Agent 通过 Bash 命令探索、组合、修复数学动画的每一个环节。
+MaCode 是一个 Bash-First 的数学动画 Agent 工作流系统。它不封装高级 API，而是提供一个**透明的、可被 `ls` / `cat` / `grep` 完全理解的文件系统环境**，让 Agent 通过 Bash 命令探索、组合、修复数学动画的每一个环节。
 
 ## 设计哲学
 
@@ -101,6 +101,7 @@ macode/
 ├── .agent/                 # Agent 工作区（临时帧、缓存、日志）
 │   ├── tmp/{scene}/        # 帧序列、渲染输出
 │   ├── cache/              # 帧级缓存（按内容哈希寻址）
+│   ├── context/            # 注入 Agent 的引擎副本（如 sourcemap 摘要）
 │   └── log/                # 全局渲染日志
 ├── engines/                # 渲染引擎适配层
 │   ├── manim/              #   ManimCE（Python，batch / CI 常用）
@@ -121,28 +122,30 @@ macode/
 │   │   └── scene.py        #     引擎实现
 │   └── ...
 ├── pipeline/               # 渲染管道（编排层 + 执行层）
-│   ├── render.sh           #   顶层路由（纯分发器，按 type 路由）
-│   ├── render-scene.py     #   单场景编排器（validate → api-gate → cache → engine → deliver）
-│   ├── composite-render.py #   Composite 编排器（segment 调度 → assemble）
-│   ├── composite-unified-render.py  #   Composite-unified 编排器
-│   ├── validate-manifest.py #   manifest 校验（执行层）
-│   ├── concat.sh           #   帧序列 → MP4（执行层）
+│   ├── render.sh           #   顶层路由（按 manifest.type 分发）
+│   ├── render-scene.py     #   单场景编排（validate → api-gate → cache → engine → deliver）
+│   ├── composite-unified-render.py  #   composite-unified 编排入口
+│   ├── validate-manifest.py #   manifest 校验
+│   ├── _render/            #   内部子包（orchestrator、encode、validate 等）
+│   ├── concat.sh           #   帧序列 → MP4
 │   ├── add_audio.sh        #   音轨合成
+│   ├── audio-analyze.sh    #   音频响度/静音分析（智能剪辑等）
 │   ├── fade.sh             #   淡入淡出
 │   ├── compress.sh         #   输出压缩
 │   ├── preview.sh          #   快速预览
 │   ├── smart-cut.sh        #   静默段自动剪辑
 │   ├── thumbnail.sh        #   关键帧提取
 │   ├── cache.sh            #   帧级缓存
-│   └── deliver.sh          #   产物交付（.agent/tmp/ → output/）
+│   └── deliver.py          #   产物交付 + 输出侧 _manifest.json（.agent/tmp/ → output/）
 ├── bin/                    # 全局工具脚本
 │   ├── setup.sh             #   项目初始化 — 用户版（不暴露测试依赖）
 │   ├── setup-dev.sh         #   项目初始化 — 开发版（含测试框架 + 验证）
 │   ├── agent                #   配置检查 + 系统提示生成
-│   ├── agent-shell          #   人类用户可选交互式 shell（非 Host Agent 入口）
+│   ├── human-tools/         #   人类可选：safety-gate.sh、agent-shell
 │   ├── macode               #   主入口 CLI（render / status / inspect）
 │   ├── macode-run           #   统一进程生命周期管理器（Harness 2.0）
-│   ├── api-gate.py          #   BLACKLIST 导入 + sandbox 危险调用扫描
+│   ├── api-gate.py          #   BLACKLIST 导入扫描
+│   ├── composite-init.py    #   macode composite init / add-segment
 │   ├── composite-assemble.py #   Composite 组装执行层（overlay → transition → audio）
 │   ├── composite-transition.py
 │   ├── composite-overlay.py
@@ -169,7 +172,7 @@ Layer 1: 基础设施 (bash, ffmpeg, git) ← 绝对稳定层
 
 ### SOURCEMAP 协议
 
-每个引擎目录下有一份 `SOURCEMAP.md`，是 Agent 的**源码探索地图**：
+机器真源为 `engines/<engine>/sourcemap.json`；同目录下的 `SOURCEMAP.md` 由 `bin/sourcemap-sync.py` 生成，是 Agent 的**人类可读源码探索地图**：
 
 - **WHITELIST**：安全的、值得阅读的 API 表面（P0/P1/P2 分级）
 - **BLACKLIST**：陷阱路径（废弃 API、内部黑魔法、测试代码）
@@ -181,7 +184,7 @@ Agent 通过 `macode inspect --grep <keyword>` 查询，渲染前 `api-gate.py` 
 
 ```json
 {
-  "engine": "manim",
+  "engine": "manimgl",
   "duration": 10,
   "fps": 30,
   "resolution": [1920, 1080],
@@ -190,16 +193,20 @@ Agent 通过 `macode inspect --grep <keyword>` 查询，渲染前 `api-gate.py` 
 }
 ```
 
+（单场景可将 `engine` 设为 `manim`（ManimCE，CI/无头）、`manimgl` 或 `motion_canvas`；项目级默认见下节 `project.yaml`。）
+
 ## 配置
 
 ### 项目配置（`project.yaml`）
 
 ```yaml
 defaults:
-  engine: manim
+  engine: manimgl
   resolution: [1920, 1080]
   fps: 30
 ```
+
+> 真源以仓库根目录 `project.yaml` 为准；上表与当前默认引擎一致。
 
 ## Composite Scene System（模块化场景合成）
 
@@ -223,11 +230,13 @@ macode composite render scenes/04_composite_demo
 pipeline/render.sh scenes/04_composite_demo/
 ```
 
+`pipeline/render.sh` 识别 `manifest.type` 为 `composite-unified` 的场景并进入统一编排路径。
+
 ### Composite manifest 示例
 
 ```json
 {
-  "type": "composite",
+  "type": "composite-unified",
   "segments": [
     {"id": "intro", "scene_dir": "shots/00_intro", "transition": {"type": "fade", "duration": 0.3}},
     {"id": "main", "scene_dir": "shots/01_main", "transition": {"type": "wipeleft", "duration": 0.5}},
@@ -240,14 +249,7 @@ pipeline/render.sh scenes/04_composite_demo/
 }
 ```
 
-### 双轨架构
-
-| 模式 | manifest type | 特点 |
-|------|--------------|------|
-| **分轨合成** | `composite` | 独立渲染 + ffmpeg xfade 转场，可并行，状态不连续 |
-| **统一渲染** | `composite-unified` | 单 Scene 实例顺序执行，状态连续 |
-
-Segment 源码中通过 `os.environ["MACODE_PARAMS_JSON"]` 读取注入参数。
+参数注入：Manim 系 Segment 通过 `os.environ["MACODE_PARAMS_JSON"]` 读取；Motion Canvas Segment 在渲染时由 Harness 注入 `(window as any).__MACODE_PARAMS`（见 `AGENTS.md`）。
 
 ---
 
@@ -274,8 +276,8 @@ tail -50 .agent/log/$(ls -t .agent/log/ | head -1)
 # 7. 预览
 pipeline/preview.sh .agent/tmp/02_fourier/final.mp4
 
-# 8. 交付到 output/ 目录
-pipeline/deliver.sh scenes/02_fourier/
+# 8. 交付到 output/ 目录（需场景名、临时目录、输出目录三个参数）
+python3 pipeline/deliver.py 02_fourier .agent/tmp/02_fourier output/
 
 # 9. 多场景拼接 + 音频合成
 pipeline/concat.sh output/*.mp4 output/lecture.mp4
@@ -294,7 +296,7 @@ pipeline/add_audio.sh output/lecture.mp4 assets/bgm.mp3 output/final.mp4
 
 ### 环境隔离原则
 
-- **Python**：由 `uv` 统一管理，在项目根目录创建 `.venv/` 虚拟环境。ManimCE 及所有 Python 依赖仅安装于此，绝不使用全局 `pip` 或 `conda`。
+- **Python**：由 `uv` 统一管理：项目根目录下 `.venv/`（ManimCE）与 `.venv-manimgl/`（ManimGL）分离；依赖仅安装于上述 venv，不使用全局 `pip` 或 `conda`。
 - **Node.js**：Motion Canvas 通过 `npx` 调用，`npm install` 将依赖安装到项目本地 `node_modules/`，不污染全局 npm。
 - **硬件自适应**：`bin/detect-hardware.sh` 自动检测 GPU / OpenGL / CUDA，生成 `.agent/hardware_profile.json`；`bin/select-backend.sh` 根据画像选择最优后端。
 
@@ -329,20 +331,20 @@ bin/install-hooks.sh --check
 bin/install-hooks.sh
 ```
 
-- `pre-commit`：拦截对 `bin/`、`engines/`、`pipeline/` 等基础设施的误修改；对 `scenes/` 的修改自动运行 fs-guard 边界检查。
-- `pre-push`：推送前全量扫描所有场景的 `security-run.sh`（导入黑名单 + sandbox + 原语检测）。
+- `pre-commit`：拦截对 `bin/`、`engines/`、`pipeline/` 以及根目录 `project.yaml`、`requirements.txt`、`package.json` 的误修改。
+- `pre-push`：推送前对所有可渲染场景运行 `api-gate.py` 导入检查。
 
-**基础设施维护**：当你需要修改 `bin/`、`engines/` 等受保护目录时，pre-commit 会拒绝提交。这是设计行为 —— 请使用 `git commit --no-verify` 并确保修改经过人工 review。
+**基础设施维护**：当你需要修改上述受保护路径时，pre-commit 会拒绝提交。这是设计行为 —— 请使用 `git commit --no-verify` 并确保修改经过人工 review。
 
 ## 安全模型
 
-渲染前自动执行五层防御：
+渲染链路中的安全检查：
 
 ```
 Host Agent 调用
-  → 可选: bin/api-gate.py   (渲染前静态检查：BLACKLIST 导入 + sandbox 扫描)
-  → pipeline/render.sh      (manifest 校验 → 引擎渲染 → api-gate → 缓存 → timeout)
-  → 内置熔断: 帧数上限 10000 / 磁盘上限 50GB / 渲染超时 600s
+  → api-gate.py（BLACKLIST 导入检查，由渲染管线自动触发）
+  → pipeline/render.sh → render-scene / composite-unified-render
+  → 熔断与上限（帧数 / 磁盘 / 超时 / 并发：`project.yaml` → `agent.resource_limits`）
   → ffmpeg 编码
   → 输出: .agent/tmp/{scene}/final.mp4
 ```
@@ -416,6 +418,7 @@ curl -s http://localhost:3000/api/state | jq '.scenes[] | {name, status, phase}'
 | [`docs/architecture.md`](docs/architecture.md) | 系统架构 / 安全模型深度 / WSL2 调优 / 仪表盘 / 人类介入 / 并发模型 |
 | [`docs/PRD-draft.md`](docs/PRD-draft.md) | 项目愿景、决策记录 |
 | [`docs/refactor-todo.md`](docs/refactor-todo.md) | Sprint 任务跟踪 |
+| [`docs/task-state-schema.md`](docs/task-state-schema.md) | 任务/帧反馈等 JSON 字段约定 |
 | [`CHANGELOG.md`](CHANGELOG.md) | 变更历史 |
 | [`tests/fixtures/scenes/README.md`](tests/fixtures/scenes/README.md) | 测试 fixture 命名约定 |
 

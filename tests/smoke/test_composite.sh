@@ -17,8 +17,8 @@ test_composite_render() {
     fi
 
     cd "$PROJECT_ROOT"
-    # type: composite now auto-routes to composite-unified (PRD D2); segment-level
-    # .agent/tmp/{shot}/state.json only exist with MACODE_USE_LEGACY_COMPOSITE=1.
+    # type: composite-unified; segment-level
+    # .agent/tmp/{shot}/state.json are no longer written (legacy path removed).
     ./bin/macode composite render scenes/04_composite_demo --fps 2 --duration 1
     assert_exit_code 0
 

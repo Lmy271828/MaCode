@@ -13,6 +13,11 @@ import os
 import re
 import sys
 
+_SCRIPT_BIN = os.path.dirname(os.path.abspath(__file__))
+if _SCRIPT_BIN not in sys.path:
+    sys.path.insert(0, _SCRIPT_BIN)
+from project_engine import find_project_root, resolve_engine_from_manifest
+
 # Base class names recognised by the AST scanner.
 _SCENE_BASE_NAMES = {
     "Scene",
@@ -80,7 +85,8 @@ def generate_orchestrator(scene_dir: str, output_dir: str) -> dict:
         print("Error: no segments in composite-unified manifest", file=sys.stderr)
         sys.exit(1)
 
-    engine = manifest.get("engine", "manim")
+    project_root = find_project_root(scene_dir)
+    engine = resolve_engine_from_manifest(manifest, scene_dir, project_root)
     fps = manifest.get("fps", 30)
     resolution = manifest.get("resolution", [1920, 1080])
     params = manifest.get("params")

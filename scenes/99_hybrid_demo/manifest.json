@@ -1,5 +1,5 @@
 {
-  "type": "composite",
+  "type": "composite-unified",
   "segments": [
     {"id": "intro", "scene_dir": "shots/00_intro"},
     {"id": "mc_part", "scene_dir": "shots/01_mc"}

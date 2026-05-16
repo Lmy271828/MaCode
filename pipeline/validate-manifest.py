@@ -34,7 +34,7 @@ def validate(manifest_path: str) -> list:
 
     manifest_type = data.get("type", "single")
 
-    if manifest_type == "composite":
+    if manifest_type == "composite-unified":
         # Composite manifest validation
         if "segments" not in data:
             errors.append("Missing required field: segments (for composite manifest)")

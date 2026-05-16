@@ -169,90 +169,9 @@ def check_js_imports(code: str, blacklist_raw_paths: list[str]) -> list[str]:
     return violations
 
 
-# ── Sandbox: dangerous Python call patterns ──────────────
-# 这些 pattern 在数学动画场景中没有合法用途
-SANDBOX_PATTERNS = [
-    # 子进程执行
-    (r'\bsubprocess\b', 'subprocess — arbitrary command execution'),
-    (r'\bos\.system\s*\(', 'os.system() — arbitrary shell command'),
-    (r'\bos\.popen\s*\(', 'os.popen() — arbitrary shell command'),
-    # 动态导入（绕过 api-gate 静态检查）
-    (r'\b__import__\s*\(', '__import__() — dynamic import bypass'),
-    # 网络访问
-    (r'\bimport\s+socket\b', 'socket — raw network access'),
-    (r'\bfrom\s+socket\s+import\b', 'socket — raw network access'),
-    (r'\bimport\s+requests\b', 'requests — HTTP client'),
-    (r'\bfrom\s+requests\s+import\b', 'requests — HTTP client'),
-    (r'\bimport\s+urllib\b', 'urllib — HTTP client'),
-    (r'\bfrom\s+urllib', 'urllib — HTTP client'),
-    # 文件系统破坏
-    (r'\bshutil\.rmtree\s*\(', 'shutil.rmtree() — recursive delete'),
-    (r'\bos\.remove\s*\(', 'os.remove() — file deletion (use pipeline scripts)'),
-    (r'\bos\.rmdir\s*\(', 'os.rmdir() — directory deletion'),
-    # 读取系统敏感路径
-    (r'open\s*\(\s*[\'"]/', 'open() reading absolute path (potential data leak)'),
-    # 退出/信号
-    (r'\bos\.kill\s*\(', 'os.kill() — process termination'),
-    (r'\bsys\.exit\s*\(', 'sys.exit() — premature process termination'),
-]
-
-
-# ── Syntax Gate: hand-written raw nested syntax ──────────────
-# Agents should not write these raw patterns; use utils helpers instead
-SYNTAX_REDIRECTS = [
-    # ffmpeg filtergraph strings
-    (r'-vf\s*"', "hand-written ffmpeg video filtergraph", "use utils.ffmpeg_builder"),
-    (r'-af\s*"', "hand-written ffmpeg audio filter", "use utils.ffmpeg_builder"),
-    (r'-filter_complex\s*"', "hand-written ffmpeg complex filtergraph", "use utils.ffmpeg_builder"),
-
-    # LaTeX raw environments
-    (r'\\begin\{cases\}', "hand-written LaTeX cases environment", "use utils.latex_helper.cases()"),
-    (r'\\begin\{bmatrix\}|\\begin\{pmatrix\}|\\begin\{Bmatrix\}', "hand-written LaTeX matrix", "use utils.latex_helper.matrix()"),
-    (r'\\begin\{align\*?\}', "hand-written LaTeX align environment", "use utils.latex_helper.align_eqns()"),
-    (r'\\begin\{equation\*?\}', "hand-written LaTeX equation environment", "use utils.latex_helper.math() or ChineseMathTex()"),
-
-    # GLSL shader
-    (r'gl_Position|uniform\s+\w+|varying\s+\w+|attribute\s+\w+', "hand-written GLSL shader code", "use utils.shader_builder"),
-    (r'#version\s+\d+', "hand-written GLSL version directive", "use utils.shader_builder"),
-
-    # Complex regex
-    (r're\.compile\s*\(\s*["\'][^"\']{60,}["\']', "hand-written complex regex", "use utils.pattern_helper"),
-    (r're\.match\s*\(\s*["\'][^"\']{60,}["\']', "hand-written complex regex", "use utils.pattern_helper"),
-    (r're\.search\s*\(\s*["\'][^"\']{60,}["\']', "hand-written complex regex", "use utils.pattern_helper"),
-
-    # Bash dangerous patterns in Python strings
-    (r'ffmpeg.*?-i.*?-vf', "hand-written ffmpeg command string in Python", "use utils.ffmpeg_builder"),
-]
-
-
-def check_sandbox(code):
-    """扫描场景源码中的危险 Python 调用。"""
-    violations = []
-    for pattern, description in SANDBOX_PATTERNS:
-        if re.search(pattern, code):
-            violations.append(f"SANDBOX violation: {description}")
-    return violations
-
-
-def check_syntax_gate(code, scene_file):
-    """扫描场景源码中的手写原始语法模式。返回 (description, line_number, recommendation) 列表。"""
-    violations = []
-    seen_lines = set()
-    for line_no, line in enumerate(code.splitlines(), start=1):
-        for pattern, description, recommendation in SYNTAX_REDIRECTS:
-            if re.search(pattern, line):
-                if line_no in seen_lines:
-                    break  # 不重复报告同一行
-                seen_lines.add(line_no)
-                violations.append((description, line_no, recommendation))
-                break  # 一行只报第一个匹配的 pattern
-    return violations
-
-
 def main():
     parser = argparse.ArgumentParser(
-        description='Static API gate using SOURCEMAP BLACKLIST. '
-                    'Blocks forbidden imports, sandbox violations and raw syntax patterns.',
+        description='Static API gate using SOURCEMAP BLACKLIST. Blocks forbidden imports.',
         epilog='Exit codes: 0=OK, 1=violations found, 2=argument or file error.',
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -292,25 +211,12 @@ def main():
     else:
         all_violations.extend(check_python_imports(code, blacklist))
 
-    # 2. Sandbox 危险调用检查
-    all_violations.extend(check_sandbox(code))
-
-    # 3. Syntax Gate 手写原始语法检查
-    syntax_violations = check_syntax_gate(code, scene_file)
-
-    if syntax_violations:
-        for description, line_no, recommendation in syntax_violations:
-            print(f"SYNTAX_GATE_REDIRECT: {description}")
-            print(f"Location: {scene_file}:{line_no}")
-            print(f"Recommendation: {recommendation}")
-
-    if all_violations or syntax_violations:
-        if all_violations:
-            print("API_GATE_VIOLATIONS:")
-            for v in all_violations:
-                print(f"  - {v}")
-            print(f"\nFix: consult {sourcemap_path} (whitelist in engines/*/sourcemap.json + REDIRECT).",
-                  file=sys.stderr)
+    if all_violations:
+        print("API_GATE_VIOLATIONS:")
+        for v in all_violations:
+            print(f"  - {v}")
+        print(f"\nFix: consult {sourcemap_path} (BLACKLIST + REDIRECT in engines/*/sourcemap.json).",
+              file=sys.stderr)
         sys.exit(1)
     else:
         print("API_GATE_OK")

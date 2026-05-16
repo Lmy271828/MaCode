@@ -37,6 +37,11 @@ _EXCLUDE_SUFFIXES = frozenset({".log", ".tmp", ".swp", ".swo", ".bak", "~"})
 _EXCLUDE_DIRS = frozenset({".git", "__pycache__", ".pytest_cache", "node_modules", ".venv", ".agent"})
 _EXCLUDE_NAMES = frozenset({".cache_path", ".DS_Store", "Thumbs.db"})
 
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
+from project_engine import resolve_engine_from_manifest
+
 
 def is_excluded_file(name: str) -> bool:
     """Exclude hidden files, editor backups, and known noise files."""
@@ -307,7 +312,7 @@ def compute_hash(scene_dir: str, project_root: str) -> tuple[str, list[str]]:
     with open(manifest_path, encoding="utf-8") as f:
         manifest = json.load(f)
 
-    engine = manifest.get("engine", "manim")
+    engine = resolve_engine_from_manifest(manifest, scene_dir, project_root)
 
     # Build sys.path with engine src
     extra_sys_path: list[str] = []

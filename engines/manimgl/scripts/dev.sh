@@ -82,7 +82,9 @@ if [[ ! -x "$VENV_PYTHON" ]]; then
 fi
 
 ENGINE_SRC="$PROJECT_ROOT/engines/manimgl/src"
+COMMON_SRC="$PROJECT_ROOT/engines/common/src"
 export PYTHONPATH="${ENGINE_SRC}${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH="${COMMON_SRC}${PYTHONPATH:+:$PYTHONPATH}"
 
 # ── Signal check (pre-launch only) ──
 if [[ -f "$PROJECT_ROOT/bin/signal-check.py" ]]; then

@@ -194,8 +194,8 @@ Playwright 相对于 Puppeteer 对 MaCode 的核心价值：
    - 风险：极低（API 1:1 映射）
    - 收益：WSL2 兼容性提升
 
-2. **Phase 2（短期）**：废弃 jsdom 路径，删除 `render.mjs`
-   - 统一为 Playwright + Vite dev server 单一路径
+2. **Phase 2（已完成）**：`render.mjs` 已完成从 jsdom 到 Vite+Playwright 的重写，jsdom 旧实现已删除；`render.mjs` 作为 Harness 2.0 统一入口保留
+   - 当前为 Playwright + Vite dev server 单一路径
 
 3. **Phase 3（中期）**：优化帧捕获机制
    - 修改 `capture.ts`，暴露 `__MCODE_CAPTURE_BINARY__`（返回 Uint8Array 而非 base64）

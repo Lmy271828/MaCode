@@ -25,12 +25,6 @@ const SCRIPT = path.basename(fileURLToPath(import.meta.url));
 const PORT_RANGE_START = 4567;
 const PORT_RANGE_END = 5999;
 
-function sleepSync(ms) {
-  const t = Date.now() + ms;
-  while (Date.now() < t) {
-    /* busy-wait (short intervals only) */
-  }
-}
 
 /** @param {string} sceneDirAbs */
 function generateMcCaptureBundle(sceneDirAbs) {
@@ -249,7 +243,7 @@ async function startViteDetached(port, logPath, tmpDir) {
   return child;
 }
 
-function terminatePidBestEffort(pid) {
+async function terminatePidBestEffort(pid) {
   if (!pid) return;
   try {
     process.kill(-pid, 'SIGTERM');
@@ -265,7 +259,7 @@ function terminatePidBestEffort(pid) {
     } catch {
       return;
     }
-    sleepSync(200);
+    await new Promise((r) => setTimeout(r, 200));
   }
   try {
     process.kill(-pid, 'SIGKILL');
@@ -309,7 +303,7 @@ async function stopDevServerForScene(sceneDirArg) {
     return;
   }
 
-  terminatePidBestEffort(pid);
+  await terminatePidBestEffort(pid);
   cleanupDevArtifacts(tmpDir);
 }
 
@@ -561,10 +555,10 @@ async function cmdSnapshot(sceneTsxRel, outputPng, timeSec, fps, width, height) 
     return 0;
   } catch (err) {
     console.warn(`[render.mjs:snapshot] Playwright failed: ${err.message}`);
-    terminatePidBestEffort(vite.pid);
+    await terminatePidBestEffort(vite.pid);
     return ffmpegPlaceholder(sceneFile, outputPng, timeSec, width, height, err.message, fps);
   } finally {
-    terminatePidBestEffort(vite.pid);
+    await terminatePidBestEffort(vite.pid);
     cleanupDevArtifacts(tmpDir);
   }
 }
@@ -653,7 +647,7 @@ async function cmdBatch(sceneDirRel, framesOutRel, fps, duration, width, height)
   } finally {
     process.off('SIGTERM', onSig);
     process.off('SIGINT', onSig);
-    terminatePidBestEffort(vitePid);
+    await terminatePidBestEffort(vitePid);
     cleanupDevArtifacts(tmpDir);
   }
 }

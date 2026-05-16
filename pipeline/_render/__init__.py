@@ -1,5 +1,4 @@
-"""Internal render pipeline stages, callable from ``pipeline/render-scene.py``
-and ``pipeline/composite-render.py``.
+"""Internal render pipeline stages, callable from ``pipeline/render-scene.py``.
 
 Public stages:
 

@@ -1,0 +1,11 @@
+{
+  "engine": "manimgl",
+  "template": "Scene",
+  "duration": 90,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "meta": {
+    "title": "Gauss-Bonnet定理",
+    "tags": ["gauss-bonnet"]
+  }
+}

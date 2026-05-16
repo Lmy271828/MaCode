@@ -154,7 +154,7 @@ def init_scene(scene_path: str, template_name: str, engine: str = 'manimgl'):
 
     # 创建顶层 composite manifest
     composite_manifest = {
-        'type': 'composite',
+        'type': 'composite-unified',
         'segments': manifest_segments,
         'meta': {
             'title': scene_name,
@@ -184,7 +184,7 @@ def add_segment(scene_path: str, seg_id: str, after: str = None, engine: str = N
     with open(manifest_path, encoding='utf-8') as f:
         manifest = json.load(f)
 
-    if manifest.get('type') not in ('composite', 'composite-unified'):
+    if manifest.get('type') != 'composite-unified':
         print("Error: manifest type must be composite or composite-unified", file=sys.stderr)
         sys.exit(1)
 

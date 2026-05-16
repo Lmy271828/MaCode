@@ -2,7 +2,7 @@
 
 日常维护以仓库根目录 **`CHANGELOG.md`**、本文档目录下的 **`refactor-todo.md`**、**`PRD-draft.md`** 为准。
 
-> **`progress.md`** 为长篇历史与设计混写日志，**不作为单一权威**；需要「当前事实」时优先 `CHANGELOG.md` 与 `refactor-todo.md`。
+> **`progress.md`** 已归档至 `docs/archive/progress.md`；需要「当前事实」时优先 `CHANGELOG.md` 与 `refactor-todo.md`。
 
 ## 产品与路线
 

@@ -3,14 +3,12 @@
 
 Stage order (all stages live in sibling modules):
 
-    1. lifecycle.handle_override_or_exit / check_review_pending_or_exit  (exit 0/1/2/3)
-    2. validate.validate_scene                                            → RenderContext
-    3. engine.run                                                         → EngineResult
-    4. encode.run                                                         → EncodeResult
-    5. lifecycle.mark_review_if_needed                                    → review_needed
-    6. emit JSON / text summary
+    1. lifecycle.handle_override_or_exit                               (exit 0/1/2)
+    2. validate.validate_scene                                           → RenderContext
+    3. engine.run                                                        → EngineResult
+    4. encode.run                                                        → EncodeResult
+    5. emit JSON / text summary
 
-Rollback: ``MACODE_USE_LEGACY_RENDER=1`` reverts to ``pipeline/render_scene_legacy.py``.
 """
 
 from __future__ import annotations
@@ -48,26 +46,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--width", type=int, default=None, help="Override width")
     parser.add_argument("--height", type=int, default=None, help="Override height")
     parser.add_argument(
-        "--enable-review",
-        action="store_true",
-        help=(
-            "Write review_needed marker after render (default: off, "
-            "per PRD D1 the harness no longer self-gates on human approval)"
-        ),
-    )
-    parser.add_argument(
-        "--no-review",
-        action="store_true",
-        help=argparse.SUPPRESS,  # deprecated noop alias for backward compat
-    )
-    parser.add_argument(
         "--skip-checks",
         action="store_true",
         help="Skip static checks (for manual debugging)",
     )
     args = parser.parse_args()
-    # Default no_review=True per PRD D1. --enable-review flips it off.
-    args.no_review = not args.enable_review
     return args
 
 
@@ -76,9 +59,8 @@ def main() -> None:
     scene_dir = args.scene_dir.rstrip("/")
     scene_name = os.path.basename(scene_dir)
 
-    ctx_lc = lifecycle.prepare_lifecycle(scene_name, no_review=args.no_review)
+    ctx_lc = lifecycle.prepare_lifecycle(scene_name)
     lifecycle.handle_override_or_exit(ctx_lc)
-    lifecycle.check_review_pending_or_exit(ctx_lc)
 
     rctx = validate.validate_scene(
         scene_dir=scene_dir,
@@ -97,7 +79,6 @@ def main() -> None:
         scene_name, "cleanup", "completed", message="Render finished successfully"
     )
     lifecycle.progress(scene_name, "completed", "completed", message="Done")
-    lifecycle.mark_review_if_needed(ctx_lc)
 
     final_size = (
         os.path.getsize(encresult.final_mp4) if os.path.isfile(encresult.final_mp4) else 0
@@ -116,7 +97,6 @@ def main() -> None:
                     "resolution": [rctx.width, rctx.height],
                     "final_size_bytes": final_size,
                     "log": rctx.log_file,
-                    "review_needed": args.enable_review,
                 },
                 indent=2,
             )

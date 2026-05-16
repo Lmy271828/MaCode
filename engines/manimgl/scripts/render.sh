@@ -57,7 +57,9 @@ VENV_PYTHON="$PROJECT_ROOT/.venv-manimgl/bin/python"
 
 # 将引擎适配层加入 Python 路径，使场景可 import templates/utils
 ENGINE_SRC="$(cd "$SCRIPT_DIR/../src" && pwd)"
+COMMON_SRC="$(cd "$SCRIPT_DIR/../../common/src" && pwd)"
 export PYTHONPATH="${ENGINE_SRC}${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH="${COMMON_SRC}${PYTHONPATH:+:$PYTHONPATH}"
 
 SCENE_NAME=$(basename "$SCENE_PY" .py)
 STATE_DIR="$PROJECT_ROOT/.agent/tmp/$SCENE_NAME"

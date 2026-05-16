@@ -5,7 +5,7 @@ Extracted from render.sh to keep render.sh as a thin dispatcher only.
 
 Usage:
     composite-unified-render.py <scene_dir> [--json] [--fps N] [--duration S]
-        [--width W] [--height H] [--no-review]
+        [--width W] [--height H]
 """
 
 import argparse
@@ -37,7 +37,7 @@ def main():
         epilog="Examples:\n"
                "  %(prog)s scenes/04_composite_unified_demo\n"
                "  %(prog)s scenes/04_composite_unified_demo --fps 2 --duration 1\n"
-               "  %(prog)s scenes/04_composite_unified_demo --json --no-review",
+               "  %(prog)s scenes/04_composite_unified_demo --json",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("scene_dir", help="Scene directory")
@@ -46,7 +46,6 @@ def main():
     parser.add_argument("--duration", type=float, default=None, help="Override duration")
     parser.add_argument("--width", type=int, default=None, help="Override width")
     parser.add_argument("--height", type=int, default=None, help="Override height")
-    parser.add_argument("--no-review", action="store_true", help="Skip review-needed marking")
     args = parser.parse_args()
 
     scene_dir = args.scene_dir.rstrip("/")
@@ -92,8 +91,6 @@ def main():
     # ── Render unified scene ──────────────────────────
     print("[composite-unified] Rendering unified scene...")
     render_cmd = ["bash", os.path.join(project_root, "pipeline", "render.sh"), unified_dir]
-    if args.no_review:
-        render_cmd.append("--no-review")
     if args.fps is not None:
         render_cmd.extend(["--fps", str(args.fps)])
     if args.duration is not None:

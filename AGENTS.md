@@ -28,12 +28,12 @@ MaCode 是一个 UNIX 原生的数学动画工具集（Harness）。它不封装
 - **ffmpeg**负责所有音视频编码、剪辑、滤镜、格式转换。
 - **Agent**只负责生成场景源码与编排命令。
 - **Git**只负责版本控制与状态回滚。
-- 绝不内建"一站式"黑盒：没有 `render_and_upload()`，只有 `render.sh` 和 `upload.sh`。
+- 绝不内建「一站式」黑盒：没有 `render_and_upload()` 这类封闭 API；渲染与交付由 `pipeline/render.sh`、`python3 pipeline/deliver.py …` 等可组合脚本完成（仓库内无 `upload.sh`）。
 
 ### 2.2 文本流是通用接口
 - 场景契约：`scenes/*/manifest.json`（JSON 文本）。
-- 帧清单：`.agent/tmp/{scene}/frames/list.txt`（每行一个文件路径）。
-- 时间码：`.agent/tmp/{scene}/timeline.csv`（帧号, 动作, 参数）。
+- 帧清单：部分管道会生成 `.agent/tmp/{scene}/frames/list.txt`（每行一个文件路径；依编排器/缓存路径而定）。
+- 时间码：音频对齐等场景可使用 `timeline.csv`（常由 `pipeline/audio-analyze.sh` 生成，多在 `assets/` 或场景目录下；非每个场景都有）。
 - 渲染日志：`.agent/log/YYYYMMDD_HHMMSS_{task}.log`（纯文本）。
 - Agent 无需解析二进制格式，`jq`、`awk`、`sed` 即可处理全部配置。
 
@@ -48,8 +48,8 @@ python -m manim scene.py --format png -o .agent/tmp/frames/ \
 
 ### 2.4 透明性优于便利性
 - 帧序列必须物理存在于文件系统，Agent 随时可用 `identify frame_120.png` 检查单帧。
-- 引擎源码必须可被 `grep`：Agent 通过 `find $(python -c "import manim; print(manim.__path__[0]") -name "*.py" | xargs grep "class Circle"` 学习 API，而非查阅封闭文档。
-- 所有命令执行日志写入 `.agent/log/`，Agent 出错时先 `tail -n 50 .agent/log/last_run.log`。
+- 引擎源码必须可被 `grep`：Agent 通过 `find $(python -c "import manim; print(manim.__path__[0])") -name "*.py" | xargs grep "class Circle"` 学习 API，而非查阅封闭文档。
+- 所有命令执行日志写入 `.agent/log/`，Agent 出错时先查看最近日志，例如：`tail -n 50 "$(ls -t .agent/log/*.log 2>/dev/null | head -1)"`。
 - 音频处理不隐藏为内部库调用，Agent 直接阅读 `pipeline/add_audio.sh` 中的 `ffmpeg` 命令。
 
 ### 2.5 优先使用工具而非机制
@@ -95,8 +95,8 @@ Skill 本质是一份带有 YAML frontmatter 的 Markdown 文档（`.agents/skil
 
 | Skill | 路径 | 内容 | 适用 engine |
 |-------|------|------|-------------|
-| `manimce-best-practices` | `.agents/skills/manimce-best-practices/` | 22 个 rules（Scene、Mobject、Create、MathTex、Axes、3D...） | `manim` |
-| `manimgl-best-practices` | `.agents/skills/manimgl-best-practices/` | 15 个 rules（InteractiveScene、ShowCreation、Tex、t2c、frame.reorient...） | `manimgl` |
+| `manimce-best-practices` | `.agents/skills/manimce-best-practices/` | 23 条 `rules/*.md`（Scene、Mobject、Create、MathTex、Axes、3D...） | `manim` |
+| `manimgl-best-practices` | `.agents/skills/manimgl-best-practices/` | 18 条 `rules/*.md`（InteractiveScene、ShowCreation、Tex、t2c、frame.reorient...） | `manimgl` |
 | `motion-canvas` | `.agents/skills/motion-canvas/` | 18 个 references（Signal、Tween、Layout、Txt、Latex...） | `motion_canvas` |
 | `manim-composer` | `.agents/skills/manim-composer/` | 视频规划、3b1b 叙事结构、场景模板 | 任何引擎（规划阶段） |
 
@@ -178,8 +178,9 @@ node engines/motion_canvas/scripts/render.mjs --snapshot \
 # 批量渲染所有场景
 bin/render-all.sh
 
-# 多场景拼接
-pipeline/concat.sh scenes/*/output/final.mp4 output/lecture.mp4
+# 多段 MP4 拼接（videos 模式：第 1 个参数为输出文件，其后为输入文件）
+pipeline/concat.sh output/lecture.mp4 .agent/tmp/00_title/final.mp4 .agent/tmp/01_intro/final.mp4
+# 若已 pipeline/deliver.py 到 output/，也可用 output 下的 mp4 作为输入
 
 # 音频合成
 pipeline/add_audio.sh output/lecture.mp4 assets/bgm.mp3 output/final.mp4
@@ -205,7 +206,7 @@ macode composite add-segment scenes/09_lecture bonus --after main
 **Composite manifest 契约**：
 ```json
 {
-  "type": "composite",
+  "type": "composite-unified",
   "segments": [
     {"id": "intro", "scene_dir": "shots/00_intro",
      "transition": {"type": "fade", "duration": 0.3}},
@@ -226,19 +227,12 @@ macode composite add-segment scenes/09_lecture bonus --after main
 
 **渲染**：
 ```bash
-# 自动并行渲染独立 segments，缓存命中跳过，最后 concat/xfade 合成
 pipeline/render.sh scenes/09_lecture/
-# 或
+# 或（内部同样调用 pipeline/render.sh）
 macode composite render scenes/09_lecture
 ```
 
-**双轨架构**：
-| 模式 | type | 特点 |
-|------|------|------|
-| 分轨合成 | `composite` | 独立渲染 + ffmpeg xfade，可并行，状态不连续 |
-| 统一渲染 | `composite-unified` | 单 Scene 实例顺序执行，状态连续 |
-
-> **统一渲染路由**：`composite-unified` 不通过独立 CLI 入口调用。运行 `macode composite render <scene_dir>` 或 `pipeline/render.sh <scene_dir>` 时，`render.sh` 自动读取 `manifest.json` 的 `type` 字段并分发到 `pipeline/composite-unified-render.py`。
+> **入口**：复合场景**没有**单独的「只渲染 composite」子命令之外的魔法入口；`macode composite render` 与直接执行 `pipeline/render.sh` 等价，均由 `render.sh` 按 `type` 分发到 `composite-unified-render.py`。
 
 ### 4.5 Zone/Region Constraint System（ManimGL + ManimCE）
 
@@ -368,95 +362,58 @@ python3 bin/sourcemap-version-check.py {name}                # 版本匹配
 ```
 或 `macode sourcemap validate {name}`（含 `--check` + `validate_sourcemap.sh`）。
 
-### 4.8 Layout Compiler 工作流
+### 4.8 Zone/Region 布局工作流（默认路径）
 
-MaCode 提供可选的**两阶段编译器**，将"内容清单 → 布局配置 → 场景源码"的重复劳动自动化。Agent 在"内容明确、结构标准化"时推荐使用 Compiler；在"需要创意布局、非标准结构"时仍应手写 `scene.py`。
+**默认方式：ZoneScene 自主布局（推荐）**
 
-**两阶段编译**：
-```bash
-# Phase 1: 内容 → 布局（确定性分配 + 约束验证）
-bin/layout-compile.py scenes/{name}/content_manifest.json \
-  --output scenes/{name}/layout_config.yaml
+```python
+from components.zoned_scene import ZoneScene
 
-# Phase 2: 布局 → 场景源码（模板填充）
-bin/scene-compile.py scenes/{name}/layout_config.yaml \
-  --engine {manim,manimgl,motion_canvas} \
-  --output scenes/{name}/scene.py
+class MyScene(ZoneScene):
+    def construct(self):
+        title = Text("极限的定义")
+        self.place(title, "title")
+
+        axes = Axes(x_range=[-3, 3], y_range=[-2, 2])
+        self.place(axes, "main_visual")
+
+        formula = MathTex(r"\lim_{x \to a} f(x) = L")
+        self.place(formula, "caption")
 ```
 
-**何时使用 Compiler**：
-- 使用 `lecture_3zones` + `definition_reveal` / `build_up_payoff` / `wrong_to_right` 等标准模板
-- 内容以文本、公式、基础图元（Circle/Axes/NumberLine 等）为主
-- 需要快速迭代内容而不想手动调整坐标
+`self.place(mobj, zone_name)` 自动处理像素 ↔ Manim 单位转换、zone 边界和对齐点计算，无需手写坐标。
 
-**何时手写 scene.py**：
-- 非标准布局（不使用预定义 zone 模板）
-- 复杂动画序列、自定义过渡、交互式内容
-- 内容与结构同步探索的阶段
+可用布局模板：`lecture_3zones`（title / main_visual / caption）、`lecture_2zones`（title / content）。
 
-**约束验证**：`layout-compile.py` 在输出前自动验证：
-- 每个 zone 的对象数 ≤ `max_objects`
-- 总文本字符数 ≤ `max_total_text_chars`
-- primary zone 至少包含一个 visual
-
-验证失败时输出明确的错误信息和修复建议，exit code 1。
-
-**未映射图元处理**：`scene-compile.py` 遇到当前引擎无映射的 primitive 时，输出 `TODO` 注释而非失败。Agent 需手工补充该部分代码。
-
-完整规范见 `.agents/skills/layout-compiler/SKILL.md`。
+渲染前，`bin/check-layout.py` 自动验证 zone 约束（overflow、overlap、whitespace、font size）。
 
 ---
 
-## 5. 安全模型：四层防御（Harness 2.0 Security）
+## 5. 安全模型
 
-MaCode 采用**纵深防御**：从提示词到运行时到提交拦截到权限隔离，每层独立生效，任何一层被绕过仍有下一层保护。
+MaCode 的安全策略是**诚实且轻量的**：在渲染管道中拦截最常见的错误（跨引擎导入），在 Git 层面保护基础设施目录不被误改。我们不提供运行时沙箱——如果你需要隔离不可信代码，请在容器或独立用户中运行 Harness。
 
-### 5.1 Layer 0 — 提示词约束（Prompt Guardrails）
+### 5.1 渲染时导入检查（api-gate）
 
-各 AI 工具的配置文件分散在仓库根目录，无中央生成器：
-
-```
-.claude/settings.local.json     # Claude Code 配置
-.cursorrules                    # Cursor 配置
-.github/copilot-instructions.md # GitHub Copilot 配置
-.windsurf/rules.md              # Windsurf 配置
-.aider.conf.yml                 # Aider 配置
-```
-
-> 注：早期设计中有 `.agents/security/prompt-policy.yml` 作为统一策略源，但实际维护中改为各工具独立配置，避免单点变更影响所有 IDE。
-
-核心约束：
-- **Allowed**: `scenes/*`, `assets/*` 读写
-- **Forbidden**: `engines/*`, `bin/*`, `pipeline/*`, `project.yaml` 修改
-- **Never**: `subprocess`, `os.system`, `socket`, `requests` in scene code
-
-### 5.2 Layer 1 — 运行时强制（Runtime Enforcement）
-
-薄分发器 `bin/security-run.sh` 并行调用四个独立检查器：
+`bin/api-gate.py` 在渲染前自动执行，对照 `engines/<engine>/sourcemap.json` 的 BLACKLIST 拦截违规导入：
 
 ```bash
-# 单场景完整安全检查
-bin/security-run.sh scenes/01_test/
-
-# 独立调用（调试用）
-bin/api-gate.py        scenes/01_test/scene.py engines/manim/sourcemap.json --engine manim
-bin/sandbox-check.py   scenes/01_test/scene.py
-bin/primitive-gate.py  scenes/01_test/
-bin/fs-guard.py        scenes/01_test/
+# 手动调用示例
+python3 bin/api-gate.py scenes/01_test/scene.py engines/manim/sourcemap.json --engine manim
 ```
 
-| 检查器 | 职责 | 检测内容 |
-|--------|------|---------|
-| `api-gate.py` | 导入/API 黑名单 | BLACKLIST 导入、SOURCEMAP 违规 |
-| `sandbox-check.py` | 危险 Python 调用 | `subprocess`, `os.system`, `socket`, `requests`, `shutil.rmtree` |
-| `primitive-gate.py` | 原语写入检测 | 手写 GLSL、raw LaTeX、手写 ffmpeg filtergraph、 forbidden 文件类型 |
-| `fs-guard.py` | 文件系统边界 | 场景目录是否越界（必须位于 `scenes/` / `assets/` / `output/` / `.agent/`） |
+真正产生价值的是 BLACKLIST 和 REDIRECT：
+- **BLACKLIST**：阻止跨引擎导入（如 ManimCE 场景写 `from manimlib import *`）
+- **REDIRECT**：提示 Agent "不要手写 X，用 Y 替代"（如手写 ffmpeg 字符串 → 使用 `utils.ffmpeg_builder`）
 
-**四问法验证**：每个检查器都是只读的纯决策工具，互不依赖，可独立运行。
+### 5.2 Git 拦截（pre-commit / pre-push）
 
-### 5.3 - 5.6 提交拦截 / 基础设施隔离 / Guardian / 熔断
+Hooks 模板在 `.githooks/`，由 `bin/install-hooks.sh` 安装：
 
-详见 → [`docs/architecture.md#2-安全模型深度参考`](docs/architecture.md#2-安全模型深度参考)。
+- **`pre-commit`**：阻止对 `engines/`、`bin/`、`pipeline/` 及根目录 `project.yaml`、`requirements.txt`、`package.json` 的暂存修改。
+- **`pre-push`**：对所有可渲染场景运行 `api-gate.py` 导入检查。
+
+Bypass：`git commit --no-verify` / `git push --no-verify`（人类维护基础设施时使用）。
 
 ---
 
@@ -523,7 +480,7 @@ scenes/
 │   └── ...
 ├── raw.mp4            # 无音频的原始渲染输出
 ├── final.mp4          # 合成音频后的最终输出
-└── render.log         # 该场景的完整渲染日志
+└── render.log         # 引擎输出目录下的 tee 日志（依引擎与调用路径而定，非全局 log）
 ```
 
 ### 7.3 日志规范
@@ -534,7 +491,7 @@ scenes/
 ## 8. 反模式（Agent 禁止做的事）
 
 1. **不要内建 IDE**：Agent 不需要"智能提示"，它需要 `grep` 和 `find`。
-2. **不要抽象过度**：不要为 Manim 和 Motion Canvas 创建统一的 Python/TypeScript SDK。统一层只在 `manifest.json` 和 `pipeline/*.sh` 中存在。
+2. **不要抽象过度**：不要为 Manim 和 Motion Canvas 创建统一的 Python/TypeScript SDK。契约在 `manifest.json`，编排与落盘在 `pipeline/`（含 `.sh` 与 `.py`）中完成。
 3. **不要隐藏中间状态**：禁止将帧序列输出为内存流或临时删除。Agent 必须能 `ls` 看到每一帧。
 4. **不要动态下载依赖**：Agent 禁止执行 `pip install` 或 `npm install`。依赖必须在项目初始化时固化（`requirements.txt`、`package-lock.json`、Docker 镜像）。
 5. **不要假设引擎版本**：Agent 必须通过 `engines/*/scripts/inspect.sh` 查询能力，不硬编码 API。
@@ -597,7 +554,7 @@ scenes/
 5. 可选：预检 `bin/api-gate.py` 确认无违规导入
 6. 调用 `pipeline/render.sh <scene_dir>` 渲染
 7. 若失败：`tail .agent/log/*.log` 查看诊断
-8. 后处理：`pipeline/*.sh` 拼接 / 音频 / 压缩
+8. 后处理：`pipeline/concat.sh` / `add_audio.sh` / `compress.sh` 等；交付可选 `python3 pipeline/deliver.py <scene> <tmp_dir> output/`
 
 ---
 
@@ -605,10 +562,10 @@ scenes/
 
 - **实时仪表盘**：`node bin/dashboard-server.mjs --port 3000` — 见 → [`docs/architecture.md#4-实时仪表盘`](docs/architecture.md#4-实时仪表盘)
 - **人类介入协议**：`.agent/signals/{global,per-scene}/*` — 见 → [`docs/architecture.md#5-人类介入协议`](docs/architecture.md#5-人类介入协议)
-- **并发模型**：`project.yaml::max_concurrent_scenes`（本机并行，PRD 已删除 Multi-Agent 协调）— 见 → [`docs/architecture.md#6-并发与宿主模型`](docs/architecture.md#6-并发与宿主模型)
+- **并发模型**：`project.yaml` → `agent.resource_limits.max_concurrent_scenes`（本机并行；PRD 已删除 Multi-Agent 协调）— 见 → [`docs/architecture.md#6-并发与宿主模型`](docs/architecture.md#6-并发与宿主模型)
 
 ---
 
-*文档版本：v0.4*  
+*文档版本：v0.5*  
 *设计原则：UNIX Philosophy + Host Agent "Bash is All You Need"*  
-*状态：Phase 0-9 完成；单宿主渲染与检查管线就绪，SOURCEMAP 自动更新 + Git hooks 版本化*
+*状态：Phase 0-9 完成；单宿主渲染与检查管线就绪；composite 默认 unified 路由；SOURCEMAP 真源为 `sourcemap.json`；Git hooks 版本化*

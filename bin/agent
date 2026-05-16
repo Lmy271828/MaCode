@@ -49,19 +49,22 @@ check_config() {
     echo -e "${BOLD}MaCode Coding Agent — Configuration Check${RESET}"
     echo ""
 
-    # 引擎
-    ENGINE=$(grep -oP 'engine:\s*\K\S+' project.yaml 2>/dev/null || echo "manim")
+    # 引擎：与 bin/macode 一致，读取 project.yaml → defaults.engine
+    ENGINE="$(
+        python3 -c "import sys; sys.path.insert(0, '$PROJECT_ROOT/bin'); from project_engine import load_defaults_engine, find_project_root; print(load_defaults_engine(find_project_root('.')))" 2>/dev/null \
+            || echo manimgl
+    )"
     if [[ -f "engines/$ENGINE/SOURCEMAP.md" ]]; then
         echo -e "  ${GREEN}✓${RESET} Engine: $ENGINE (SOURCEMAP ready)"
     else
         echo -e "  ${YELLOW}~${RESET} Engine: $ENGINE (SOURCEMAP not found)"
     fi
 
-    # 安全门
-    if [[ -x "bin/safety-gate.sh" ]]; then
+    # 安全门：人类可选 shell 使用 bin/human-tools/safety-gate.sh；根目录 bin/safety-gate.sh 仅兼容旧路径
+    if [[ -f "bin/human-tools/safety-gate.sh" ]] || [[ -f "bin/safety-gate.sh" ]]; then
         echo -e "  ${GREEN}✓${RESET} safety-gate: active"
     else
-        echo -e "  ${RED}✗${RESET} safety-gate: missing"
+        echo -e "  ${RED}✗${RESET} safety-gate: missing (expected bin/human-tools/safety-gate.sh)"
         ok=false
     fi
 
@@ -92,7 +95,10 @@ check_config() {
 
 # ── 生成系统提示 ──────────────────────────────────────
 generate_prompt() {
-    ENGINE=$(grep -oP 'engine:\s*\K\S+' project.yaml 2>/dev/null || echo "manim")
+    ENGINE="$(
+        python3 -c "import sys; sys.path.insert(0, '$PROJECT_ROOT/bin'); from project_engine import load_defaults_engine, find_project_root; print(load_defaults_engine(find_project_root('.')))" 2>/dev/null \
+            || echo manimgl
+    )"
     SOURCEMAP="engines/$ENGINE/SOURCEMAP.md"
 
     echo ""
@@ -108,7 +114,7 @@ generate_prompt() {
 【环境】
 - 工作目录是 MaCode 项目根目录
 - 渲染引擎、管道脚本、SOURCEMAP 都已就绪
-- 多 Agent 并发协调通过文件系统 claim 协议实现
+- 默认引擎以 project.yaml → defaults.engine 为准；场景 manifest.json 的 engine 可覆盖
 
 【你的工作流】
 1. 读取 project.yaml 了解项目配置与安全策略
@@ -144,12 +150,12 @@ generate_prompt() {
 - macode inspect --blacklist    查看禁止使用的模块
 
 【关键脚本】
-- macode render <dir>          渲染场景（含 api-gate + 缓存 + claim）
+- macode render <dir>          渲染（api-gate + 缓存；需要人工把关时加 --enable-review）
 - macode check <dir>           静态检查（Layer 1）
 - macode check <dir> --frames  帧检查（Layer 2）
 - macode status                项目状态
 - pipeline/preview.sh <mp4>    快速预览
-- python3 bin/cleanup-stale.py 清理 dead-PID 和过期 claim
+- python3 bin/cleanup-stale.py 将 dead-PID 的 running 标为 stalled；可选 --logs 裁日志
 PROMPT
 
     echo ""

@@ -1,0 +1,35 @@
+{
+  "type": "composite-unified",
+  "engine": "manimgl",
+  "duration": 600,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "segments": [
+    {"id": "title", "scene_dir": "shots/00_title",
+     "transition": {"type": "fade", "duration": 0.5}},
+    {"id": "space", "scene_dir": "shots/01_space",
+     "transition": {"type": "fade", "duration": 0.5}},
+    {"id": "intrinsic", "scene_dir": "shots/02_intrinsic",
+     "transition": {"type": "fade", "duration": 0.5}},
+    {"id": "geodesic", "scene_dir": "shots/03_geodesic",
+     "transition": {"type": "fade", "duration": 0.5}},
+    {"id": "curvature", "scene_dir": "shots/04_curvature",
+     "transition": {"type": "fade", "duration": 0.5}},
+    {"id": "theorema", "scene_dir": "shots/05_theorema",
+     "transition": {"type": "fade", "duration": 0.5}},
+    {"id": "gauss_bonnet", "scene_dir": "shots/06_gauss_bonnet",
+     "transition": {"type": "fade", "duration": 0.5}},
+    {"id": "forms", "scene_dir": "shots/07_forms",
+     "transition": {"type": "fade", "duration": 0.5}},
+    {"id": "outro", "scene_dir": "shots/08_outro"}
+  ],
+  "params": {
+    "theme_color": "#E8D5B7",
+    "bg_color": "#1A1A2E"
+  },
+  "meta": {
+    "title": "Visual Differential Geometry and Forms — 核心概念巡礼",
+    "author": "agent",
+    "tags": ["needham", "differential-geometry", "composite"]
+  }
+}

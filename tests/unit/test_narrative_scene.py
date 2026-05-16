@@ -13,7 +13,8 @@ import sys
 import unittest
 from pathlib import Path
 
-# Inject engines/manimgl/src/ into path so we can import utils directly
+# Inject engine paths so we can import utils directly
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "engines" / "common" / "src"))
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "engines" / "manimgl" / "src"))
 
 from utils.narrative_validator import (

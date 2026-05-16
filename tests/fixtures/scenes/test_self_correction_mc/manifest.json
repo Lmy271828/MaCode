@@ -1,5 +1,5 @@
 {
-  "type": "composite",
+  "type": "composite-unified",
   "engine": "motion_canvas",
   "fps": 30,
   "resolution": [1920, 1080],

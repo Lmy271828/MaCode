@@ -1,0 +1,11 @@
+{
+  "engine": "manimgl",
+  "template": "Scene",
+  "duration": 60,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "meta": {
+    "title": "测地线",
+    "tags": ["geodesic"]
+  }
+}

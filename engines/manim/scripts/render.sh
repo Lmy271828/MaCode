@@ -143,7 +143,9 @@ fi
 
 # 将引擎适配层加入 Python 路径，使场景可 import templates/utils
 ENGINE_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../src" && pwd)"
+COMMON_SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../common/src" && pwd)"
 export PYTHONPATH="${ENGINE_SRC}${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH="${COMMON_SRC}${PYTHONPATH:+:$PYTHONPATH}"
 
 # manim 默认输出到 media/images/<module_name>/
 # 我们需要把帧移到指定输出目录

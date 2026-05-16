@@ -1,18 +1,14 @@
 #!/usr/bin/env bash
 # .githooks/pre-commit
-# Intercept commits that modify protected primitives or cross filesystem boundaries.
-#
-# Design: thin wrapper — calls fs-guard for each staged scene directory,
-# then checks for modifications to protected files.
+# Intercept commits that modify protected primitives.
 #
 # Installation: copied to .git/hooks/ by bin/install-hooks.sh (run by setup.sh)
 
 set -euo pipefail
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
-SCRIPT_DIR="$PROJECT_ROOT/bin"
 
-# ── Check 1: Protected file modifications ──
+# Protected file modifications
 # Note: .githooks/ is NOT protected — hooks are versioned templates that
 # must be updatable without --no-verify. The live copies in .git/hooks/
 # are generated from templates and are not tracked.
@@ -28,29 +24,6 @@ if [[ -n "$STAGED_PROTECTED" ]]; then
     echo "If intentional, bypass with: git commit --no-verify"
     echo "Or move changes to a dedicated infrastructure PR."
     exit 1
-fi
-
-# ── Check 2: Scene security scan ──
-STAGED_SCENES=$(git diff --cached --name-only | grep -E '^scenes/' | cut -d'/' -f1-2 | sort -u || true)
-
-if [[ -n "$STAGED_SCENES" ]]; then
-    FAIL=0
-    for scene_dir in $STAGED_SCENES; do
-        full_path="$PROJECT_ROOT/$scene_dir"
-        if [[ -d "$full_path" ]]; then
-            if ! python3 "$SCRIPT_DIR/fs-guard.py" "$full_path" >/dev/null 2>&1; then
-                FAIL=$((FAIL + 1))
-                echo "  FAIL: $scene_dir"
-            fi
-        fi
-    done
-
-    if [[ "$FAIL" -gt 0 ]]; then
-        echo ""
-        echo "ERROR: Commit rejected — $FAIL scene(s) failed filesystem boundary check."
-        echo "Run 'bin/fs-guard.py <scene_dir>' for details."
-        exit 1
-    fi
 fi
 
 exit 0

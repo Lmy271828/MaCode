@@ -5,4 +5,4 @@
 - **减法与风险**：[`docs/reduction-plan-deletion-risk.md`](./reduction-plan-deletion-risk.md)
 - **变更日志**：仓库根目录 [`CHANGELOG.md`](../CHANGELOG.md)
 
-历史长文见 [`docs/progress.md`](./progress.md)（非唯一权威）。
+历史长文见 [`docs/archive/progress.md`](./archive/progress.md)（非唯一权威）。

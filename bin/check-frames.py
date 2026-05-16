@@ -22,6 +22,7 @@ if _SCRIPT_DIR not in sys.path:
     sys.path.insert(0, _SCRIPT_DIR)
 
 from checks._utils import write_check_report
+from project_engine import find_project_root, resolve_engine_from_manifest
 
 
 def fail(msg: str):
@@ -61,7 +62,8 @@ def main():
     with open(manifest_path, encoding='utf-8') as f:
         manifest = json.load(f)
 
-    engine = manifest.get('engine', 'manim')
+    project_root = find_project_root(scene_dir)
+    engine = resolve_engine_from_manifest(manifest, scene_dir, project_root)
     report = run_registry_checks(scene_dir, engine=engine)
 
     # Backward-compatible output format

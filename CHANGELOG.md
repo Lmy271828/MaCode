@@ -12,8 +12,8 @@
 - Sprint 5.2：`pipeline/_render/{_paths,lifecycle,validate,engine,encode,orchestrator}.py` 真正拆分；orchestrator.py 118 行；composite-render 改用 `pipeline._render._paths` 的共享 helpers
 - Sprint 6（PRD）：不做 Multi-Agent — 删除 scene claim / exit 4–5 / `MACODE_AGENT_ID` / `MACODE_SKIP_SCENE_CLAIM` / `--no-claim`；`bin/macode_concurrency` 仅保留 `file_lock` + `write_json_atomic`；`cleanup-stale.py` 去掉 claim TTL；dashboard 移除 `/api/queue` 与 claimedBy；`macode-run` 不再写入 `agentId`
 - Sprint 7-CLEAN：S5-2 验收修复（orchestrator 拆分到位）、`progress-write` CLI 契约回归修复、测试 cwd 污染修复、`bin/macode` 默认引擎 fail-loud、project.yaml YAML 转义修复、新增 5 个 render stage 单测文件（27 用例）
-- **PRD D1**：默认禁用 `review_needed` 标记 — orchestrator 默认 `--no-review` 行为；显式 `--enable-review` 才会写标记触发 exit 3 阻断流（`render_scene_legacy.py` 保持原默认作为回滚路径）
-- **PRD D2**：composite 双轨合并 — `type: composite` 自动路由到 `composite-unified-render.py` 并发出 deprecation warning；`composite-render.py` 转为 deprecated shim（`MACODE_USE_LEGACY_COMPOSITE=1` 仍可用作 escape hatch）
+- **PRD D1**：默认禁用 `review_needed` 标记 — orchestrator 默认 `--no-review` 行为；显式 `--enable-review` 才会写标记触发 exit 3 阻断流；`render_scene_legacy.py` 已删除（P0-1）
+- **PRD D2 / P0-2**：composite 双轨合并 — `type: composite` 自动路由到 `composite-unified-render.py` 并发出 deprecation warning；`pipeline/composite-render.py` 已删除
 - **S7 文档收敛（进行中）**：`AGENTS.md` 抽出深度参考到 `docs/architecture.md`；**行数 ≤500 仍为 S7-2 未结项目标**（见 `docs/refactor-todo.md` 复测）
 - **S8 Scenes 卫生**：`test_self_correction*`、`test_layout_compiler` 从 `scenes/` 移到 `tests/fixtures/scenes/`；`tests/fixtures/scenes/README.md` 固化 `test_*` 前缀约定
 - **Smoke/integration 脚本**：移除已废弃的 `--no-review`；`test_composite_render` 断言改为 unified 路径下的 `.agent/tmp/04_composite_demo/state.json`

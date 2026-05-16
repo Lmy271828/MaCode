@@ -34,7 +34,7 @@ ManimGL 拥有极为精良的着色器基础设施：
 
 这与 Motion Canvas 的 "创作-生产" 双轨制完全一致：
 - MC：`macode dev`（Vite HMR 创作）→ `macode render`（Puppeteer batch 产出）
-- Shader：`macode shader preview`（ManimGL 调参）→ `macode shader render`（moderngl batch 产出）
+- Shader：人工调参可用 `node experimental/shader-preview/shader-preview.mjs <id>`（实验性）→ `macode shader render`（moderngl batch 产出）
 
 ---
 

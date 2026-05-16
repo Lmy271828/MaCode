@@ -1,0 +1,11 @@
+{
+  "engine": "manimgl",
+  "template": "Scene",
+  "duration": 75,
+  "fps": 30,
+  "resolution": [1920, 1080],
+  "meta": {
+    "title": "三种几何",
+    "tags": ["geometry", "space"]
+  }
+}

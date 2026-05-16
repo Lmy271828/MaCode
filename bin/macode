@@ -98,7 +98,7 @@ case "$CMD" in
         esac
         ;;
 
-    composite|composite-unified)
+    composite-unified)
         SUB="${2:-}"
         if [[ -z "$SUB" ]]; then
             echo "Usage: macode composite <info|render|init|add-segment> [args]" >&2
@@ -492,43 +492,13 @@ except Exception as e:
     sys.exit(1)
 "
                 ;;
-            preview)
-                ASSET_ID="${3:-}"
-                if [[ -z "$ASSET_ID" ]]; then
-                    echo "Usage: macode shader preview <asset_id> [--port <n>]" >&2
-                    exit 1
-                fi
-                shift 3
-                node "$PROJECT_ROOT/bin/shader-preview.mjs" "$ASSET_ID" "$@"
-                ;;
-            preview-stop)
-                ASSET_ID="${3:-}"
-                if [[ -z "$ASSET_ID" ]]; then
-                    echo "Usage: macode shader preview-stop <asset_id>" >&2
-                    exit 1
-                fi
-                STATE="$PROJECT_ROOT/.agent/tmp/shader-preview-$ASSET_ID/state.json"
-                if [[ -f "$STATE" ]]; then
-                    PID=$(python3 -c "import json;print(json.load(open('$STATE')).get('pid',''))" 2>/dev/null)
-                    if [[ -n "$PID" ]]; then
-                        kill "$PID" 2>/dev/null && echo "Stopped shader-preview-$ASSET_ID (pid=$PID)" || echo "Process not found"
-                    else
-                        echo "No pid in state.json" >&2; exit 1
-                    fi
-                else
-                    echo "No state.json found for shader-preview-$ASSET_ID" >&2
-                    exit 1
-                fi
-                ;;
             help|*)
-                echo "Usage: macode shader <list|render|preview|preview-stop|extract> [args]"
+                echo "Usage: macode shader <list|render|extract> [args]"
                 echo "  list                          List available shader assets"
                 echo "  render <shader_dir> [opts]    Compile Layer 2 asset to Layer 1 PNG frames"
                 echo "    --fps <n>                   Override fps"
                 echo "    --duration <sec>            Override duration"
                 echo "    --resolution <WxH>          Override resolution"
-                echo "  preview <asset_id> [--port]   Start WebGL 2 shader preview server"
-                echo "  preview-stop <asset_id>       Stop shader preview server"
                 echo "  extract <name> <out_dir>      Extract built-in manimlib shader"
                 ;;
         esac
@@ -560,11 +530,6 @@ except Exception as e:
                 echo "  stop <scene_dir>            Stop Motion Canvas dev server"
                 ;;
         esac
-        ;;
-
-    review)
-        shift 1
-        bash "$PROJECT_ROOT/bin/macode-review" "$@"
         ;;
 
     cleanup)
@@ -686,8 +651,7 @@ Commands:
   render <scene_dir>              Render a single scene
   render-all                      Render all scenes
   composite <info|render|init|add-segment> [args]
-                                  Composite scene operations
-                                  (composite-unified auto-routed by manifest type)
+                                  Composite-unified scene operations
   dev <scene_dir>                 Interactive dev mode (watch + preview)
     --segment <seg_id>            Seek to specific segment (manimgl only)
     --snapshot [time]             Capture a single preview frame (Motion Canvas)
@@ -707,14 +671,6 @@ Commands:
   mc <serve|stop> [args]          Motion Canvas dev server management
     serve <scene_dir> [port]      Start dev server
     stop <scene_dir>              Stop dev server
-  review <list|approve|reject|override|log> [args]
-                                  Human review queue for per-scene deliverables
-    list                          List all per-scene review states
-    approve <scene>               Approve a scene (mark done)
-    reject <scene> --reason <msg> Reject with reason
-    override <scene> --action <action> --instruction <msg>
-                                  Human override (retry/modify/stop)
-    log <scene>                   Read frame_feedback.jsonl history
   cleanup [--dry-run]              Clean dead-PID stalled states (--logs prunes logs)
   dry-run <scene_file> [engine]    Fast pre-render validation (syntax, imports, LaTeX)
   test [suite|flags] [options]

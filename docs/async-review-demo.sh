@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 # docs/async-review-demo.sh
+# > ARCHIVED: This demo references the old `review_needed` + exit 3 blocking
+# > mechanism which was removed in P0-3. The `human_override.json` channel
+# > (approve/reject/retry) is still active; see `bin/signal-check.py`.
+#
 # End-to-end demonstration of the async review workflow:
 #   Agent marks state → Human async decision → Agent next-round execution
 #

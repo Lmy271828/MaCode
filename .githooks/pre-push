@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # .githooks/pre-push
-# Final safety net before pushing — scan all scenes in the branch.
+# Lightweight push gate: verifies scene files pass api-gate import checks.
 #
 # Installation: copied to .git/hooks/ by bin/install-hooks.sh (run by setup.sh)
 
@@ -9,11 +9,6 @@ set -euo pipefail
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 SCRIPT_DIR="$PROJECT_ROOT/bin"
 
-# Only run full scan if pushing to main/master
-REMOTE="$1"
-URL="$2"
-
-# Quick scan: all scenes in the working tree
 SCENES=$(find "$PROJECT_ROOT/scenes" -maxdepth 1 -mindepth 1 -type d 2>/dev/null || true)
 
 if [[ -z "$SCENES" ]]; then
@@ -21,23 +16,33 @@ if [[ -z "$SCENES" ]]; then
 fi
 
 FAIL=0
-SKIP=0
 for scene_dir in $SCENES; do
-    # Skip directories without a renderable scene file (composite shots, etc.)
-    if [[ ! -f "$scene_dir/scene.py" && ! -f "$scene_dir/scene.tsx" ]]; then
-        SKIP=$((SKIP + 1))
+    scene_file=""
+    if [[ -f "$scene_dir/scene.py" ]]; then
+        scene_file="$scene_dir/scene.py"
+    elif [[ -f "$scene_dir/scene.tsx" ]]; then
+        scene_file="$scene_dir/scene.tsx"
+    else
         continue
     fi
-    if ! bash "$SCRIPT_DIR/security-run.sh" "$scene_dir" >/dev/null 2>&1; then
+
+    engine=$(python3 "$SCRIPT_DIR/project_engine.py" --scene-dir "$scene_dir" 2>/dev/null || echo "manimgl")
+    sourcemap="$PROJECT_ROOT/engines/$engine/sourcemap.json"
+
+    if [[ ! -f "$sourcemap" ]]; then
+        continue
+    fi
+
+    if ! python3 "$SCRIPT_DIR/api-gate.py" "$scene_file" "$sourcemap" --engine "$engine" >/dev/null 2>&1; then
         FAIL=$((FAIL + 1))
-        echo "  FAIL: $(basename "$scene_dir")"
+        echo "  FAIL: $(basename "$scene_dir") (api-gate)"
     fi
 done
 
 if [[ "$FAIL" -gt 0 ]]; then
     echo ""
-    echo "ERROR: Push rejected — $FAIL scene(s) failed security checks."
-    echo "Run 'bin/security-run.sh <scene_dir>' for details."
+    echo "ERROR: Push rejected — $FAIL scene(s) failed api-gate import checks."
+    echo "Run 'python3 bin/api-gate.py <scene.py> engines/<engine>/sourcemap.json' for details."
     echo "Bypass with: git push --no-verify"
     exit 1
 fi

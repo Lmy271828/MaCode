@@ -7,9 +7,7 @@
 | 0 | 成功 | 渲染完成，final.mp4 已生成 | 继续下一步 |
 | 1 | 通用错误 | api-gate 拦截、引擎渲染失败、manifest 无效 | 查看日志，修复后重试 |
 | 2 | retry | human_override.json action=retry | 按 instruction 修改后重试 |
-| 3 | awaiting_review | review_needed 存在且无 override | 人工审批后继续（需 `--enable-review`，PRD D1 默认禁用） |
-
-> **PRD D1 默认行为**：渲染默认 **不写** `review_needed` 标记，因此 exit 3 仅在 Host Agent 显式 `--enable-review` 后才可能出现。
+| 3 | *(保留/未使用)* | 历史上为 `awaiting_review`；已随 `review_needed` 机制移除而废弃 | 不再使用 |
 >
 > **Multi-Agent**：PRD 已移除 scene claim / 全局队列；不再有 exit 4/5。
 

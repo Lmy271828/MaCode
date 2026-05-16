@@ -33,8 +33,8 @@ macode/
 │   └── log/                 # 全局命令执行日志
 │
 ├── .githooks/               # Git hook 模板（版本化，setup 时安装到 .git/hooks/）
-│   ├── pre-commit           #   提交前拦截：protected 文件 + scene 边界检查
-│   └── pre-push             #   推送前全量安全扫描
+│   ├── pre-commit           #   提交前拦截 protected 文件修改
+│   └── pre-push             #   推送前 api-gate 导入检查
 │
 ├── engines/                 # 渲染引擎适配层（只读模板）
 │   ├── manim/               #   ManimCE（CI/无头环境专用）
@@ -120,12 +120,11 @@ macode/
 
 ---
 
-## 2. 安全模型深度参考
+## 2. 安全模型
 
-> Layer 0（Prompt Guardrails）和 Layer 1（Runtime Enforcement）见 [`AGENTS.md` §5.1-5.2](../AGENTS.md#5-安全模型四层防御harness-20-security)。
-> 本节覆盖 Layer 2-3 + Guardian + 资源熔断。
+MaCode 采用**诚实轻量的安全策略**：渲染时通过 `api-gate.py` 拦截 BLACKLIST 导入，Git 层面通过 hooks 保护基础设施目录。我们不内建运行时沙箱——如果你需要隔离不可信代码，应在容器或独立用户中运行 Harness。
 
-### 2.1 Layer 2 — 提交拦截（Commit Interception）
+### 2.1 Git Hooks
 
 Hooks 以版本化模板形式存在于 `.githooks/`，由 `bin/install-hooks.sh` 在 setup 时复制到 `.git/hooks/`：
 
@@ -137,61 +136,17 @@ bin/install-hooks.sh
 bin/install-hooks.sh --check
 ```
 
-激活后的 hooks：
-```bash
-.git/hooks/pre-commit   # 拦截 protected 文件修改 + scene 目录边界检查
-.git/hooks/pre-push     # 推送前全量安全扫描
-```
-
-拦截规则：
-- `engines/`、`bin/`、`pipeline/` 任何修改 → **拒绝**
-- `project.yaml`、`requirements.txt`、`package.json` 修改 → **拒绝**
-- Scene 目录越界 → **拒绝**
-- Bypass: `git commit --no-verify`（人类基础设施维护时使用）
+- **`pre-commit`**：拦截对 `engines/`、`bin/`、`pipeline/` 及根目录 `project.yaml`、`requirements.txt`、`package.json` 的暂存修改。
+- **`pre-push`**：对所有可渲染场景运行 `api-gate.py` 导入检查。
 
 > **注意**：`.githooks/` 目录本身不受 pre-commit 保护，因此 hooks 模板可以被正常更新而无需 `--no-verify`。
 
-### 2.2 Layer 3 — 基础设施隔离（Infrastructure Isolation）
-
-**根本解决方案：让 Agent 物理上写不了。**
-
-```bash
-# 基础设施目录只读（符号性，真正的强制在 fs-guard + git hooks）
-chmod -R go-w engines/ bin/ pipeline/ tests/ docs/
-```
-
-**原语隔离矩阵**：
-
-| 原语 | 隔离措施 | 替代方案 |
-|------|---------|---------|
-| GLSL | `assets/shaders/` 只读 + Effect Registry | 声明效果名称，编译器生成 |
-| Raw LaTeX | SYNTAX_REDIRECTS 拦截 | `natural_math.py` API |
-| ffmpeg filtergraph | SYNTAX_REDIRECTS 拦截 | `ffmpeg_builder.py` API |
-| 引擎配置 | `engine.conf` / `project.yaml` 只读 | `macode` CLI 修改 |
-| socket/http | SANDBOX_PATTERNS 拦截 | `macode-run` 统一 IPC |
-
-### 2.3 Security Guardian Subagent（可选增强）
-
-独立进程，实时监控文件系统：
-
-```bash
-# 后台守护进程
-python3 .agents/skills/security-guardian/bin/security-guardian.py --daemon
-
-# 审计日志
-jq . .agent/security/audit.log
-```
-
-职责：检测运行时绕过尝试（如 Agent 通过 `open()` 直接写 `engines/`）。
-
-注意：Guardian 是可选的 1% 增强，Layer 1-3 已覆盖 99% 威胁。
-
-### 2.4 资源熔断（render-scene.py 内置）
+### 2.2 资源熔断
 
 ```bash
 # 读取 project.yaml，无需 Host Agent 干预
 # - 渲染超时：600s  （由 engines/*/scripts/render.sh 强制执行）
-# - 全局并发上限：max_concurrent_scenes  （由 bin/render-all.sh / pipeline/composite-render.py 强制执行）
+# - 全局并发上限：max_concurrent_scenes  （由 bin/render-all.sh 强制执行）
 #
 # 以下限制在 project.yaml 中声明，但当前未自动化强制执行：
 # - 帧数上限：10000
@@ -313,7 +268,6 @@ MaCode 提供文件系统信号机制，人类可随时监控和介入。
     └── {scene_name}/
         ├── pause          # 只暂停该 scene
         ├── abort          # 只中止该 scene
-        ├── review_needed  # 该 scene 等待审核
         ├── reject         # 该 scene 被驳回
         └── human_override.json  # 该 scene 的覆盖决策
 ```
@@ -322,7 +276,7 @@ MaCode 提供文件系统信号机制，人类可随时监控和介入。
 1. 检查 per-scene 信号（`.agent/signals/per-scene/{scene}/pause|abort`）— 存在则针对该 scene 暂停/退出
 2. 回退检查全局信号（`.agent/signals/global/pause|abort`）— 存在则全部暂停/退出
 3. 检查 `.agent/signals/human_override.json` — 存在则遵守覆盖决策
-4. 检查 per-scene `review_needed` — 存在则该 scene 停止等待审核
+4. ~~检查 per-scene `review_needed`~~ — **已移除（P0-3）**；阻塞式审查机制已废弃，人类干预通过 `human_override.json` 直接进行
 
 使用 `bin/signal-check.py` 统一查询：
 ```bash
@@ -339,7 +293,7 @@ python3 bin/signal-check.py --scene 01_test
 ### 5.2 Host Agent 权利
 1. 渲染完成后自动运行 check，生成报告
 2. 生成 HTML 画面报告到 `.agent/reports/`
-3. 发现严重问题时创建 `review_needed` 请求人类审核
+3. ~~发现严重问题时创建 `review_needed` 请求人类审核~~ — **已移除（P0-3）**；问题通过 check report 暴露，人类通过 `human_override.json` 干预
 4. 读取 `@human:` 注释并优先处理
 
 ### 5.3 人类权利

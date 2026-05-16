@@ -59,40 +59,27 @@ macode inspect --grep "Circle\|MathTex"
 
 ### Step 3: 编写源码
 
-#### 方式一：使用 Layout Compiler（推荐用于标准结构）
+#### 方式一：ZoneScene 自主布局（推荐）
 
-适用于 `lecture_3zones` 布局 + `definition_reveal` / `build_up_payoff` / `wrong_to_right` 叙事模板的场景。
+继承 `ZoneScene`/`NarrativeScene`，通过声明式 zone 放置自动计算布局。
 
-```bash
-# 1. 编写内容清单
-#    scenes/{name}/content_manifest.json
+```python
+from components.zoned_scene import ZoneScene
 
-# 2. 编译布局配置
-bin/layout-compile.py scenes/{name}/content_manifest.json \
-  --output scenes/{name}/layout_config.yaml
+class MyScene(ZoneScene):
+    LAYOUT_PROFILE = "lecture_3zones"
 
-# 3. 检查分配结果
-#    cat scenes/{name}/layout_config.yaml
-
-# 4. 编译引擎源码
-bin/scene-compile.py scenes/{name}/layout_config.yaml \
-  --engine manimgl \
-  --output scenes/{name}/scene.py
-
-# 5. 补充 TODO 注释处的内容（手工完善）
-#    vim scenes/{name}/scene.py
-
-# 6. 渲染
-macode render scenes/{name}/
+    def construct(self):
+        self.place(Text("极限的定义"), "title")
+        self.place(Axes(x_range=[-3, 3]), "main_visual")
+        self.place(MathTex(r"\lim_{x \to a} f(x) = L"), "caption")
 ```
 
-#### 方式二：手动编写（用于非标准结构）
+- `self.place()` 自动计算 zone 内的像素坐标；`LAYOUT_PROFILE` 选择布局模板（`lecture_3zones`、`lecture_2zones`）。
+- 如需叙事编排，继承 `NarrativeScene`，使用 `self.stage("statement", ...)`。
+- 可用模板通过 `macode inspect --grep ZoneScene` 查询；渲染前 `check-layout.py` 自动验证 zone 约束。
 
-- Manim: `scenes/{name}/scene.py`
-- Motion Canvas: `scenes/{name}/scene.tsx`
-- 必须包含 `# @segment:` 或 `// @segment:` 注释
-
-详细示例见 `examples/manim-scene.md`，完整工作流见 `workflows/single-scene.md`。
+Manim 手写场景示例见 `examples/manim-scene.md`，完整工作流见 `workflows/single-scene.md`。
 
 ### Step 4–5: 静态检查与修复
 

@@ -8,10 +8,14 @@ Source scan: `bin/`, `pipeline/`, `engines/` with `--glob '!**/node_modules/**'`
 
 ## Table of contents
 
-- [Group 1 — CLI flags (`--no-claim`, `--no-review`, `--skip-checks`, `--fresh`, `--keep-server`)](#group-1--cli-flags---no-claim---no-review---skip-checks---fresh---keep-server)
+- [Group 1 — CLI flags (`--no-review` deprecated noop, `--skip-checks`, `--fresh`, `--keep-server`)](#group-1--cli-flags---no-review-deprecated-noop---skip-checks---fresh---keep-server)
 - [Group 2 — `fallback`, `guardian`, `stale`, `override`, `bypass`](#group-2--fallback-guardian-stale-override-bypass)
 
-## Group 1 — CLI flags (`--no-claim`, `--no-review`, `--skip-checks`, `--fresh`, `--keep-server`)
+## Group 1 — CLI flags (`--no-review` deprecated noop, `--skip-checks`, `--fresh`, `--keep-server`)
+
+> **变更说明（非快照部分）**：
+> - `--no-claim`：已在 Sprint 6 随 Multi-Agent scene claim 机制一并移除。
+> - `--no-review`：在 orchestrator 中现为 deprecated noop alias；PRD D1 后默认已不写入 `review_needed`，如需显式启用 review 请使用 `--enable-review`。
 
 Command:
 
@@ -74,8 +78,6 @@ engines/manim/src/utils/shader_bridge.py:44:        fps: override rendering fps
 bin/agent:131:- 定期运行 python3 bin/cleanup-stale.py 清理残留
 bin/agent:152:- python3 bin/cleanup-stale.py 清理 dead-PID 和过期 claim
 bin/sourcemap-read:124:    # fallback: Python
-bin/sandbox-check.py:21:    # Dynamic import bypass
-bin/sandbox-check.py:22:    (r'\b__import__\s*\(', '__import__() — dynamic import bypass'),
 pipeline/render-scene.py:119:    # ── Check for previous round human_override ──
 pipeline/render-scene.py:122:    override_path = per_scene_dir / "human_override.json"
 pipeline/render-scene.py:125:    if override_path.exists():
@@ -95,7 +97,6 @@ experimental/shader-preview/shader-preview.mjs:211:    <textarea class="signal-r
 experimental/shader-preview/shader-preview.mjs:438:            const override = {
 experimental/shader-preview/shader-preview.mjs:444:            fs.writeFileSync(path.join(sceneDir, 'human_override.json'), JSON.stringify(override, null, 2));
 bin/detect-hardware.sh:204:            # Remove stale llvmpipe/software renderer warnings — D3D12 is now active
-bin/security-advise.py:22:        "why": "os.system() executes arbitrary shell commands, bypassing MaCode's process lifecycle management (macode-run) and audit trails.",
 bin/shader-render.py:56:    parser.add_argument("--fps", type=float, default=None, help="Frames per second (override shader.json)")
 bin/shader-render.py:57:    parser.add_argument("--duration", type=float, default=None, help="Duration in seconds (override shader.json)")
 bin/shader-render.py:58:    parser.add_argument("--resolution", type=str, default=None, help="Resolution as WxH, e.g. 1920x1080 (override shader.json)")

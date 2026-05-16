@@ -296,7 +296,7 @@
 - **影响文件**：
   - **新增**：`pipeline/_render/__init__.py`、`_render/validate.py`、`_render/engine.py`、`_render/encode.py`、`_render/lifecycle.py`
   - **改写**：`pipeline/render-scene.py` 缩为 ~80 行编排
-  - **改写**：`pipeline/composite-render.py` 直接 `from _render.engine import run` 而非 shell out
+  - ~~**改写**：`pipeline/composite-render.py` 直接 `from _render.engine import run` 而非 shell out~~（P0-2 已删除）
 - **步骤**：
   1. `_render/lifecycle.py`：claim/release、review 标记、override 处理、进度写入。提供 `with lifecycle(scene, agent_id):` 上下文管理器。
   2. `_render/validate.py`：manifest 校验、api-gate、static checks（layout/narrative/density）。返回 `ValidationResult`。
@@ -310,13 +310,13 @@
          encode(scene, ctx, eresult)
          ctx.mark_review_if_needed()
      ```
-  6. `composite-render.py` 中每个 segment：`from _render.engine import run; engine.run(segment, ctx_without_claim, ...)` → `--no-claim` 这个 escape hatch 消失。
+  6. ~~`composite-render.py` 中每个 segment：`from _render.engine import run; engine.run(segment, ctx_without_claim, ...)` → `--no-claim` 这个 escape hatch 消失。~~（P0-2 已删除）
 - **验收**：
   - `wc -l pipeline/render-scene.py` ≤ 120。
   - `--no-claim` 从 CLI 中删除（composite 内部不再需要它）。
   - 5 个 baseline scene + 2 个 composite scene 全部成功；时长偏差 ≤5%。
   - 新增 `tests/unit/test_render_validate.py`、`test_render_engine.py`、`test_render_encode.py`、`test_render_lifecycle.py` 至少各 3 个测试用例。
-- **回滚**：保留 `pipeline/render-scene-legacy.py` 1-2 个版本，环境变量 `MACODE_USE_LEGACY_RENDER=1` 切回旧路径。
+- **回滚**：~~保留 `pipeline/render-scene-legacy.py` 1-2 个版本~~ `render_scene_legacy.py` 已删除（P0-1）；`render-scene.py` 纯为 orchestrator 薄入口。
 - **依赖**：S2-1（macode_state 模块已建立）。
 
 ### S5-3 · Multi-Agent claim 模块定位修正 · P1 · 🟢 ⇄
@@ -434,7 +434,7 @@ W9+    [S8] 长期清理（可选）
 | S2 | macode_state 模块 import 路径污染 | 用绝对包名 `macode_state`，**不**用相对 import |
 | S3 | Motion Canvas 合并后丢失"复用 dev server"性能 | 保留 `--keep-server` 行为，但实现简化 |
 | S4 | SOURCEMAP JSON 化破坏 Agent 兼容性 | 单 PR + 公告 + Markdown 仍生成（只是变成"视图"） |
-| S5 | render-scene 拆分引入回归 | `MACODE_USE_LEGACY_RENDER=1` 至少保留 2 周 |
+| S5 | render-scene 拆分引入回归 | ~~`MACODE_USE_LEGACY_RENDER=1` 至少保留 2 周~~ 已删除（P0-1） |
 | S6 | Frame cache 命中策略错误导致输出"看似一样实则差一帧" | 加 perceptual hash 比对的可选 verify 模式 |
 | S7 | 文档信息丢失 | 删除前先归档到 `docs/archive/` |
 

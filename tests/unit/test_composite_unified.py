@@ -185,7 +185,10 @@ class TestEngineSelection:
 
         with open(os.path.join(output_dir, "scene.py"), encoding="utf-8") as f:
             content = f.read()
-        assert "from manim import *" in content
+        # No engine in manifest → resolve_engine_from_manifest uses project.yaml defaults.engine
+        # (manimgl in this repo) when project root resolves to the MaCode checkout.
+        assert "import *" in content
+        assert "from manimlib import *" in content or "from manim import *" in content
 
 
 class TestParamsInjection:

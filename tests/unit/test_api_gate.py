@@ -3,8 +3,6 @@
 Covers:
   - _path_to_module: path normalization, dynamic paths, edge cases
   - check_python_imports: blacklist import detection
-  - check_sandbox: dangerous call detection
-  - check_syntax_gate: raw syntax pattern detection
   - load_blacklist: engines/{engine}/sourcemap.json only
   - main: CLI exit codes
 """
@@ -87,50 +85,6 @@ class TestCheckPythonImports:
         assert len(v) == 0
 
 
-class TestCheckSandbox:
-    def test_detects_subprocess(self):
-        v = api_gate.check_sandbox("import subprocess\n")
-        assert any("subprocess" in x for x in v)
-
-    def test_detects_os_system(self):
-        v = api_gate.check_sandbox("os.system('rm -rf /')\n")
-        assert any("os.system" in x for x in v)
-
-    def test_detects_socket(self):
-        v = api_gate.check_sandbox("import socket\n")
-        assert any("socket" in x for x in v)
-
-    def test_detects_shutil_rmtree(self):
-        v = api_gate.check_sandbox("shutil.rmtree('/tmp')\n")
-        assert any("shutil.rmtree" in x for x in v)
-
-    def test_allows_safe_code(self):
-        v = api_gate.check_sandbox("import numpy as np\n")
-        assert len(v) == 0
-
-
-class TestCheckSyntaxGate:
-    def test_detects_handwritten_ffmpeg_vf(self):
-        code = 'cmd = "ffmpeg -i in.mp4 -vf \\"blur\\" out.mp4"\n'
-        v = api_gate.check_syntax_gate(code, "scene.py")
-        assert any("ffmpeg" in d for d, _, _ in v)
-
-    def test_detects_latex_cases(self):
-        code = r"eq = r'\begin{cases} x \\ y \end{cases}'"
-        v = api_gate.check_syntax_gate(code, "scene.py")
-        assert any("LaTeX cases" in d for d, _, _ in v)
-
-    def test_detects_glsl_code(self):
-        code = "shader = 'gl_Position = vec4(1.0);'\n"
-        v = api_gate.check_syntax_gate(code, "scene.py")
-        assert any("GLSL" in d for d, _, _ in v)
-
-    def test_allows_safe_code(self):
-        code = "import numpy as np\n"
-        v = api_gate.check_syntax_gate(code, "scene.py")
-        assert len(v) == 0
-
-
 class TestLoadBlacklist:
     def test_loads_from_sourcemap_json(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -178,11 +132,11 @@ class TestLoadBlacklist:
 
 
 class TestMain:
-    def _write_sourcemap(self, tmpdir, engine="manim"):
+    def _write_sourcemap(self, tmpdir, engine="manim", blacklist=None):
         jp = os.path.join(tmpdir, "engines", engine, "sourcemap.json")
         os.makedirs(os.path.dirname(jp), exist_ok=True)
         with open(jp, "w", encoding="utf-8") as f:
-            json.dump({"blacklist": []}, f)
+            json.dump({"blacklist": blacklist or []}, f)
         return jp
 
     def test_clean_scene_exits_0(self):
@@ -200,8 +154,8 @@ class TestMain:
         with tempfile.TemporaryDirectory() as tmpdir:
             scene = os.path.join(tmpdir, "scene.py")
             with open(scene, "w", encoding="utf-8") as f:
-                f.write("import subprocess\n")
-            sm = self._write_sourcemap(tmpdir)
+                f.write("import manimlib\n")
+            sm = self._write_sourcemap(tmpdir, blacklist=[{"path_raw": "manimlib"}])
             with mock.patch.object(sys, "argv", ["api-gate.py", scene, sm]):
                 with pytest.raises(SystemExit) as exc_info:
                     api_gate.main()

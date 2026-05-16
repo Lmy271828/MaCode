@@ -4,9 +4,11 @@
 
 让 Agent 能够自动读取 check report，理解 issue，执行修复，重新验证，无需人类干预。
 
-> **Note**: Layout-related checks (B1/B2/B3 overlap, boundary, readability) have been removed.
-> The Layout Compiler now guarantees these via bounding-box contracts.
-> Only temporal (A1/A2) and metadata checks remain.
+> **Note**: Layout-related checks are handled by the ZoneScene constraint system.
+> `check-layout.py` validates zone overflow, overlap, and whitespace before rendering.
+> `check-density.py` validates cognitive load (object count, color variety).
+> `check-frames.py` (layer2) validates pixel-level issues after rendering.
+> Only temporal (A1/A2) and metadata checks are handled by the self-correction loop directly.
 
 ---
 
@@ -110,12 +112,7 @@ yield* waitFor(1.5);
 
 如果同一场景连续 3 次 self-correction 后仍有 issue：
 1. 停止自动修复
-2. 创建 `review_needed` 信号：
-   ```bash
-   mkdir -p .agent/signals/per-scene/{scene_name}
-   touch .agent/signals/per-scene/{scene_name}/review_needed
-   ```
-3. 在报告中说明失败原因
+2. 在报告中说明失败原因，并请求人类确认
 
 ---
 
@@ -151,13 +148,13 @@ yield* waitFor(1.5);
 
 ---
 
-## 已移除的策略（由 Layout Compiler 保证）
+## 已移除的策略（由 ZoneScene + check-layout 保证）
 
 以下策略在引入排版契约后不再需要：
 
 | 旧策略 | 替换为 |
 |--------|--------|
-| `increase_buff` / `add_buff_parameter` | Layout Compiler 自动计算 zone 间距 |
-| `adjust_position` / `clamp_to_canvas` | Bounding-box 契约保证元素在 safe zone 内 |
+| `increase_buff` / `add_buff_parameter` | ZoneScene 自动计算 zone 间距 |
+| `adjust_position` / `clamp_to_canvas` | ZoneScene 约束保证元素在 safe zone 内 |
 | `adjust_font` / `adjust_scale` / `clamp_font_size` | Design system 默认字号/缩放范围 |
 | `adjust_color` / `adjust_background_or_formula_color` | 主题系统保证对比度 |

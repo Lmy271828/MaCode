@@ -1,7 +1,7 @@
 """Path / manifest helpers shared by orchestrator + composite.
 
 These are pure functions with no side effects on global state. They were
-duplicated across ``orchestrator.py``, ``composite-render.py``, and
+duplicated across ``orchestrator.py`` and
 ``deliver.py``; consolidating here is step 1 of S7-CLEAN-2.
 """
 

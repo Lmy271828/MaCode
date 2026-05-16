@@ -1,5 +1,5 @@
 {
-  "type": "composite",
+  "type": "composite-unified",
   "segments": [
     {
       "id": "base",

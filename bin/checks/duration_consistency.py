@@ -29,6 +29,7 @@ from checks._utils import (
     get_code_block,
     load_manifest,
 )
+from project_engine import find_project_root, resolve_engine_from_manifest
 
 
 def fail(msg: str):
@@ -39,7 +40,8 @@ def fail(msg: str):
 def check(scene_dir: str) -> dict:
     """Run duration consistency checks and return a report dict."""
     manifest = load_manifest(scene_dir)
-    engine = manifest.get('engine', 'manim')
+    project_root = find_project_root(scene_dir)
+    engine = resolve_engine_from_manifest(manifest, scene_dir, project_root)
     is_mc = engine == 'motion_canvas'
     source_path = find_source_file(scene_dir)
     if not source_path:

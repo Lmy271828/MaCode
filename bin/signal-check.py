@@ -5,7 +5,7 @@ Check human-intervention signals (global + per-scene).
 
 Supports concurrent rendering: each scene can have independent signals.
 Global signals (pause, abort) affect all scenes.
-Per-scene signals (pause, abort, review_needed, reject, override, feedback)
+Per-scene signals (pause, abort, human_override, reject, feedback)
 affect only that scene.
 
 Usage:
@@ -38,11 +38,11 @@ def check_global_signals(signals_dir: Path) -> dict:
 
 
 def check_scene_signals(scene_dir: Path) -> dict:
-    """Check per-scene signals (pause, abort, review_needed, override, feedback, reject)."""
+    """Check per-scene signals (pause, abort, human_override, reject, feedback)."""
     result = {
         "pause": (scene_dir / "pause").exists(),
         "abort": (scene_dir / "abort").exists(),
-        "review_needed": (scene_dir / "review_needed").exists(),
+
         "reject": (scene_dir / "reject").exists(),
         "human_override": None,
         "frame_feedback": [],

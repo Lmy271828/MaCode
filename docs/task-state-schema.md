@@ -4,7 +4,7 @@
 
 ## 编排态（Orchestration）— `macode_state.write_state`
 
-- **写入方**：`pipeline/composite-render.py`、`pipeline/composite-unified-render.py` 等编排脚本。
+- **写入方**：`pipeline/composite-unified-render.py` 等编排脚本。
 - **`version`**：当前为 **`"1.1"`**（Sprint 2 起；与旧 `1.0` 文件可并存直至被下次写入覆盖）。
 - **必选字段**：`taskId`（字符串，通常等于场景目录名）、`status`（`running` | `completed` | `failed` | `timeout`）、`exitCode`（整数）。
 - **常见可选字段**：`startedAt`、`endedAt`（ISO 8601 字符串）、`outputs`（对象，可与旧 state 浅合并）、`error`（字符串；`completed` 成功时会清除）。
