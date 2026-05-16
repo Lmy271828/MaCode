@@ -98,7 +98,7 @@ case "$CMD" in
         esac
         ;;
 
-    composite-unified)
+    composite|composite-unified)
         SUB="${2:-}"
         if [[ -z "$SUB" ]]; then
             echo "Usage: macode composite <info|render|init|add-segment> [args]" >&2
@@ -111,35 +111,7 @@ case "$CMD" in
                     echo "Usage: macode composite info <scene_dir>" >&2
                     exit 1
                 fi
-                if [[ ! -f "$SCENE_DIR/manifest.json" ]]; then
-                    echo "Error: manifest.json not found in $SCENE_DIR" >&2
-                    exit 1
-                fi
-                python3 - "$SCENE_DIR" <<'PY'
-import json, os, sys
-scene_dir = sys.argv[1]
-with open(os.path.join(scene_dir, 'manifest.json')) as f:
-    manifest = json.load(f)
-print(f"Scene: {os.path.basename(os.path.normpath(scene_dir))}")
-print(f"Type: {manifest.get('type', 'scene')}")
-print("")
-print("Segments:")
-total = 0.0
-for seg in manifest.get('segments', []):
-    seg_path = seg.get('scene_dir') or seg.get('shot') or 'N/A'
-    trans = seg.get('transition')
-    trans_str = f" [transition: {trans['type']} {trans['duration']}s]" if trans else ""
-    print(f"  - {seg['id']}: {seg_path}{trans_str}")
-    dmanifest = os.path.join(scene_dir, seg_path, 'manifest.json')
-    if os.path.isfile(dmanifest):
-        with open(dmanifest) as f:
-            data = json.load(f)
-        dur = float(data.get('duration', 0))
-        print(f"    duration: {dur}s")
-        total += dur
-print("")
-print(f"Total (raw): {total:.2f}s")
-PY
+                python3 "$PROJECT_ROOT/bin/macode-composite-info.py" "$SCENE_DIR"
                 ;;
             render)
                 SCENE_DIR="${3:-}"
@@ -171,60 +143,7 @@ PY
         ;;
 
     status)
-        echo "Project: $PROJECT_NAME"
-        echo "Default engine: $DEFAULT_ENGINE"
-        echo ""
-
-        # 统计场景
-        SCENE_COUNT=$(find scenes -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l)
-        echo "Scenes: $SCENE_COUNT"
-        if [[ "$SCENE_COUNT" -gt 0 ]]; then
-            for scene_dir in $(find scenes -maxdepth 1 -mindepth 1 -type d | sort); do
-                scene_name=$(basename "$scene_dir")
-                manifest="$scene_dir/manifest.json"
-                if [[ -f "$manifest" ]]; then
-                    engine=$(grep -o '"engine"[[:space:]]*:[[:space:]]*"[^"]*"' "$manifest" 2>/dev/null | sed 's/.*"engine"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/' || echo "?")
-                    dirty=""
-                    if git diff --quiet -- "$scene_dir" 2>/dev/null; then
-                        :
-                    else
-                        dirty=" (dirty)"
-                    fi
-                    echo "  - $scene_name [$engine]$dirty"
-                fi
-            done
-        fi
-        echo ""
-
-        # SOURCEMAP 健康状态
-        echo "SOURCEMAP health:"
-        if [[ -f "$PROJECT_ROOT/bin/sourcemap-version-check.py" ]]; then
-            python3 "$PROJECT_ROOT/bin/sourcemap-version-check.py" --all 2>&1 | sed 's/^/  /'
-        else
-            echo "  ~ sourcemap-version-check.py not found"
-        fi
-        echo ""
-
-        # 上次渲染
-        LAST_RENDER=$(find .agent/tmp -name "final.mp4" -type f 2>/dev/null | sort | tail -1)
-        if [[ -n "$LAST_RENDER" ]]; then
-            scene_name=$(basename "$(dirname "$LAST_RENDER")")
-            duration=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$LAST_RENDER" 2>/dev/null || echo "?")
-            echo "Last render: $scene_name — ${duration}s"
-        else
-            echo "Last render: none"
-        fi
-
-        echo ""
-        # Git 状态
-        if git rev-parse --git-dir >/dev/null 2>&1; then
-            BRANCH=$(git branch --show-current 2>/dev/null || echo "?")
-            COMMITS=$(git rev-list --count HEAD 2>/dev/null || echo "0")
-            echo "Git branch: $BRANCH ($COMMITS commits)"
-            if ! git diff --quiet 2>/dev/null; then
-                echo "Uncommitted changes: yes"
-            fi
-        fi
+        bash "$PROJECT_ROOT/bin/macode-status.sh" "$PROJECT_NAME" "$PROJECT_ROOT"
         ;;
 
     undo)
@@ -451,22 +370,7 @@ PY
         SUB="${2:-help}"
         case "$SUB" in
             list)
-                REGISTRY="$PROJECT_ROOT/assets/shaders/_registry.json"
-                if [[ -f "$REGISTRY" ]]; then
-                    echo "Available shader assets (Layer 2):"
-                    python3 -c "
-import json, sys
-with open('$REGISTRY') as f:
-    reg = json.load(f)
-for s in reg.get('assets', []):
-    cat = s.get('category', 'unknown')
-    typ = s.get('type', 'unknown')
-    print(f\"  {s['id']:<30} [{cat}/{typ}]  {s.get('description', '')}\")
-"
-                else
-                    echo "No shader registry found. Expected: $REGISTRY" >&2
-                    exit 1
-                fi
+                python3 "$PROJECT_ROOT/bin/macode-shader-list.py" "$PROJECT_ROOT/assets/shaders/_registry.json"
                 ;;
             render)
                 SHADER_DIR="${3:-}"
@@ -486,17 +390,7 @@ for s in reg.get('assets', []):
                     exit 1
                 fi
                 PYTHONPATH="$PROJECT_ROOT/engines/manimgl/src:$PYTHONPATH" \
-                    python3 -c "
-from utils.shader_extractor import extract_builtin_shader, save_shader_asset
-import sys
-try:
-    data = extract_builtin_shader('$SHADER_NAME')
-    save_shader_asset(data, '$OUTPUT_DIR')
-    print(f'Extracted {data[\"name\"]} → $OUTPUT_DIR')
-except Exception as e:
-    print(f'Error: {e}', file=sys.stderr)
-    sys.exit(1)
-"
+                    python3 "$PROJECT_ROOT/bin/macode-shader-extract.py" "$SHADER_NAME" "$OUTPUT_DIR"
                 ;;
             help|*)
                 echo "Usage: macode shader <list|render|extract> [args]"
