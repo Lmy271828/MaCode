@@ -73,7 +73,7 @@ def main() -> None:
     )
 
     eresult = engine.run(rctx)
-    encresult = encode.run(rctx, cache_hit=eresult.cache_hit)
+    encresult = encode.run(rctx)
 
     lifecycle.progress(
         scene_name, "cleanup", "completed", message="Render finished successfully"

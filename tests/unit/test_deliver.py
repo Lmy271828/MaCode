@@ -77,12 +77,6 @@ class TestDeliverFunctions:
     def test_count_frames_missing_dir(self):
         assert deliver.count_frames("/nonexistent/path") == 0
 
-    def test_read_cache_key(self):
-        with tempfile.TemporaryDirectory() as d:
-            with open(os.path.join(d, ".cache_path"), "w") as f:
-                f.write("abc123\n")
-            assert deliver.read_cache_key(d) == "abc123"
-
 
 class TestMain:
     def test_missing_source(self, capsys):

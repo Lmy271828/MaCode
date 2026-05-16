@@ -17,10 +17,8 @@
 
 | 区域 | 风险等级 | 缺口说明 |
 |------|----------|----------|
-| Cache 工具链 | 🔴 高 | `cache-key/check/store/restore.py` 零测试 |
 | `macode-run` | 🔴 高 | 进程生命周期、超时、signal forwarding、task.json 合并 |
-| 音频管道 | 🟡 中高 | `add_audio.sh`, `audio-analyze.sh`, `composite-audio*.py` |
-| Cache 命中路径 | 🟡 中高 | 当前每次 `cleanup_tmp` 清空 cache，无二次渲染验证 |
+| 音频管道 | 🟡 中高 | `add_audio.sh`, `audio-analyze.sh` |
 | `inspect-conf.py` | 🟡 中 | 刚提取，yq/grep 双路径无覆盖 |
 | `copilot-feedback.py` | 🟡 中 | 终端 raw mode 难以自动化，需隔离测试 |
 | 跨引擎一致性 | 🟡 中 | 输出格式、progress.jsonl、state.json  schema 合规 |
@@ -84,28 +82,11 @@
 
 ---
 
-### Phase 2：Cache 与生命周期集成测试
+### Phase 2：生命周期集成测试
 
-**目标**：覆盖当前最大缺口——cache 工具链和 `macode-run`。
+**目标**：覆盖 `macode-run` 进程生命周期管理。
 
-#### 2A. Cache 工具链集成（`tests/integration/test_cache.sh`）
-
-```bash
-test_cache_key_idempotent() {
-    # 同一目录两次计算，key 必须相同
-}
-test_cache_hit_miss_cycle() {
-    # 1. cache-key → 2. cache-check (miss) → 3. cache-store → 4. cache-check (hit) → 5. cache-restore
-}
-test_cache_restore_preserves_structure() {
-    # 恢复后目录结构、文件内容与原目录一致
-}
-test_cache_key_excludes_ignored() {
-    # 修改 .log / node_modules / __pycache__ 不改变 key
-}
-```
-
-#### 2B. `macode-run` 集成（`tests/integration/test_macode_run.sh`）
+#### 2A. `macode-run` 集成（`tests/integration/test_macode_run.sh`）
 
 ```bash
 test_macode_run_success_merges_task_json() {
@@ -179,13 +160,11 @@ tests/
 ├── unit/                       # pytest 单元测试（Phase 1）
 │   ├── __init__.py
 │   ├── conftest.py             # fixtures: tmp_scene_dir, fake_engine_conf
-│   ├── test_cache_key.py
 │   ├── test_inspect_conf.py
 │   ├── test_state_schema.py
 │   └── test_composite_init.py
 ├── integration/                # bash 集成测试（Phase 2）
 │   ├── lib.sh                  # 共享断言（可引用 smoke/lib.sh）
-│   ├── test_cache.sh
 │   ├── test_macode_run.sh
 │   └── test_audio_pipeline.sh
 ├── contract/                   # 跨引擎契约测试（Phase 4）
@@ -244,18 +223,11 @@ jobs:
 
 以下任务可以**立刻开始**，每个任务独立、不互相阻塞：
 
-### 任务 A：Cache 工具链单元 + 集成测试（~2h）
-- `tests/unit/test_cache_key.py`：验证哈希稳定性、排除规则
-- `tests/integration/test_cache.sh`：验证 store/restore/check 完整周期
-- **价值**：当前最大缺口，cache 是性能核心
-
-### 任务 B：`macode-run` 集成测试（~1.5h）
+### 任务 A：`macode-run` 集成测试（~1.5h）
 - `tests/integration/test_macode_run.sh`：timeout、signal forwarding、task.json 合并
 - **价值**：进程生命周期管理器是整个管线的根基
 
-### 任务 C：Smoke Cache 命中测试（~1h）
-- `tests/smoke/test_cache_hit.sh`：同一场景渲染两次，第二次走 cache
-- **价值**：验证 cache 集成到 render 路径的端到端效果
+
 
 ---
 

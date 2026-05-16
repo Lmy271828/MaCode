@@ -41,54 +41,14 @@ def _ctx(tmp_path, *, engine_name="manim", unified_mc=False, mode="batch"):
     )
 
 
-def test_cache_hit_short_circuits_engine(tmp_path, monkeypatch):
-    """When cache.sh exits 0, engine.run must skip pre-render + service + invoke."""
-    monkeypatch.chdir(tmp_path)
-    ctx = _ctx(tmp_path)
-    os.makedirs(ctx.output_dir, exist_ok=True)
-    open(ctx.log_file, "a").close()
-
-    # Make _resolve_engine_script return a fake path (file existence not required
-    # because engine should never be invoked on cache hit).
-    monkeypatch.setattr(engine, "_resolve_engine_script", lambda c: "/fake")
-
-    import subprocess
-
-    invocations: list[list[str]] = []
-
-    def fake_run(cmd, *a, **kw):
-        invocations.append(list(cmd))
-
-        class R:
-            returncode = 0
-            stdout = ""
-            stderr = ""
-
-        return R()
-
-    monkeypatch.setattr(subprocess, "run", fake_run)
-    # Force cache hit
-    monkeypatch.setattr(engine, "_check_cache", lambda c: True)
-
-    result = engine.run(ctx)
-    assert result.cache_hit is True
-    assert result.service_was_started is False
-    # No engine call was issued
-    invoked_node_or_bash = any(
-        ("/fake" in c) or ("macode-run" in " ".join(c)) for c in invocations
-    )
-    assert not invoked_node_or_bash
-
-
 def test_engine_invocation_passes_scene_file_for_bash_engine(tmp_path, monkeypatch):
-    """Non-cache-hit path: engine.run must call macode-run + the bash engine."""
+    """engine.run must call macode-run + the bash engine."""
     monkeypatch.chdir(tmp_path)
     ctx = _ctx(tmp_path)
     os.makedirs(ctx.output_dir, exist_ok=True)
     open(ctx.log_file, "a").close()
 
     monkeypatch.setattr(engine, "_resolve_engine_script", lambda c: "/fake/render.sh")
-    monkeypatch.setattr(engine, "_check_cache", lambda c: False)
     monkeypatch.setattr(engine, "_run_pre_render", lambda c: None)
     monkeypatch.setattr(engine, "_start_service", lambda c: (None, None))
 
@@ -107,7 +67,6 @@ def test_engine_invocation_passes_scene_file_for_bash_engine(tmp_path, monkeypat
     monkeypatch.setattr(subprocess, "run", fake_run)
 
     result = engine.run(ctx)
-    assert result.cache_hit is False
     # Last call must contain "macode-run" and the engine.sh path + scene file
     last = invoked[-1]
     assert any("macode-run" in str(p) for p in last)
@@ -125,7 +84,6 @@ def test_engine_invocation_fails_loud_when_mjs_without_service_or_unified(
     open(ctx.log_file, "a").close()
 
     monkeypatch.setattr(engine, "_resolve_engine_script", lambda c: "/fake/render.mjs")
-    monkeypatch.setattr(engine, "_check_cache", lambda c: False)
     monkeypatch.setattr(engine, "_run_pre_render", lambda c: None)
     monkeypatch.setattr(engine, "_start_service", lambda c: (None, None))
 

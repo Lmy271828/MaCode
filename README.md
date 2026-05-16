@@ -129,7 +129,7 @@ macode/
 │   ├── preview.sh          #   快速预览
 │   ├── smart-cut.sh        #   静默段自动剪辑
 │   ├── thumbnail.sh        #   关键帧提取
-│   ├── cache.sh            #   帧级缓存
+│   ├── (缓存系统已删除)    #   保留占位，说明此处曾有缓存
 │   └── deliver.py          #   产物交付 + 输出侧 _manifest.json（.agent/tmp/ → output/）
 ├── bin/                    # 全局工具脚本
 │   ├── setup.sh             #   项目初始化 — 用户版（不暴露测试依赖）

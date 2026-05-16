@@ -51,7 +51,6 @@ declare -a TEST_ERRORS=()
 
 cleanup_tmp() {
     rm -rf "$PROJECT_ROOT/.agent/tmp/"/* 2>/dev/null || true
-    rm -rf "$PROJECT_ROOT/.agent/cache/"/* 2>/dev/null || true
     rm -rf "$PROJECT_ROOT/.agent/signals/per-scene/"/* 2>/dev/null || true
 }
 

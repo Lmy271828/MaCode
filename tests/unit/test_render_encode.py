@@ -67,9 +67,8 @@ def test_run_interactive_skips_concat_and_creates_final_mp4(tmp_path, monkeypatc
     ctx = _ctx(tmp_path, mode="interactive")
     # raw.mp4 missing → final.mp4 should be created as empty file
     monkeypatch.setattr(encode, "_layer2_check", lambda c: None)
-    monkeypatch.setattr(encode, "_populate_cache", lambda c: None)
     monkeypatch.setattr(encode, "_deliver", lambda c: None)
-    result = encode.run(ctx, cache_hit=False)
+    result = encode.run(ctx)
     assert os.path.isfile(result.final_mp4)
 
 
@@ -99,5 +98,5 @@ def test_run_batch_concat_failure_exits(tmp_path, monkeypatch):
     monkeypatch.setattr(subprocess, "run", fake_run)
 
     with pytest.raises(SystemExit) as ei:
-        encode.run(ctx, cache_hit=False)
+        encode.run(ctx)
     assert ei.value.code == 1

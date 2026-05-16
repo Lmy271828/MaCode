@@ -1,4 +1,4 @@
-"""Encode stage: layer2 runtime checks, resource fuses, concat, cache, deliver."""
+"""Encode stage: layer2 runtime checks, resource fuses, concat, deliver."""
 
 from __future__ import annotations
 
@@ -123,19 +123,6 @@ def _encode_mp4(ctx: RenderContext) -> str:
     return final_mp4
 
 
-def _populate_cache(ctx: RenderContext) -> None:
-    cache_script = os.path.join(PROJECT_ROOT, "pipeline", "cache.sh")
-    if not (os.path.isfile(cache_script) and os.access(cache_script, os.X_OK)):
-        return
-    with open(ctx.log_file, "a", encoding="utf-8") as logf:
-        subprocess.run(
-            ["bash", cache_script, ctx.scene_dir, "populate", ctx.output_dir],
-            stdout=logf,
-            stderr=subprocess.STDOUT,
-            check=False,
-        )
-
-
 def _deliver(ctx: RenderContext) -> None:
     subprocess.run(
         [
@@ -149,12 +136,10 @@ def _deliver(ctx: RenderContext) -> None:
     )
 
 
-def run(ctx: RenderContext, *, cache_hit: bool) -> EncodeResult:
+def run(ctx: RenderContext) -> EncodeResult:
     _layer2_check(ctx)
     frame_count = _check_fuses(ctx)
     final_mp4 = _encode_mp4(ctx)
-    if not cache_hit and ctx.engine_mode != "interactive":
-        _populate_cache(ctx)
     _deliver(ctx)
 
     # Recount after encode (for accurate JSON output)

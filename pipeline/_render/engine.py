@@ -21,7 +21,6 @@ from .validate import RenderContext
 
 @dataclass
 class EngineResult:
-    cache_hit: bool
     service_was_started: bool
 
 
@@ -35,23 +34,6 @@ def _resolve_engine_script(ctx: RenderContext) -> str:
         return legacy_script
     print(f"Error: engine script not found for '{ctx.engine}'", file=sys.stderr)
     sys.exit(1)
-
-
-def _check_cache(ctx: RenderContext) -> bool:
-    cache_script = os.path.join(PROJECT_ROOT, "pipeline", "cache.sh")
-    if not (os.path.isfile(cache_script) and os.access(cache_script, os.X_OK)):
-        return False
-    with open(ctx.log_file, "a", encoding="utf-8") as logf:
-        result = subprocess.run(
-            ["bash", cache_script, ctx.scene_dir, "check", ctx.output_dir],
-            stdout=logf,
-            stderr=subprocess.STDOUT,
-        )
-    if result.returncode == 0:
-        print("[cache] Using cached frames, skipping engine render")
-        return True
-    print("[cache] Cache miss, rendering with engine...")
-    return False
 
 
 def _run_pre_render(ctx: RenderContext) -> None:
@@ -231,7 +213,7 @@ def _invoke_engine(ctx: RenderContext, engine_script: str, service_url: str | No
 
 
 def run(ctx: RenderContext) -> EngineResult:
-    """Cache → pre-render → service → engine. Returns EngineResult."""
+    """Pre-render → service → engine. Returns EngineResult."""
     os.environ["PROJECT_ROOT"] = PROJECT_ROOT
 
     engine_script = _resolve_engine_script(ctx)
@@ -247,30 +229,27 @@ def run(ctx: RenderContext) -> EngineResult:
     print(f"[{ctx.engine}] Output: {ctx.frames_dir}")
     print(f"[{ctx.engine}] Settings: {ctx.width}x{ctx.height} @ {ctx.fps}fps for {ctx.duration}s")
 
-    cache_hit = _check_cache(ctx)
     service_url: str | None = None
     service_state: dict | None = None
 
-    if not cache_hit:
-        _run_pre_render(ctx)
-        service_url, service_state = _start_service(ctx)
+    _run_pre_render(ctx)
+    service_url, service_state = _start_service(ctx)
 
-    if not cache_hit:
-        progress(
-            ctx.scene_name,
-            "capture",
-            "running",
-            message="Starting frame capture",
-            fps=ctx.fps,
-            duration=ctx.duration,
-            width=ctx.width,
-            height=ctx.height,
-        )
-        _invoke_engine(ctx, engine_script, service_url)
-        progress(ctx.scene_name, "capture", "completed", message="Frame capture completed")
+    progress(
+        ctx.scene_name,
+        "capture",
+        "running",
+        message="Starting frame capture",
+        fps=ctx.fps,
+        duration=ctx.duration,
+        width=ctx.width,
+        height=ctx.height,
+    )
+    _invoke_engine(ctx, engine_script, service_url)
+    progress(ctx.scene_name, "capture", "completed", message="Frame capture completed")
 
     service_was_started = service_state is not None
     if service_was_started:
         _stop_service(ctx)
 
-    return EngineResult(cache_hit=cache_hit, service_was_started=service_was_started)
+    return EngineResult(service_was_started=service_was_started)

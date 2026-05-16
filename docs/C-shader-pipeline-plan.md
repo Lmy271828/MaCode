@@ -55,18 +55,18 @@ MaCode 的核心契约是 **PNG 帧序列**（`frame_%04d.png`）。Shader Pipel
 ┌─────────────────────────────────────────────────────────────────────┐
 │  Layer 1: PNG Frame Sequence（MaCode 一等公民，管道原生消费）         │
 │  ├─ frame_0001.png ... frame_0090.png                               │
-│  ├─ 可被 cache.sh 哈希缓存                                          │
-│  ├─ 可被 check-frames.py 质检                                       │
 │  ├─ 可被 concat.sh 编码为 MP4                                       │
-│  └─ 可被 composite-transition.py 做转场                             │
+│  ├─ 可被 check-static.py --layer layer2 质检                        │
+│  ├─ 可被 concat.sh 编码为 MP4                                       │
+│  └─ 可被 composite-unified-render.py 做硬切拼接                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Layer 1 为什么是一等公民
 
-`pipeline/` 工具链（`render.sh`, `cache.sh`, `concat.sh`, `check-frames.py` 等）只认识 PNG 帧序列。将 shader 输出也纳入 Layer 1，意味着：
-- **零管道改造**：现有 `cache.sh` 的 SHA-256 帧缓存、现有 `concat.sh` 的 ffmpeg 编码，全部无需修改
-- **质检统一**：`check-frames.py` 的 CV 分析、红框标注、overlap 检测对 shader 帧和普通场景帧一视同仁
+`pipeline/` 工具链（`render.sh`, `concat.sh`, `check-static.py` 等）只认识 PNG 帧序列。将 shader 输出也纳入 Layer 1，意味着：
+- **零管道改造**：现有 `concat.sh` 的 ffmpeg 编码无需修改
+- **质检统一**：`check-static.py --layer layer2` 的 layout 分析对 shader 帧和普通场景帧一视同仁
 - **合成兼容**：shader 帧序列可直接作为 `composite` 的 segment 输入
 
 ### Layer 2 为什么是一等公民
@@ -570,7 +570,7 @@ NODE_REGISTRY = {
 | `bin/detect-hardware.sh` | 新增 moderngl context 可用性探测 | 小（+5 行） |
 | `engines/manim/scripts/render.sh` | 渲染前注入 `PYTHONPATH` 已覆盖 shader_bridge.py | 零变更 |
 | `pipeline/render.sh` | 识别 `manifest.json` 中 `shader_assets` 字段 | 中（+30 行） |
-| `pipeline/cache.sh` | 无需变更，shader Layer 1 输出与普通帧序列格式一致 | 零变更 |
+| `pipeline/concat.sh` | 无需变更，shader Layer 1 输出与普通帧序列格式一致 | 零变更 |
 | `bin/macode` | 新增 `shader` 子命令分支 | 中（+50 行） |
 | `api-gate.py` | 新增 shader 代码静态检查 | 小（+10 行） |
 

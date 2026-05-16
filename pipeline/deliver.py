@@ -96,17 +96,6 @@ def count_frames(frames_dir: str) -> int:
     return sum(1 for name in os.listdir(frames_dir) if name.startswith("frame_") and name.endswith(".png"))
 
 
-def read_cache_key(tmp_dir: str) -> str:
-    cache_path = os.path.join(tmp_dir, ".cache_path")
-    if not os.path.isfile(cache_path):
-        return ""
-    try:
-        with open(cache_path, encoding="utf-8") as f:
-            return f.read().strip()
-    except OSError:
-        return ""
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Deliver final artifact with metadata manifest.",
@@ -156,9 +145,6 @@ def main() -> int:
     frames_dir = os.path.join(args.tmp_dir, "frames")
     frames_rendered = count_frames(frames_dir)
 
-    # Cache key
-    cache_key = read_cache_key(args.tmp_dir)
-
     # Build manifest
     delivery_manifest = {
         "scene": args.scene_name,
@@ -171,8 +157,6 @@ def main() -> int:
         "sha256": sha256,
         "rendered_at": state.get("endedAt", state.get("startedAt", "")),
     }
-    if cache_key:
-        delivery_manifest["cache_key"] = cache_key
 
     manifest_path = os.path.join(args.output_dir, f"{args.scene_name}_manifest.json")
     with open(manifest_path, "w", encoding="utf-8") as f:
