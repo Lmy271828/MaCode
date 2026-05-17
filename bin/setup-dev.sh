@@ -120,11 +120,11 @@ if [[ $SKIP_TESTS -eq 0 ]]; then
     SMOKE_TOTAL=0
 
     run_smoke() {
-        local script="$1"
+        local suite="$1"
         local name="$2"
         SMOKE_TOTAL=$((SMOKE_TOTAL + 1))
         echo "        Running $name..."
-        if bash "$script" >/dev/null 2>&1; then
+        if bash tests/smoke/runner.sh --suite smoke -k "$suite" >/dev/null 2>&1; then
             echo "        ✓ $name passed"
             SMOKE_OK=$((SMOKE_OK + 1))
         else
@@ -132,17 +132,10 @@ if [[ $SKIP_TESTS -eq 0 ]]; then
         fi
     }
 
-    if [[ -f "tests/smoke/test_render_manim.sh" ]]; then
-        run_smoke "tests/smoke/test_render_manim.sh" "smoke/render_manim"
-    fi
-    if [[ -f "tests/smoke/test_render_manimgl.sh" ]]; then
-        run_smoke "tests/smoke/test_render_manimgl.sh" "smoke/render_manimgl"
-    fi
-    if [[ -f "tests/smoke/test_composite.sh" ]]; then
-        run_smoke "tests/smoke/test_composite.sh" "smoke/composite"
-    fi
-    if [[ -f "tests/smoke/test_cache_hit.sh" ]]; then
-        run_smoke "tests/smoke/test_cache_hit.sh" "smoke/cache_hit"
+    if [[ -f "tests/smoke/runner.sh" ]]; then
+        run_smoke "test_manim" "smoke/render_manim"
+        run_smoke "test_manimgl" "smoke/render_manimgl"
+        run_smoke "test_composite" "smoke/composite"
     fi
 
     echo ""
@@ -161,15 +154,7 @@ else
     echo "[dev] --skip-tests specified; skipping test execution."
 fi
 
-# ── Step 5: Git hooks ───────────────────────────────
-echo ""
-echo "[dev] Installing Git hooks..."
-if [[ -f "bin/install-hooks.sh" ]]; then
-    bash bin/install-hooks.sh
-else
-    echo "        ~ bin/install-hooks.sh not found, skipping"
-fi
-
+# ── Step 5: Dev Setup complete ──────────────────────
 echo ""
 echo "========================================"
 echo "  Dev Setup complete"
