@@ -1,7 +1,4 @@
 # MaCode .gitignore
-# Claude Code local settings (development tool)
-.claude/settings.local.json
-
 # Agent workspace (ephemeral)
 .agent/
 
@@ -34,6 +31,10 @@ output/
 *:Zone.Identifier
 media/
 
-# Motion Canvas runtime-generated files
+# Motion Canvas runtime-generated files & build artifacts
 engines/motion_canvas/project.ts
 engines/motion_canvas/capture.ts
+engines/motion_canvas/dist/
+
+# Playwright local browser cache (auto-downloaded)
+.ms-playwright/

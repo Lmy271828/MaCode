@@ -4,10 +4,7 @@
     "@motion-canvas/core": "^3.17.2",
     "@motion-canvas/ui": "^3.17.2",
     "@motion-canvas/vite-plugin": "^3.17.2",
-    "canvas": "^3.2.3",
-    "jsdom": "^29.1.1",
     "playwright": "^1.59.1",
-    "puppeteer": "^24.43.0",
     "tsx": "^4.21.0",
     "typescript": "^6.0.3",
     "vite": "^5.4.0"

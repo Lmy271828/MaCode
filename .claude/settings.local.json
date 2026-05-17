@@ -1,0 +1,60 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(macode status)",
+      "Bash(macode status *)",
+      "Bash(macode inspect *)",
+      "Bash(macode engine)",
+      "Bash(macode engine *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(jq *)",
+      "Bash(tail -n *)",
+      "Bash(head -n *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(du -sh *)",
+      "Bash(ps *)",
+      "Bash(ffprobe *)",
+      "Bash(manim --version)",
+      "Bash(ffmpeg -version)",
+      "Bash(node --version)",
+      "Bash(python3 bin/discover)",
+      "Bash(macode check *)",
+      "Bash(macode dry-run *)",
+      "Bash(macode render *)",
+      "Bash(macode render-all)",
+      "Bash(pipeline/render.sh *)",
+      "Bash(git status)",
+      "Bash(git diff)",
+      "Bash(git log)",
+      "Bash(git add scenes/*)",
+      "Bash(git commit -m *)"
+    ],
+    "require_confirmation": [
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Bash(pip install *)",
+      "Bash(npm install *)",
+      "Bash(git push *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean -fd *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "EditFile(engines/*)",
+      "EditFile(bin/*)",
+      "EditFile(pipeline/*)"
+    ],
+    "never": [
+      "Bash(access .git/config)",
+      "Bash(access .macode/*)",
+      "Bash(access .claude/*)",
+      "EditFile(engines/*/src/*)",
+      "Bash(pip install *)",
+      "Bash(npm install -g *)",
+      "Bash(git push --force)",
+      "Bash(git reset --hard)",
+      "Bash(python3 scene.py)"
+    ]
+  }
+}

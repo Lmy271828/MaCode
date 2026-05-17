@@ -5,12 +5,12 @@ AST-only recursive import scanner for deterministic cache hashing.
 Algorithm:
   1. Read manifest.json → get engine field
   2. Add engines/{engine}/src/ to sys.path
-  3. Scan all .py files in scene_dir (same exclusions as cache-key.py)
+  3. Scan all .py files in scene_dir (exclude logs, editor backups, hidden files)
   4. For each .py file: AST-parse imports, resolve via importlib.util.find_spec
   5. If origin is within PROJECT_ROOT and not excluded → recurse
   6. Detect sys.path.insert / sys.path.append in AST
   7. Hash all discovered dependency files (sorted) with SHA-256
-  8. Also hash manifest.json + scene input files (same as cache-key.py)
+  8. Also hash manifest.json + scene input files
   9. Combine all hashes, SHA-256, truncate to 32 hex chars
 
 CLI:
@@ -32,7 +32,7 @@ import json
 import os
 import sys
 
-# Same exclusions as cache-key.py
+# File exclusion rules for deterministic hashing
 _EXCLUDE_SUFFIXES = frozenset({".log", ".tmp", ".swp", ".swo", ".bak", "~"})
 _EXCLUDE_DIRS = frozenset({".git", "__pycache__", ".pytest_cache", "node_modules", ".venv", ".agent"})
 _EXCLUDE_NAMES = frozenset({".cache_path", ".DS_Store", "Thumbs.db"})
