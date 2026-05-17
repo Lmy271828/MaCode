@@ -2,9 +2,31 @@
 
 # 面向 Host Agent 的画面自纠工具设计
 
-> 状态：设计草案  
+> **文档状态**：部分实现。以 `bin/auto-fix.py`、`bin/fix_strategies/adjust_wait.py` 和 `AGENTS.md` §9 CLI 速查表为当前真源。发现引用过时组件？请直接修复。
+>
+> 状态：**部分实现**（2026-05-17）  
 > 日期：2026-05-10  
 > 背景：现有 check-static/check-frames 只检测不修复，human_override 只审批不自纠
+
+---
+
+## 实现状态速查
+
+| 章节 | 内容 | 状态 | 对应文件 |
+|------|------|------|----------|
+| 2.1 三层模型 | Orchestrator + Strategies + Detectors | ✅ 已实现 | `bin/auto-fix.py` + `bin/fix_strategies/` |
+| 2.2 报告 Schema v2 | `fixable` / `fix_confidence` / `fix` 字段 | ✅ 已实现 | `bin/checks/duration_consistency.py` |
+| 2.3 策略接口 | `FixStrategy` Protocol + `FixResult` | ✅ 已实现 | `bin/fix_strategies/adjust_wait.py` |
+| 2.4 内置策略库 | `adjust_wait.py` | ✅ 已实现 | `bin/fix_strategies/adjust_wait.py` |
+| 2.4 内置策略库 | `increase_buff.py` / `adjust_color.py` / `split_formula.py` / `align_segment_comment.py` | ❌ 未实现 | — |
+| 2.5 闭环工作流 | 检测 → 修复 → 验证 → 回滚 | ✅ 已实现 | `bin/auto-fix.py` |
+| 2.6 CLI 集成 | `macode fix <scene_dir>` | ✅ 已实现 | `bin/macode` |
+| 3.1 Schema 升级 | `check-static.py` 输出 fix 字段 | ✅ 已实现 | `bin/checks/duration_consistency.py` |
+| 3.2 策略框架 | `_base.py` + `auto-fix.py` + 首个策略 | ✅ 已实现 | `bin/auto-fix.py` + `bin/fix_strategies/` |
+| 3.3 闭环验证 | 修复 → 渲染 → 检测集成测试 | ❌ 未实现 | 待补充 |
+| 4. 风险与回退 | git stash / 回滚 / max_rounds | ✅ 已实现 | `bin/auto-fix.py` |
+
+---
 
 ---
 

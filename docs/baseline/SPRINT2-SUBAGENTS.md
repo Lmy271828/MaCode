@@ -10,7 +10,7 @@
 | 工单 | 主要触及 |
 |------|----------|
 | **S2-1** | `bin/macode_state/`（新建）、`pipeline/render-scene.py`、`pipeline/composite-render.py`、`pipeline/composite-unified-render.py`、`bin/state-write.py`、`bin/progress-write.py`、`bin/macode-run` |
-| **S2-2** | 同上 `macode_state` + **`docs/task-state-schema.md`**（新建）、`bin/dashboard-server.mjs`、`tests/unit/test_macode_state.py` |
+| **S2-2** | 同上 `macode_state` + **`docs/task-state-schema.md`**（新建）、~~`bin/dashboard-server.mjs`~~（**已删除**）、`tests/unit/test_macode_state.py` |
 | **S2-3** | **`pipeline/render-scene.py`**、`bin/copilot-feedback.py`、`README.md`、`tests/unit/test_copilot_feedback.py` |
 
 **S2-1 与 S2-3 同改 `pipeline/render-scene.py`**，同迭代内**不得**分两路并行改该文件。

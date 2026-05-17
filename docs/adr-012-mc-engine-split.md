@@ -137,22 +137,26 @@ service_port_max: 5999
 
 ## 后续：Phase 4 — 缓存升级（UNIX 风格）
 
-旧 `cache.sh` 是单体式 bash 脚本（计算哈希 + 检查 + 存储/恢复混在一起）。Phase 4 将其拆分为 4 个独立工具：
+> **状态（2026-05-17）**：本节描述的缓存系统（`cache-key.py`、`cache-check.py`、`cache-store.py`、`cache-restore.py`、`pipeline/cache.sh`）已**彻底删除**。删除原因：缓存命中率极低、验证逻辑薄弱、开发路径天然绕过。当前替代方案见 `pipeline/_render/engine.py` 中的源文件哈希缓存（`_check_source_hash`），仅跳过未修改源码的重复渲染，不做帧级或产物级缓存。
+>
+> 下文保留当时的**问题陈述与方案推演**作为历史记录。
 
-| 工具 | 职责 | UNIX 哲学 |
-|------|------|----------|
-| `cache-key.py` | 输入 scene_dir → 输出缓存键（stdout） | 只做一件事 |
-| `cache-check.py` | 输入 key → exit 0/1 | 只做一件事 |
-| `cache-store.py` | 输入 key + source_dir → 存入 `.agent/cache/{key}/` | 只做一件事 |
-| `cache-restore.py` | 输入 key + dest_dir → 恢复到目标目录 | 只做一件事 |
+旧 `cache.sh` 是单体式 bash 脚本（计算哈希 + 检查 + 存储/恢复混在一起）。Phase 4 曾计划将其拆分为 4 个独立工具：
 
-`pipeline/cache.sh` 变为向后兼容的**适配层**，内部调用上述工具链。
+| 工具 | 职责 | UNIX 哲学 | 状态 |
+|------|------|----------|------|
+| ~~`cache-key.py`~~ | ~~输入 scene_dir → 输出缓存键（stdout）~~ | ~~只做一件事~~ | **已删除** |
+| ~~`cache-check.py`~~ | ~~输入 key → exit 0/1~~ | ~~只做一件事~~ | **已删除** |
+| ~~`cache-store.py`~~ | ~~输入 key + source_dir → 存入 `.agent/cache/{key}/`~~ | ~~只做一件事~~ | **已删除** |
+| ~~`cache-restore.py`~~ | ~~输入 key + dest_dir → 恢复到目标目录~~ | ~~只做一件事~~ | **已删除** |
 
-**关键改进**：
-- 缓存键纳入 **shader 依赖哈希**（`frag.glsl` / `vert.glsl` / `shader.json`），shader 源文件变更自动失效
-- 缓存存储**整个 output_dir**（frames + final.mp4 + 其他产物），不只是 frames/
-- 每个缓存目录包含 `.cache_manifest`（JSON 文本），可直接查看缓存来源
-- **引擎无关**：`cache-key.py` 不再只匹配 `scene.*`，而是扫描场景目录下所有非隐藏文件 + 一级子目录文件（排除 `__pycache__` / `node_modules` / 编辑器备份等）
+~~`pipeline/cache.sh`~~ 变为向后兼容的**适配层**，内部调用上述工具链。 **已删除**。
+
+**关键改进**（历史推演，未实现）：
+- ~~缓存键纳入 **shader 依赖哈希**~~
+- ~~缓存存储**整个 output_dir**~~
+- ~~每个缓存目录包含 `.cache_manifest`~~
+- ~~**引擎无关**：`cache-key.py` 扫描场景目录~~
 
 ---
 
@@ -177,11 +181,11 @@ service_port_max: 5999
 | 文件 | 层 | 违反？ | 说明 |
 |------|---|--------|------|
 | `bin/macode-run` | 执行 | ❌ | 管理单子进程生命周期 + 合并 task.json，符合 Q1/Q2/Q3/Q4 |
-| `bin/cache-key.py` | 执行 | ❌ | 纯计算：输入目录 → 输出哈希 |
-| `bin/cache-check.py` | 执行 | ❌ | 纯检查：输入 key → exit 0/1 |
-| `bin/cache-store.py` | 执行 | ❌ | 纯存储：输入 key + dir → 文件系统写入 |
-| `bin/cache-restore.py` | 执行 | ❌ | 纯恢复：输入 key + dir → 文件系统复制 |
-| `pipeline/cache.sh` | 执行 | ❌ | 适配层，只调度上述 4 个工具 |
+| ~~`bin/cache-key.py`~~ | ~~执行~~ | ~~❌~~ | ~~已删除（2026-05-17）~~ |
+| ~~`bin/cache-check.py`~~ | ~~执行~~ | ~~❌~~ | ~~已删除（2026-05-17）~~ |
+| ~~`bin/cache-store.py`~~ | ~~执行~~ | ~~❌~~ | ~~已删除（2026-05-17）~~ |
+| ~~`bin/cache-restore.py`~~ | ~~执行~~ | ~~❌~~ | ~~已删除（2026-05-17）~~ |
+| ~~`pipeline/cache.sh`~~ | ~~执行~~ | ~~❌~~ | ~~已删除（2026-05-17）~~ |
 | `serve.mjs` | 执行 | ❌ | 生成 project.ts + 启动 Vite + 写状态，只做"启动 dev server"一件事 |
 | `playwright-render.mjs` | 执行 | ❌ | 连接 dev server + 抓帧 + 写 task.json，只做"抓帧"一件事 |
 | `render-scene.py` | 编排 | ❌ | 按 engine.conf 调度 pre-render → service → capture → concat，符合四问 |

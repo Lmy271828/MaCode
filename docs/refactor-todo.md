@@ -164,7 +164,7 @@
 
 ### S2-2 · State schema 版本化 · P1 · 🟡
 - **动机**：当前 `state.json` 写 `version: "1.0"` 但无校验；不同 writer 字段差异未被检测。
-- **影响文件**：`bin/macode_state/__init__.py`、`docs/task-state-schema.md`、`bin/dashboard-server.mjs`（读端）。
+- **影响文件**：`bin/macode_state/__init__.py`、`docs/task-state-schema.md`、~~`bin/dashboard-server.mjs`~~（读端，**已删除**）。
 - **步骤**：
   1. 在 `macode_state` 引入一个 dataclass 或 TypedDict（`TaskState`），所有字段类型固定。
   2. 写入前做 `assert isinstance(...)`，schema 变更必走 `version: "1.1"`、`"1.2"` ... 。
@@ -340,11 +340,9 @@
 
 ### S6-1 · L2 帧级 cache（项目核心差异化） · P1 · 🟡
 - **动机**：当前 cache 整目录粒度，0.1 秒的 `self.wait` 修改也会 invalidate 整段 mp4。Manim 渲染是 per-frame 线性的，**frame-level cache 是这套技术栈应该提供的差异化能力**。
-- **影响文件**：`bin/cache-key.py`、`bin/cache-store.py`、`bin/cache-restore.py`、`pipeline/cache.sh`、新增 `bin/cache-frames.py`。
+- **影响文件**：~~`bin/cache-key.py`、`bin/cache-store.py`、`bin/cache-restore.py`、`pipeline/cache.sh`~~（**已删除**）、新增 `bin/cache-frames.py`。
 - **步骤**：
-  1. 在 `cache-key.py` 之外增加 `cache-frame-key.py`：输入 (scene_hash, frame_idx, fps, resolution) → 帧级 hash。
-  2. 引擎完成渲染后，新建一步：`cache-frames.py populate <frames_dir>` 把每个 PNG 存到 `.agent/cache/frames/<hash>.png`。
-  3. 下次相同 hash → `cache-frames.py restore <hash> > frame_NNNN.png`。
+  1. ~~在 `cache-key.py` 之外增加 `cache-frame-key.py`~~（缓存系统已删除，当前使用源文件哈希缓存 `_check_source_hash`，见 `pipeline/_render/engine.py`）。
   4. 命中策略：对每帧并行检查 cache；全部命中则跳过 engine；部分命中则只渲染缺失帧。**这一步需要 engine 支持范围渲染**，第一版可只在"全部命中"时跳过。
 - **验收**：
   - 同一场景两次连续 `macode render` 第二次 cache hit，省去 engine 调用。
