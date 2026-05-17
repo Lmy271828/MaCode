@@ -44,15 +44,16 @@ def _check_source_hash(ctx: RenderContext) -> bool:
         with open(hash_file, encoding="utf-8") as f:
             stored = f.read().strip()
         if stored == current:
-            # Verify that at least one output artifact exists
-            candidates = [
-                os.path.join(ctx.output_dir, "final.mp4"),
-                os.path.join(ctx.output_dir, "raw.mp4"),
-            ]
+            # Verify actual output artifacts exist and are non-empty.
+            # Empty files/directories are treated as incomplete renders.
+            for fname in ("final.mp4", "raw.mp4"):
+                p = os.path.join(ctx.output_dir, fname)
+                if os.path.isfile(p) and os.path.getsize(p) > 0:
+                    return True
             if ctx.engine_mode != "interactive":
-                candidates.append(ctx.frames_dir)
-            if any(os.path.exists(p) for p in candidates):
-                return True
+                frames = ctx.frames_dir
+                if os.path.isdir(frames) and os.listdir(frames):
+                    return True
     return False
 
 

@@ -38,7 +38,7 @@ You are working in MaCode, a UNIX-native math animation Harness. All tools are i
 ## Never Do
 
 - Access `.git/config`, `.macode/`, `.claude/`
-- Modify engine adapter code (`engines/*/src/`, `bin/`, `pipeline/`)
+- Modify engine adapter code (`engines/*/src/`)
 - Install packages globally
 - Force-push or reset Git history
 - Use `subprocess`, `os.system`, `socket`, `requests` in scene code

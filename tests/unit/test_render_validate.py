@@ -175,3 +175,48 @@ def test_validate_scene_falls_back_to_manifest_values(tmp_path, monkeypatch):
     assert rctx.duration == 1
     assert rctx.width == 1920
     assert rctx.height == 1080
+
+
+def test_validate_scene_exits_on_missing_engine_in_manifest(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    scene_dir = tmp_path / "01_test"
+    scene_dir.mkdir()
+    manifest = {"fps": 30, "duration": 1, "resolution": [1920, 1080]}
+    (scene_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    (scene_dir / "scene.py").write_text(
+        "from manim import Scene\nclass Foo(Scene):\n    def construct(self): pass\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(SystemExit):
+        validate.validate_scene(
+            scene_dir=str(scene_dir),
+            scene_name="01_test",
+            args_fps=None,
+            args_duration=None,
+            args_width=None,
+            args_height=None,
+            skip_checks=True,
+        )
+    err = capsys.readouterr().err
+    assert "engine" in err.lower() or "manifest" in err.lower()
+
+
+def test_validate_scene_exits_on_missing_scene_file(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    scene_dir = tmp_path / "01_test"
+    scene_dir.mkdir()
+    manifest = {"engine": "manim", "fps": 30, "duration": 1, "resolution": [1920, 1080]}
+    (scene_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    # No scene.py
+    with pytest.raises(SystemExit):
+        validate.validate_scene(
+            scene_dir=str(scene_dir),
+            scene_name="01_test",
+            args_fps=None,
+            args_duration=None,
+            args_width=None,
+            args_height=None,
+            skip_checks=True,
+        )
+    err = capsys.readouterr().err
+    assert "scene file" in err.lower() or "not found" in err.lower()

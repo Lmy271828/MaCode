@@ -137,3 +137,28 @@ test_mc_shaderframe() {
 
     test_end
 }
+
+test_mc_concurrent_scenes_no_port_conflict() {
+    if ! _has_chromium; then
+        test_start "test_mc_concurrent_scenes_no_port_conflict"
+        echo -e "${SKIP_COLOR}[SKIP]${RESET} Chromium not available"
+        LAST_ASSERT_OK=0
+        test_end
+        return 0
+    fi
+    test_start "test_mc_concurrent_scenes_no_port_conflict"
+
+    cd "$PROJECT_ROOT"
+    # Render two different MC scenes back-to-back
+    ./bin/macode render scenes/01_test_mc --fps 2 --duration 1 >/dev/null 2>&1
+    assert_exit_code 0
+
+    ./bin/macode render scenes/02_shader_mc --fps 2 --duration 1 >/dev/null 2>&1
+    assert_exit_code 0
+
+    # Verify both have frames
+    assert_file_exists ".agent/tmp/01_test_mc/frames/frame_0001.png"
+    assert_file_exists ".agent/tmp/02_shader_mc/frames/frame_0001.png"
+
+    test_end
+}

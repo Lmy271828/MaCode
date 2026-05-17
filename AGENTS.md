@@ -311,15 +311,7 @@ scenes/
 
 ### Host Agent 工作流建议
 
-1. 读取 `project.yaml` 了解配置
-2. 读取目标 `scenes/*/manifest.json` 理解需求
-3. 按 `manifest.json` 的 `engine` 字段查阅 `.agents/skills/{engine}/SKILL.md`
-4. 使用 `macode inspect --grep <keyword>` 或 `engines/*/scripts/inspect.sh` 查询 API
-5. 编写场景源码（`scene.py` + `manifest.json`）
-6. 可选：预检 `bin/api-gate.py` 确认无违规导入
-7. 调用 `pipeline/render.sh <scene_dir>` 渲染
-8. 若失败：`tail .agent/log/*.log` 查看诊断
-9. 后处理：`pipeline/concat.sh` / `add_audio.sh` / `compress.sh` 等；交付可选 `python3 pipeline/deliver.py <scene> <tmp_dir> output/`
+完整 9 步工作流见 → `.agents/skills/macode-host-agent/SKILL.md`（Step 1: 读取需求 → Step 9: 交付）。
 
 ---
 

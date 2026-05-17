@@ -34,6 +34,36 @@ test_manim_single_render() {
     test_end
 }
 
+test_manim_engine_crash_marks_failed() {
+    test_start "test_manim_engine_crash_marks_failed"
+
+    local crash_scene="$PROJECT_ROOT/.agent/tmp/test_crash_scene"
+    mkdir -p "$crash_scene"
+    cat > "$crash_scene/manifest.json" <<'EOF'
+{"engine": "manim", "duration": 1, "fps": 2, "resolution": [1920, 1080]}
+EOF
+    cat > "$crash_scene/scene.py" <<'EOF'
+from manim import *
+class CrashScene(Scene):
+    def construct(self):
+        raise RuntimeError("intentional crash")
+EOF
+
+    cd "$PROJECT_ROOT"
+    ./bin/macode render "$crash_scene" >/dev/null 2>&1 || true
+
+    local exit_code=$?
+    # Engine crash should result in non-zero exit code
+    LAST_ASSERT_OK=1
+    if [[ "$exit_code" -ne 0 ]]; then
+        LAST_ASSERT_OK=0
+    else
+        echo -e "${FAIL_COLOR}[FAIL]${RESET} expected non-zero exit code after engine crash, got $exit_code at ${CURRENT_TEST:-unknown}"
+    fi
+
+    test_end
+}
+
 test_manim_param_override() {
     test_start "test_manim_param_override"
 

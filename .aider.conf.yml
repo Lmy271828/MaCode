@@ -6,31 +6,49 @@ auto-commits: false
 
 # ---------------------------------------------------------------------------
 # SECURITY RULES for Host Agent working in MaCode
-# (Aider has no native Bash permission whitelist; these rules are enforced
-#  by the Agent's system prompt and MaCode's api-gate.)
 # ---------------------------------------------------------------------------
-#
-# ALLOWED (safe to execute):
-#   macode status, macode inspect, macode engine
-#   macode check, macode report, macode timeline, macode test, macode dry-run
-#   macode render, macode render-all, macode dev
-#   pipeline/render.sh, pipeline/preview.sh, pipeline/deliver.sh, pipeline/concat.sh
-#   pipeline/add_audio.sh, pipeline/compress.sh, pipeline/fade.sh
-#   pipeline/thumbnail.sh, pipeline/smart-cut.sh, pipeline/cache.sh
-#   macode cleanup, python3 bin/cleanup-stale.py, python3 bin/dry-run.py
-#   python3 bin/discover
-#   ls, cat, jq, tail, head, find, grep, du, ps, ffprobe
-#   git status, git diff, git log, git add scenes/*, git commit -m
-#
-# REQUIRE CONFIRMATION:
-#   rm -rf, sudo, pip install, npm install
-#   git push, git reset --hard, git clean -fd
-#   curl, wget
-#   modifying files in engines/, bin/, pipeline/
-#
-# NEVER:
-#   Access .git/config, .macode/, .claude/
-#   Modify engine adapter code
+
+# # MaCode — Math Animation Harness
+
+# You are working in MaCode, a UNIX-native math animation Harness. All tools are independent CLIs invoked via standard Bash.
+
+# Allowed Operations (execute freely)
+
+# **Read-only / Info:**
+#   `macode status`, `macode inspect`, `macode engine`
+#   `ls`, `cat`, `jq`, `tail`, `head`, `find`, `grep`, `du -sh`, `ps`
+#   `ffprobe`, `manim --version`, `ffmpeg -version`, `node --version`
+#   `python3 bin/discover`
+#   `python3 bin/signal-check.py [--scene <name>|--global-only]` — Query human-intervention signals
+
+# **Checks / Validation:**
+#   `macode check <scene>`, `macode report <scene>`, `macode timeline`
+#   `macode test <unit|integration|smoke>`
+#   `macode dry-run <scene_file>`
+
+# **Rendering / Production:**
+#   `macode render <scene>`, `macode render-all`, `macode dev <scene>`
+#   `pipeline/render.sh`, `pipeline/preview.sh`, `pipeline/deliver.sh`
+#   `pipeline/concat.sh`, `pipeline/add_audio.sh`, `pipeline/compress.sh`
+#   `pipeline/fade.sh`, `pipeline/thumbnail.sh`, `pipeline/smart-cut.sh`
+
+# **Maintenance:**
+#   `macode cleanup [--dry-run]`
+#   `python3 bin/cleanup-stale.py [--dry-run]`
+#   `git status`, `git diff`, `git log`
+#   `git add scenes/*`, `git commit -m "..."`
+
+# Require Confirmation (ask before executing)
+
+#   `rm -rf`, `sudo`, `pip install`, `npm install`
+#   `git push`, `git reset --hard`, `git clean -fd`
+#   `curl`, `wget`
+#   Modifying files in `engines/`, `bin/`, `pipeline/`
+
+# Never Do
+
+#   Access `.git/config`, `.macode/`, `.claude/`
+#   Modify engine adapter code (`engines/*/src/`)
 #   Install packages globally
 #   Force-push or reset Git history
-#   Use subprocess, os.system, socket, requests in scene code
+#   Use `subprocess`, `os.system`, `socket`, `requests` in scene code

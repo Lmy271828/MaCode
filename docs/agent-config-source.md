@@ -1,3 +1,8 @@
+---
+name: MaCode Agent Config Source
+description: Single source of truth for IDE-specific agent configuration files.
+---
+
 # MaCode — Math Animation Harness
 
 You are working in MaCode, a UNIX-native math animation Harness. All tools are independent CLIs invoked via standard Bash.

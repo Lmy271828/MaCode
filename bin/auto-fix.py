@@ -22,6 +22,7 @@ if _SCRIPT_DIR not in sys.path:
 
 STRATEGIES = {
     "adjust_wait": "fix_strategies.adjust_wait",
+    "align_segment_comment": "fix_strategies.align_segment_comment",
 }
 
 
@@ -83,10 +84,6 @@ def apply_patches(patches: list[dict], dry_run: bool = False) -> None:
         if not os.path.isfile(file_path):
             raise FileNotFoundError(f"Patch target not found: {file_path}")
 
-        backup = file_path + ".autofix.bak"
-        if not os.path.exists(backup):
-            shutil.copy2(file_path, backup)
-
         with open(file_path, encoding="utf-8") as f:
             lines = f.readlines()
 
@@ -108,6 +105,11 @@ def apply_patches(patches: list[dict], dry_run: bool = False) -> None:
             print(f"  - {old_text!r}")
             print(f"  + {new_text!r}")
             continue
+
+        # Only create backup when actually applying
+        backup = file_path + ".autofix.bak"
+        if not os.path.exists(backup):
+            shutil.copy2(file_path, backup)
 
         lines[start:end] = [new_text]
         with open(file_path, "w", encoding="utf-8") as f:
