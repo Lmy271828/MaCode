@@ -83,6 +83,7 @@ def test_validate_scene_args_override_manifest(tmp_path, monkeypatch):
         calls.append(cmd)
         # inspect-conf
         if any("inspect-conf.py" in str(p) for p in cmd):
+
             class R:
                 returncode = 0
                 stdout = json.dumps(
@@ -97,6 +98,7 @@ def test_validate_scene_args_override_manifest(tmp_path, monkeypatch):
             return R()
         # validate-manifest
         if any("validate-manifest.py" in str(p) for p in cmd):
+
             class R:
                 returncode = 0
                 stdout = ""
@@ -134,6 +136,7 @@ def test_validate_scene_falls_back_to_manifest_values(tmp_path, monkeypatch):
 
     def fake_run(cmd, *a, **kw):
         if any("inspect-conf.py" in str(p) for p in cmd):
+
             class R:
                 returncode = 0
                 stdout = json.dumps(
@@ -146,6 +149,7 @@ def test_validate_scene_falls_back_to_manifest_values(tmp_path, monkeypatch):
 
             return R()
         if any("validate-manifest.py" in str(p) for p in cmd):
+
             class R:
                 returncode = 0
                 stdout = ""

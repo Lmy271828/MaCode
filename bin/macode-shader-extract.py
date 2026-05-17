@@ -18,8 +18,7 @@ def main() -> int:
 
     # Add manimgl src to PYTHONPATH for shader_extractor
     manimgl_src = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "engines", "manimgl", "src"
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "engines", "manimgl", "src"
     )
     if manimgl_src not in sys.path:
         sys.path.insert(0, manimgl_src)

@@ -106,12 +106,14 @@ def generate_orchestrator(scene_dir: str, output_dir: str) -> dict:
             sys.exit(1)
 
         class_name = find_scene_class(scene_py)
-        shots.append({
-            "id": seg_id,
-            "scene_py": scene_py,
-            "class_name": class_name,
-            "module_name": f"shot_{seg_id}",
-        })
+        shots.append(
+            {
+                "id": seg_id,
+                "scene_py": scene_py,
+                "class_name": class_name,
+                "module_name": f"shot_{seg_id}",
+            }
+        )
 
         if os.path.isfile(seg_manifest):
             total_duration += load_duration(seg_manifest)
@@ -151,10 +153,10 @@ def generate_orchestrator(scene_dir: str, output_dir: str) -> dict:
     for shot in shots:
         mod = shot["module_name"]
         path = shot["scene_py"]
-        lines.append(f'# Load shot: {shot["id"]}')
+        lines.append(f"# Load shot: {shot['id']}")
         lines.append(f'spec_{mod} = importlib.util.spec_from_file_location("{mod}", "{path}")')
-        lines.append(f'{mod} = importlib.util.module_from_spec(spec_{mod})')
-        lines.append(f'spec_{mod}.loader.exec_module({mod})')
+        lines.append(f"{mod} = importlib.util.module_from_spec(spec_{mod})")
+        lines.append(f"spec_{mod}.loader.exec_module({mod})")
         lines.append("")
 
     lines.append("")
@@ -166,8 +168,8 @@ def generate_orchestrator(scene_dir: str, output_dir: str) -> dict:
     for shot in shots:
         mod = shot["module_name"]
         cls = shot["class_name"]
-        lines.append(f'        # Segment: {shot["id"]}')
-        lines.append(f'        {mod}.{cls}.construct(self)')
+        lines.append(f"        # Segment: {shot['id']}")
+        lines.append(f"        {mod}.{cls}.construct(self)")
         lines.append("")
 
     orchestrator_path = os.path.join(output_dir, "scene.py")
@@ -205,11 +207,11 @@ def generate_orchestrator(scene_dir: str, output_dir: str) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Generate composite-unified orchestrator scene.py and manifest.json.',
+        description="Generate composite-unified orchestrator scene.py and manifest.json.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument('scene_dir', help='Path to composite-unified scene directory')
-    parser.add_argument('tmp_output_dir', help='Temporary output directory for generated files')
+    parser.add_argument("scene_dir", help="Path to composite-unified scene directory")
+    parser.add_argument("tmp_output_dir", help="Temporary output directory for generated files")
     args = parser.parse_args()
 
     scene_dir = args.scene_dir

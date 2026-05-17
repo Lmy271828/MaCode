@@ -27,9 +27,7 @@ def test_load_defaults_engine_reads_project_yaml():
 def test_resolve_engine_manifest_wins(tmp_path):
     root = tmp_path / "repo"
     root.mkdir()
-    (root / "project.yaml").write_text(
-        "defaults:\n  engine: manimgl\n", encoding="utf-8"
-    )
+    (root / "project.yaml").write_text("defaults:\n  engine: manimgl\n", encoding="utf-8")
     scene = root / "scn"
     scene.mkdir()
     (scene / "manifest.json").write_text(
@@ -42,9 +40,7 @@ def test_resolve_engine_manifest_wins(tmp_path):
 def test_resolve_engine_py_no_engine_uses_defaults(tmp_path):
     root = tmp_path / "repo"
     root.mkdir()
-    (root / "project.yaml").write_text(
-        "defaults:\n  engine: manimgl\n", encoding="utf-8"
-    )
+    (root / "project.yaml").write_text("defaults:\n  engine: manimgl\n", encoding="utf-8")
     scene = root / "scn"
     scene.mkdir()
     (scene / "manifest.json").write_text(json.dumps({"duration": 1}), encoding="utf-8")
@@ -55,9 +51,7 @@ def test_resolve_engine_py_no_engine_uses_defaults(tmp_path):
 def test_resolve_engine_tsx_no_engine_is_motion_canvas(tmp_path):
     root = tmp_path / "repo"
     root.mkdir()
-    (root / "project.yaml").write_text(
-        "defaults:\n  engine: manimgl\n", encoding="utf-8"
-    )
+    (root / "project.yaml").write_text("defaults:\n  engine: manimgl\n", encoding="utf-8")
     scene = root / "scn"
     scene.mkdir()
     (scene / "manifest.json").write_text(json.dumps({"duration": 1}), encoding="utf-8")
@@ -68,15 +62,11 @@ def test_resolve_engine_tsx_no_engine_is_motion_canvas(tmp_path):
 def test_resolve_engine_from_manifest_empty_manifest_py(tmp_path):
     root = tmp_path / "repo"
     root.mkdir()
-    (root / "project.yaml").write_text(
-        "defaults:\n  engine: manim\n", encoding="utf-8"
-    )
+    (root / "project.yaml").write_text("defaults:\n  engine: manim\n", encoding="utf-8")
     scene = root / "scn"
     scene.mkdir()
     (scene / "scene.py").write_text("pass\n", encoding="utf-8")
-    assert (
-        resolve_engine_from_manifest({}, str(scene), str(root)) == "manim"
-    )
+    assert resolve_engine_from_manifest({}, str(scene), str(root)) == "manim"
 
 
 def test_find_project_root_from_nested_scene(tmp_path):
@@ -86,4 +76,3 @@ def test_find_project_root_from_nested_scene(tmp_path):
     nested = root / "scenes" / "01_a"
     nested.mkdir(parents=True)
     assert find_project_root(str(nested)) == str(root)
-

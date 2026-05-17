@@ -102,7 +102,9 @@ def test_write_state_to_path_preserves_extended_fields(tmp_path, monkeypatch):
 
     write_state_to_path(sp, "job", "running", cmd=["bash", "render.sh"], tool="render.sh")
     write_state_to_path(sp, "job", "running", pid=12345)
-    write_state_to_path(sp, "job", "completed", exit_code=0, outputs={"frames": 90}, duration_sec=5.0)
+    write_state_to_path(
+        sp, "job", "completed", exit_code=0, outputs={"frames": 90}, duration_sec=5.0
+    )
 
     with open(sp, encoding="utf-8") as f:
         data = json.load(f)

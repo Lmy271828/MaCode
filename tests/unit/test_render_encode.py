@@ -84,6 +84,7 @@ def test_run_batch_concat_failure_exits(tmp_path, monkeypatch):
 
     def fake_run(cmd, *a, **kw):
         if isinstance(cmd, list) and len(cmd) > 1 and "concat.sh" in str(cmd[1]):
+
             class R:
                 returncode = 1
 

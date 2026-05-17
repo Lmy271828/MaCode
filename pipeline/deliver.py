@@ -93,7 +93,9 @@ def get_engine_version(project_root: str, engine: str) -> str:
 def count_frames(frames_dir: str) -> int:
     if not os.path.isdir(frames_dir):
         return 0
-    return sum(1 for name in os.listdir(frames_dir) if name.startswith("frame_") and name.endswith(".png"))
+    return sum(
+        1 for name in os.listdir(frames_dir) if name.startswith("frame_") and name.endswith(".png")
+    )
 
 
 def main() -> int:
@@ -120,6 +122,7 @@ def main() -> int:
     # Copy file
     try:
         import shutil
+
         shutil.copy2(source_mp4, output_mp4)
     except OSError as e:
         print(f"[deliver] Error: copy failed: {e}", file=sys.stderr)

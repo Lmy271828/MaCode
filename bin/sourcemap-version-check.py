@@ -45,7 +45,9 @@ def get_manimce_version(project_root: Path) -> str | None:
     try:
         result = subprocess.run(
             [str(py), "-c", "import manim; print(manim.__version__)"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode == 0:
             return result.stdout.strip()
@@ -61,7 +63,9 @@ def get_manimgl_version(project_root: Path) -> str | None:
     try:
         result = subprocess.run(
             [str(py), "-c", "import manimlib; print(manimlib.__version__)"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode == 0:
             return result.stdout.strip()
@@ -74,7 +78,10 @@ def get_motion_canvas_version(project_root: Path) -> str | None:
     try:
         result = subprocess.run(
             ["node", "-e", 'console.log(require("@motion-canvas/core/package.json").version)'],
-            capture_output=True, text=True, timeout=10, cwd=str(project_root),
+            capture_output=True,
+            text=True,
+            timeout=10,
+            cwd=str(project_root),
         )
         if result.returncode == 0:
             return result.stdout.strip()
@@ -162,19 +169,28 @@ def main() -> int:
         # Default: check engines with installed sourcemaps
         engines_dir = project_root / "engines"
         if engines_dir.exists():
-            engines = sorted([
-                d.name for d in engines_dir.iterdir()
-                if d.is_dir() and (d / "sourcemap.json").exists()
-            ])
+            engines = sorted(
+                [
+                    d.name
+                    for d in engines_dir.iterdir()
+                    if d.is_dir() and (d / "sourcemap.json").exists()
+                ]
+            )
 
     results = [check_engine(e, project_root) for e in engines]
     drifted = [r for r in results if not r["match"]]
 
     if args.json:
-        print(json.dumps({
-            "drift_count": len(drifted),
-            "engines": results,
-        }, indent=2, ensure_ascii=False))
+        print(
+            json.dumps(
+                {
+                    "drift_count": len(drifted),
+                    "engines": results,
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
     else:
         print("=== SOURCEMAP Version Check ===")
         for r in results:

@@ -119,8 +119,12 @@ def prune_agent_logs(log_dir: str, dry_run: bool = False) -> int:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Clean up stalled task states (dead PIDs) under .agent/tmp.")
-    parser.add_argument("--dry-run", action="store_true", help="Show what would be cleaned without making changes")
+    parser = argparse.ArgumentParser(
+        description="Clean up stalled task states (dead PIDs) under .agent/tmp."
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Show what would be cleaned without making changes"
+    )
     parser.add_argument(
         "--logs",
         action="store_true",
@@ -146,7 +150,7 @@ def main():
     summary_parts = [f"{stalled} stalled state(s)"]
     if args.logs:
         summary_parts.append(f"log_deleted={log_deleted}")
-    print(f"\nSummary: " + ", ".join(summary_parts))
+    print("\nSummary: " + ", ".join(summary_parts))
     sys.exit(0)
 
 

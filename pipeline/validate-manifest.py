@@ -76,11 +76,17 @@ def validate(manifest_path: str) -> list:
                         if not base:
                             errors.append(f"overlays[{i}] missing required field: base_segment")
                         elif base not in segment_ids:
-                            errors.append(f"overlays[{i}] base_segment '{base}' not found in segments")
+                            errors.append(
+                                f"overlays[{i}] base_segment '{base}' not found in segments"
+                            )
                         if not fg:
-                            errors.append(f"overlays[{i}] missing required field: foreground_segment")
+                            errors.append(
+                                f"overlays[{i}] missing required field: foreground_segment"
+                            )
                         elif fg not in segment_ids:
-                            errors.append(f"overlays[{i}] foreground_segment '{fg}' not found in segments")
+                            errors.append(
+                                f"overlays[{i}] foreground_segment '{fg}' not found in segments"
+                            )
                         blend = ov.get("blend", "overlay")
                         if blend not in valid_blends:
                             errors.append(
@@ -139,7 +145,9 @@ def validate(manifest_path: str) -> list:
             else:
                 w, h = resolution
                 if not isinstance(w, int) or not isinstance(h, int) or w <= 0 or h <= 0:
-                    errors.append(f"resolution dimensions must be positive integers, got: {resolution}")
+                    errors.append(
+                        f"resolution dimensions must be positive integers, got: {resolution}"
+                    )
 
     return errors
 

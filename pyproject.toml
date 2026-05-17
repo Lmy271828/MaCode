@@ -51,6 +51,8 @@ ignore = [
 # Scripts that mutate sys.path before importing project modules
 "bin/**/*.py" = ["E402", "N806"]
 "tests/**/*.py" = ["E402", "N806"]
+# Pipeline entry scripts use hyphenated filenames (project convention)
+"pipeline/**/*.py" = ["E402", "N999"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

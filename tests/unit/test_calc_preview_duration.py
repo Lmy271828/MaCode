@@ -38,19 +38,23 @@ class TestGetDuration:
         assert calc_preview_duration.get_duration(path) == 5.0
 
     def test_explicit_duration_zero_fallback_to_segments(self):
-        path = _make_manifest({
-            "duration": 0,
-            "segments": [{"time_range": [0, 7.5]}],
-        })
+        path = _make_manifest(
+            {
+                "duration": 0,
+                "segments": [{"time_range": [0, 7.5]}],
+            }
+        )
         assert calc_preview_duration.get_duration(path) == 7.5
 
     def test_fallback_to_segments(self):
-        path = _make_manifest({
-            "segments": [
-                {"time_range": [0, 3.0]},
-                {"time_range": [3.0, 8.5]},
-            ],
-        })
+        path = _make_manifest(
+            {
+                "segments": [
+                    {"time_range": [0, 3.0]},
+                    {"time_range": [3.0, 8.5]},
+                ],
+            }
+        )
         assert calc_preview_duration.get_duration(path) == 8.5
 
     def test_no_duration_no_segments(self):
@@ -96,7 +100,8 @@ class TestMain:
     def test_cli_with_options(self, capsys):
         path = _make_manifest({"duration": 20.0})
         with mock.patch.object(
-            sys, "argv",
+            sys,
+            "argv",
             ["calc-preview-duration.py", path, "--threshold", "5", "--max-preview", "2"],
         ):
             calc_preview_duration.main()

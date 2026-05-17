@@ -42,7 +42,6 @@ def check_scene_signals(scene_dir: Path) -> dict:
     result = {
         "pause": (scene_dir / "pause").exists(),
         "abort": (scene_dir / "abort").exists(),
-
         "reject": (scene_dir / "reject").exists(),
         "human_override": None,
         "frame_feedback": [],
@@ -74,9 +73,9 @@ def main():
         description="Check human-intervention signals.",
         usage="%(prog)s [--scene <name>] [--global]",
         epilog="Examples:\n"
-               "  %(prog)s                    # Check all signals\n"
-               "  %(prog)s --scene 01_test    # Check specific scene\n"
-               "  %(prog)s --global           # Check only global signals",
+        "  %(prog)s                    # Check all signals\n"
+        "  %(prog)s --scene 01_test    # Check specific scene\n"
+        "  %(prog)s --global           # Check only global signals",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--scene", help="Check signals for a specific scene")

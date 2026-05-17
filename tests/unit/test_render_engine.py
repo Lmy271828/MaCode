@@ -66,7 +66,7 @@ def test_engine_invocation_passes_scene_file_for_bash_engine(tmp_path, monkeypat
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
-    result = engine.run(ctx)
+    engine.run(ctx)
     # Last call must contain "macode-run" and the engine.sh path + scene file
     last = invoked[-1]
     assert any("macode-run" in str(p) for p in last)

@@ -53,9 +53,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
-        write_progress_to_path(
-            args.progress_file, args.phase, args.status, message=args.message
-        )
+        write_progress_to_path(args.progress_file, args.phase, args.status, message=args.message)
     except OSError as exc:
         print(
             f"progress-write: failed to write {args.progress_file}: {exc}",

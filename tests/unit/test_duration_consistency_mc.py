@@ -23,7 +23,7 @@ class TestDurationConsistencyMC:
                 "engine": "motion_canvas",
                 "segments": [
                     {"id": "intro", "time_range": [0.0, 2.5], "line_start": 1, "line_end": 15}
-                ]
+                ],
             }
             with open(os.path.join(scene_dir, "manifest.json"), "w") as f:
                 json.dump(manifest, f)
@@ -46,7 +46,7 @@ class TestDurationConsistencyMC:
                 "engine": "motion_canvas",
                 "segments": [
                     {"id": "intro", "time_range": [0.0, 1.0], "line_start": 1, "line_end": 15}
-                ]
+                ],
             }
             with open(os.path.join(scene_dir, "manifest.json"), "w") as f:
                 json.dump(manifest, f)
@@ -70,7 +70,7 @@ class TestDurationConsistencyMC:
                 "engine": "motion_canvas",
                 "segments": [
                     {"id": "intro", "time_range": [0.0, 1.0], "line_start": 1, "line_end": 15}
-                ]
+                ],
             }
             with open(os.path.join(scene_dir, "manifest.json"), "w") as f:
                 json.dump(manifest, f)

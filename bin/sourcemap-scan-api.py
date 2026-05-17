@@ -59,11 +59,13 @@ def scan_adapter_layer(engine: str, project_root: Path, whitelist_ids: set) -> l
             # Check if any whitelist id references this path
             referenced = any(rel in lid.lower() or lid.lower() in rel for lid in whitelist_ids)
             if not referenced:
-                candidates.append({
-                    "type": "adapter_file",
-                    "path": f"engines/{engine}/src/{rel}",
-                    "suggested_id": f"ADAPTER_{rel.replace('/', '_').replace('.', '_').upper()}",
-                })
+                candidates.append(
+                    {
+                        "type": "adapter_file",
+                        "path": f"engines/{engine}/src/{rel}",
+                        "suggested_id": f"ADAPTER_{rel.replace('/', '_').replace('.', '_').upper()}",
+                    }
+                )
     return candidates
 
 
@@ -127,10 +129,14 @@ except Exception as e:
     print(json.dumps({"error": str(e)}))
 """
     import subprocess
+
     try:
         result = subprocess.run(
             [str(py), "-c", script, engine],
-            capture_output=True, text=True, timeout=30, cwd=str(project_root),
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=str(project_root),
         )
         if result.returncode == 0:
             data = json.loads(result.stdout)
@@ -142,15 +148,20 @@ except Exception as e:
                         continue
                     seen_names.add(name)
                     # Check if name or a close variant is in whitelist
-                    covered = any(name.lower() in lid.lower() or lid.lower() in name.lower() for lid in whitelist_ids)
+                    covered = any(
+                        name.lower() in lid.lower() or lid.lower() in name.lower()
+                        for lid in whitelist_ids
+                    )
                     if not covered:
-                        candidates.append({
-                            "type": "public_api",
-                            "kind": item["kind"],
-                            "name": name,
-                            "module": item["module"],
-                            "file": item["file"],
-                        })
+                        candidates.append(
+                            {
+                                "type": "public_api",
+                                "kind": item["kind"],
+                                "name": name,
+                                "module": item["module"],
+                                "file": item["file"],
+                            }
+                        )
     except Exception:
         pass
 
@@ -180,13 +191,18 @@ def scan_js_exports(engine: str, project_root: Path, whitelist_ids: set) -> list
                     sym = sym.strip().split(" as ")[-1].strip()
                     if not sym:
                         continue
-                    covered = any(sym.lower() in lid.lower() or lid.lower() in sym.lower() for lid in whitelist_ids)
+                    covered = any(
+                        sym.lower() in lid.lower() or lid.lower() in sym.lower()
+                        for lid in whitelist_ids
+                    )
                     if not covered and len(sym) > 2:
-                        candidates.append({
-                            "type": "js_export",
-                            "package": pkg,
-                            "name": sym,
-                        })
+                        candidates.append(
+                            {
+                                "type": "js_export",
+                                "package": pkg,
+                                "name": sym,
+                            }
+                        )
         except Exception:
             pass
     return candidates
@@ -209,7 +225,11 @@ def main() -> int:
         engines_dir = project_root / "engines"
         if engines_dir.exists():
             engines = sorted(
-                [d.name for d in engines_dir.iterdir() if d.is_dir() and (d / "sourcemap.json").is_file()]
+                [
+                    d.name
+                    for d in engines_dir.iterdir()
+                    if d.is_dir() and (d / "sourcemap.json").is_file()
+                ]
             )
     elif args.engine:
         engines = [args.engine]
@@ -217,7 +237,11 @@ def main() -> int:
         engines_dir = project_root / "engines"
         if engines_dir.exists():
             engines = sorted(
-                [d.name for d in engines_dir.iterdir() if d.is_dir() and (d / "sourcemap.json").is_file()]
+                [
+                    d.name
+                    for d in engines_dir.iterdir()
+                    if d.is_dir() and (d / "sourcemap.json").is_file()
+                ]
             )
 
     all_results = []
@@ -239,18 +263,26 @@ def main() -> int:
                 seen.add(key)
                 unique.append(c)
 
-        all_results.append({
-            "engine": engine,
-            "whitelist_count": len(whitelist_ids),
-            "candidates": unique,
-        })
+        all_results.append(
+            {
+                "engine": engine,
+                "whitelist_count": len(whitelist_ids),
+                "candidates": unique,
+            }
+        )
         total_candidates += len(unique)
 
     if args.json:
-        print(json.dumps({
-            "total_candidates": total_candidates,
-            "engines": all_results,
-        }, indent=2, ensure_ascii=False))
+        print(
+            json.dumps(
+                {
+                    "total_candidates": total_candidates,
+                    "engines": all_results,
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
     else:
         print("=== SOURCEMAP API Scan ===")
         for r in all_results:
@@ -260,9 +292,13 @@ def main() -> int:
                 continue
             for c in r["candidates"][:15]:  # Limit output
                 if c["type"] == "adapter_file":
-                    print(f"  ~ Adapter file not in WHITELIST: {c['path']} (suggest: {c['suggested_id']})")
+                    print(
+                        f"  ~ Adapter file not in WHITELIST: {c['path']} (suggest: {c['suggested_id']})"
+                    )
                 elif c["type"] == "public_api":
-                    print(f"  ~ Public {c['kind']}: {c['name']} in {c['module']} (file: {c['file']})")
+                    print(
+                        f"  ~ Public {c['kind']}: {c['name']} in {c['module']} (file: {c['file']})"
+                    )
                 elif c["type"] == "js_export":
                     print(f"  ~ JS export: {c['name']} from {c['package']}")
             if len(r["candidates"]) > 15:

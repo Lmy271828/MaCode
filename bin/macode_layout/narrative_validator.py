@@ -64,9 +64,7 @@ def validate_stage_order(
     reqs = st.get("requires", [])
     missing = [r for r in reqs if r not in played]
     if missing:
-        raise StageOrderError(
-            f"Stage '{stage_id}' requires stages {missing} to be played first."
-        )
+        raise StageOrderError(f"Stage '{stage_id}' requires stages {missing} to be played first.")
 
 
 def validate_primary_zone_visual_timing(

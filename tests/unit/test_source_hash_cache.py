@@ -11,16 +11,16 @@ import os
 import sys
 import tempfile
 
-import pytest
-
 PIPELINE_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "pipeline")
 sys.path.insert(0, PIPELINE_DIR)
 
-from _render.engine import _compute_source_hash, _check_source_hash, _write_source_hash
+from _render.engine import _check_source_hash, _compute_source_hash, _write_source_hash
 from _render.validate import RenderContext
 
 
-def _make_ctx(scene_dir: str, scene_file: str, output_dir: str, engine_mode: str = "batch") -> RenderContext:
+def _make_ctx(
+    scene_dir: str, scene_file: str, output_dir: str, engine_mode: str = "batch"
+) -> RenderContext:
     return RenderContext(
         scene_dir=scene_dir,
         scene_name="test_scene",

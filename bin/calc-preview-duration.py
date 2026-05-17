@@ -53,9 +53,7 @@ def get_duration(manifest_path: str) -> float:
     return max_end
 
 
-def calc_preview_duration(
-    manifest_path: str, threshold: float, max_preview: float
-) -> float:
+def calc_preview_duration(manifest_path: str, threshold: float, max_preview: float) -> float:
     """Calculate preview duration based on total length."""
     total = get_duration(manifest_path)
     if total > threshold:

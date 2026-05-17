@@ -63,20 +63,25 @@ class TestCopilotFeedback:
             os.makedirs(frames_dir)
             open(os.path.join(frames_dir, "frame_0001.png"), "w").close()
 
-            with mock.patch("sys.stdin", stdin), \
-                    mock.patch("termios.tcgetattr", return_value={"old": True}), \
-                    mock.patch("tty.setcbreak"), \
-                    mock.patch("termios.tcsetattr"), \
-                    mock.patch("select.select", side_effect=[
+            with (
+                mock.patch("sys.stdin", stdin),
+                mock.patch("termios.tcgetattr", return_value={"old": True}),
+                mock.patch("tty.setcbreak"),
+                mock.patch("termios.tcsetattr"),
+                mock.patch(
+                    "select.select",
+                    side_effect=[
                         ([stdin], [], []),
                         ([], [], []),
-                    ]), \
-                    mock.patch("os.kill", side_effect=[None, None, ProcessLookupError]), \
-                    mock.patch.object(
-                        sys,
-                        "argv",
-                        ["copilot-feedback.py", "watch", "test_scene", "--pid", "99999"],
-                    ):
+                    ],
+                ),
+                mock.patch("os.kill", side_effect=[None, None, ProcessLookupError]),
+                mock.patch.object(
+                    sys,
+                    "argv",
+                    ["copilot-feedback.py", "watch", "test_scene", "--pid", "99999"],
+                ),
+            ):
                 copilot_feedback.main()
 
             with open(".agent/signals/frame_feedback.jsonl", encoding="utf-8") as f:
@@ -92,19 +97,23 @@ class TestCopilotFeedback:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             monkeypatch.chdir(tmpdir)
-            os.makedirs(os.path.join(tmpdir, ".agent", "tmp", "test_scene", "frames"), exist_ok=True)
+            os.makedirs(
+                os.path.join(tmpdir, ".agent", "tmp", "test_scene", "frames"), exist_ok=True
+            )
 
-            with mock.patch("sys.stdin", stdin), \
-                    mock.patch("termios.tcgetattr", return_value={"old": True}), \
-                    mock.patch("tty.setcbreak"), \
-                    mock.patch("termios.tcsetattr"), \
-                    mock.patch("select.select", return_value=([], [], [])), \
-                    mock.patch("os.kill", side_effect=ProcessLookupError), \
-                    mock.patch.object(
-                        sys,
-                        "argv",
-                        ["copilot-feedback.py", "watch", "test_scene", "--pid", "99999"],
-                    ):
+            with (
+                mock.patch("sys.stdin", stdin),
+                mock.patch("termios.tcgetattr", return_value={"old": True}),
+                mock.patch("tty.setcbreak"),
+                mock.patch("termios.tcsetattr"),
+                mock.patch("select.select", return_value=([], [], [])),
+                mock.patch("os.kill", side_effect=ProcessLookupError),
+                mock.patch.object(
+                    sys,
+                    "argv",
+                    ["copilot-feedback.py", "watch", "test_scene", "--pid", "99999"],
+                ),
+            ):
                 copilot_feedback.main()
 
             assert not os.path.isfile(".agent/signals/frame_feedback.jsonl")
@@ -125,20 +134,25 @@ class TestCopilotFeedback:
             for i in range(5):
                 open(os.path.join(frames_dir, f"frame_{i:04d}.png"), "w").close()
 
-            with mock.patch("sys.stdin", stdin), \
-                    mock.patch("termios.tcgetattr", return_value={"old": True}), \
-                    mock.patch("tty.setcbreak"), \
-                    mock.patch("termios.tcsetattr"), \
-                    mock.patch("select.select", side_effect=[
+            with (
+                mock.patch("sys.stdin", stdin),
+                mock.patch("termios.tcgetattr", return_value={"old": True}),
+                mock.patch("tty.setcbreak"),
+                mock.patch("termios.tcsetattr"),
+                mock.patch(
+                    "select.select",
+                    side_effect=[
                         ([stdin], [], []),
                         ([], [], []),
-                    ]), \
-                    mock.patch("os.kill", side_effect=[None, None, ProcessLookupError]), \
-                    mock.patch.object(
-                        sys,
-                        "argv",
-                        ["copilot-feedback.py", "watch", "test_scene", "--pid", "99999"],
-                    ):
+                    ],
+                ),
+                mock.patch("os.kill", side_effect=[None, None, ProcessLookupError]),
+                mock.patch.object(
+                    sys,
+                    "argv",
+                    ["copilot-feedback.py", "watch", "test_scene", "--pid", "99999"],
+                ),
+            ):
                 copilot_feedback.main()
 
             with open(".agent/signals/frame_feedback.jsonl", encoding="utf-8") as f:

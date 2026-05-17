@@ -56,9 +56,7 @@ def write_manifest_atomic(manifest_path: str, data: dict) -> None:
     raw += "\n"
 
     manifest = Path(manifest_path)
-    fd, tmp_path = tempfile.mkstemp(
-        dir=manifest.parent, prefix=f".{manifest.name}.", suffix=".tmp"
-    )
+    fd, tmp_path = tempfile.mkstemp(dir=manifest.parent, prefix=f".{manifest.name}.", suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(raw)
@@ -71,6 +69,7 @@ def write_manifest_atomic(manifest_path: str, data: dict) -> None:
 def backup_manifest(manifest_path: str, backup_path: str) -> None:
     """Create a backup copy of manifest."""
     import shutil
+
     shutil.copy2(manifest_path, backup_path)
 
 
@@ -82,9 +81,7 @@ def restore_manifest(manifest_path: str, backup_path: str) -> None:
         sys.exit(1)
     # Atomic restore: copy backup to tmp, then replace
     manifest = Path(manifest_path)
-    fd, tmp_path = tempfile.mkstemp(
-        dir=manifest.parent, prefix=f".{manifest.name}.", suffix=".tmp"
-    )
+    fd, tmp_path = tempfile.mkstemp(dir=manifest.parent, prefix=f".{manifest.name}.", suffix=".tmp")
     try:
         with open(backup_path, "rb") as src, os.fdopen(fd, "wb") as dst:
             dst.write(src.read())
@@ -102,9 +99,7 @@ def main():
     parser.add_argument("manifest", help="Path to manifest.json")
     parser.add_argument("--duration", type=float, help="Override duration")
     parser.add_argument("--fps", type=int, help="Override fps")
-    parser.add_argument(
-        "--resolution", help="Override resolution as WxH, e.g. 640x360"
-    )
+    parser.add_argument("--resolution", help="Override resolution as WxH, e.g. 640x360")
     parser.add_argument("--backup", help="Create backup at path before patching")
     parser.add_argument("--restore", help="Restore from backup path")
     args = parser.parse_args()

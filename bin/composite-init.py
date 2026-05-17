@@ -17,14 +17,14 @@ import os
 import sys
 
 TEMPLATES = {
-    'intro-main-outro': [
-        {'id': 'intro', 'duration': 2.0},
-        {'id': 'main', 'duration': 5.0},
-        {'id': 'outro', 'duration': 1.0},
+    "intro-main-outro": [
+        {"id": "intro", "duration": 2.0},
+        {"id": "main", "duration": 5.0},
+        {"id": "outro", "duration": 1.0},
     ],
-    'problem-solution': [
-        {'id': 'problem', 'duration': 3.0},
-        {'id': 'solution', 'duration': 5.0},
+    "problem-solution": [
+        {"id": "problem", "duration": 3.0},
+        {"id": "solution", "duration": 5.0},
     ],
 }
 
@@ -42,7 +42,7 @@ class {class_name}(MaCodeScene):
         self.wait({duration})
 '''
 
-DEFAULT_SCENE_TSX = '''import {{makeScene2D}} from '@motion-canvas/2d';
+DEFAULT_SCENE_TSX = """import {{makeScene2D}} from '@motion-canvas/2d';
 import {{Txt}} from '@motion-canvas/2d';
 import {{createRef}} from '@motion-canvas/core';
 
@@ -64,35 +64,36 @@ export default makeScene2D(function* (view) {{
   yield* text().scale(1.2, 0.5);
   yield* text().scale(1, 0.5);
 }});
-'''
+"""
+
 
 def make_manifest(engine: str, duration: float) -> dict:
-    if engine == 'motion_canvas':
+    if engine == "motion_canvas":
         return {
-            'engine': 'motion_canvas',
-            'template': 'makeScene2D',
-            'duration': duration,
-            'fps': 30,
-            'resolution': [1920, 1080],
-            'assets': [],
-            'dependencies': [],
+            "engine": "motion_canvas",
+            "template": "makeScene2D",
+            "duration": duration,
+            "fps": 30,
+            "resolution": [1920, 1080],
+            "assets": [],
+            "dependencies": [],
         }
     return {
-        'duration': duration,
-        'fps': 30,
-        'resolution': [1920, 1080],
-        'engine': 'manimgl',
+        "duration": duration,
+        "fps": 30,
+        "resolution": [1920, 1080],
+        "engine": "manimgl",
     }
 
 
 def sanitize_class_name(seg_id: str) -> str:
     """将 segment id 转为合法的 Python 类名。"""
-    return ''.join(word.capitalize() for word in seg_id.split('_')) + 'Scene'
+    return "".join(word.capitalize() for word in seg_id.split("_")) + "Scene"
 
 
 def write_file(path: str, content: str):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, 'w', encoding='utf-8') as f:
+    with open(path, "w", encoding="utf-8") as f:
         f.write(content)
 
 
@@ -100,13 +101,17 @@ def compact_json(data: dict) -> str:
     """输出 compact JSON，但将短列表强制保持单行以兼容 sed 校验。"""
     raw = json.dumps(data, indent=2, ensure_ascii=False)
     import re
+
     raw = re.sub(r'"resolution": \[\s*(\d+),\s*(\d+)\s*\]', r'"resolution": [\1, \2]', raw)
     return raw
 
 
-def init_scene(scene_path: str, template_name: str, engine: str = 'manimgl'):
+def init_scene(scene_path: str, template_name: str, engine: str = "manimgl"):
     if template_name not in TEMPLATES:
-        print(f"Error: unknown template '{template_name}'. Available: {', '.join(TEMPLATES.keys())}", file=sys.stderr)
+        print(
+            f"Error: unknown template '{template_name}'. Available: {', '.join(TEMPLATES.keys())}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     scene_path = os.path.normpath(scene_path)
@@ -118,52 +123,52 @@ def init_scene(scene_path: str, template_name: str, engine: str = 'manimgl'):
     segments = TEMPLATES[template_name]
 
     # 选择模板
-    if engine == 'motion_canvas':
+    if engine == "motion_canvas":
         scene_template = DEFAULT_SCENE_TSX
-        scene_ext = '.tsx'
+        scene_ext = ".tsx"
     else:
         scene_template = DEFAULT_SCENE_PY
-        scene_ext = '.py'
+        scene_ext = ".py"
 
     # 创建 shots 子目录和 segment 文件
     manifest_segments = []
     for i, seg in enumerate(segments):
-        seg_id = seg['id']
-        duration = seg['duration']
-        seg_dir = f'shots/{i:02d}_{seg_id}'
+        seg_id = seg["id"]
+        duration = seg["duration"]
+        seg_dir = f"shots/{i:02d}_{seg_id}"
         full_seg_dir = os.path.join(scene_path, seg_dir)
 
         # segment manifest
         seg_manifest = make_manifest(engine, duration)
-        write_file(os.path.join(full_seg_dir, 'manifest.json'),
-                   compact_json(seg_manifest) + '\n')
+        write_file(os.path.join(full_seg_dir, "manifest.json"), compact_json(seg_manifest) + "\n")
 
         # segment scene file
         scene_content = scene_template.format(
             seg_id=seg_id,
             scene_name=scene_name,
             class_name=sanitize_class_name(seg_id),
-            duration=duration - 0.5
+            duration=duration - 0.5,
         )
-        write_file(os.path.join(full_seg_dir, f'scene{scene_ext}'), scene_content)
+        write_file(os.path.join(full_seg_dir, f"scene{scene_ext}"), scene_content)
 
-        manifest_segments.append({
-            'id': seg_id,
-            'scene_dir': seg_dir,
-        })
+        manifest_segments.append(
+            {
+                "id": seg_id,
+                "scene_dir": seg_dir,
+            }
+        )
 
     # 创建顶层 composite manifest
     composite_manifest = {
-        'type': 'composite-unified',
-        'segments': manifest_segments,
-        'meta': {
-            'title': scene_name,
-            'author': 'agent',
-            'tags': [template_name],
-        }
+        "type": "composite-unified",
+        "segments": manifest_segments,
+        "meta": {
+            "title": scene_name,
+            "author": "agent",
+            "tags": [template_name],
+        },
     }
-    write_file(os.path.join(scene_path, 'manifest.json'),
-               compact_json(composite_manifest) + '\n')
+    write_file(os.path.join(scene_path, "manifest.json"), compact_json(composite_manifest) + "\n")
 
     print(f"[init] Created composite scene: {scene_path}")
     print(f"[init] Template: {template_name}")
@@ -175,32 +180,32 @@ def init_scene(scene_path: str, template_name: str, engine: str = 'manimgl'):
 
 def add_segment(scene_path: str, seg_id: str, after: str = None, engine: str = None):
     scene_path = os.path.normpath(scene_path)
-    manifest_path = os.path.join(scene_path, 'manifest.json')
+    manifest_path = os.path.join(scene_path, "manifest.json")
 
     if not os.path.isfile(manifest_path):
         print(f"Error: manifest.json not found: {manifest_path}", file=sys.stderr)
         sys.exit(1)
 
-    with open(manifest_path, encoding='utf-8') as f:
+    with open(manifest_path, encoding="utf-8") as f:
         manifest = json.load(f)
 
-    if manifest.get('type') != 'composite-unified':
+    if manifest.get("type") != "composite-unified":
         print("Error: manifest type must be composite or composite-unified", file=sys.stderr)
         sys.exit(1)
 
     # 自动检测 engine：从第一个 segment 的 manifest 读取
     if engine is None:
-        first_seg = manifest.get('segments', [{}])[0]
-        first_dir = first_seg.get('scene_dir') or first_seg.get('shot', '')
-        first_manifest = os.path.join(scene_path, first_dir, 'manifest.json')
+        first_seg = manifest.get("segments", [{}])[0]
+        first_dir = first_seg.get("scene_dir") or first_seg.get("shot", "")
+        first_manifest = os.path.join(scene_path, first_dir, "manifest.json")
         if os.path.isfile(first_manifest):
             with open(first_manifest) as f:
                 first_data = json.load(f)
-            engine = first_data.get('engine', 'manimgl')
+            engine = first_data.get("engine", "manimgl")
         else:
-            engine = 'manimgl'
+            engine = "manimgl"
 
-    existing_ids = [s['id'] for s in manifest.get('segments', [])]
+    existing_ids = [s["id"] for s in manifest.get("segments", [])]
     if seg_id in existing_ids:
         print(f"Error: segment '{seg_id}' already exists", file=sys.stderr)
         sys.exit(1)
@@ -215,7 +220,7 @@ def add_segment(scene_path: str, seg_id: str, after: str = None, engine: str = N
         insert_idx = len(existing_ids)
 
     # 生成 segment 目录名
-    seg_dir = f'shots/{insert_idx:02d}_{seg_id}'
+    seg_dir = f"shots/{insert_idx:02d}_{seg_id}"
     full_seg_dir = os.path.join(scene_path, seg_dir)
     if os.path.exists(full_seg_dir):
         print(f"Error: segment directory already exists: {full_seg_dir}", file=sys.stderr)
@@ -224,37 +229,39 @@ def add_segment(scene_path: str, seg_id: str, after: str = None, engine: str = N
     # 创建 segment 文件
     duration = 3.0
     seg_manifest = make_manifest(engine, duration)
-    write_file(os.path.join(full_seg_dir, 'manifest.json'),
-               compact_json(seg_manifest) + '\n')
+    write_file(os.path.join(full_seg_dir, "manifest.json"), compact_json(seg_manifest) + "\n")
 
-    if engine == 'motion_canvas':
+    if engine == "motion_canvas":
         scene_content = DEFAULT_SCENE_TSX.format(
             seg_id=seg_id,
             scene_name=os.path.basename(scene_path),
             class_name=sanitize_class_name(seg_id),
-            duration=duration - 0.5
+            duration=duration - 0.5,
         )
-        scene_ext = '.tsx'
+        scene_ext = ".tsx"
     else:
         scene_content = DEFAULT_SCENE_PY.format(
             seg_id=seg_id,
             scene_name=os.path.basename(scene_path),
             class_name=sanitize_class_name(seg_id),
-            duration=duration - 0.5
+            duration=duration - 0.5,
         )
-        scene_ext = '.py'
-    write_file(os.path.join(full_seg_dir, f'scene{scene_ext}'), scene_content)
+        scene_ext = ".py"
+    write_file(os.path.join(full_seg_dir, f"scene{scene_ext}"), scene_content)
 
     # 更新 composite manifest
-    manifest['segments'].insert(insert_idx, {
-        'id': seg_id,
-        'scene_dir': seg_dir,
-    })
+    manifest["segments"].insert(
+        insert_idx,
+        {
+            "id": seg_id,
+            "scene_dir": seg_dir,
+        },
+    )
 
     # 重新编号后续 shots 目录（如果需要）
     # 简化处理：不移动现有目录，只更新 manifest 中的 scene_dir
 
-    write_file(manifest_path, compact_json(manifest) + '\n')
+    write_file(manifest_path, compact_json(manifest) + "\n")
 
     print(f"[add-segment] Added segment '{seg_id}' at index {insert_idx}")
     print(f"[add-segment] Directory: {full_seg_dir}")
@@ -262,37 +269,45 @@ def add_segment(scene_path: str, seg_id: str, after: str = None, engine: str = N
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Composite scene scaffolding tool.',
-        epilog='Templates: intro-main-outro, problem-solution. '
-               'Creates manifest.json, shot directories and starter scene files.',
+        description="Composite scene scaffolding tool.",
+        epilog="Templates: intro-main-outro, problem-solution. "
+        "Creates manifest.json, shot directories and starter scene files.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    init_parser = subparsers.add_parser('init', help='Create composite scene from template')
-    init_parser.add_argument('scene_path', help='Path to new scene directory')
-    init_parser.add_argument('--template', required=True, choices=list(TEMPLATES.keys()),
-                             help='Template name')
-    init_parser.add_argument('--engine', default='manimgl', choices=['manimgl', 'motion_canvas'],
-                             help='Engine for segments (default: manimgl)')
+    init_parser = subparsers.add_parser("init", help="Create composite scene from template")
+    init_parser.add_argument("scene_path", help="Path to new scene directory")
+    init_parser.add_argument(
+        "--template", required=True, choices=list(TEMPLATES.keys()), help="Template name"
+    )
+    init_parser.add_argument(
+        "--engine",
+        default="manimgl",
+        choices=["manimgl", "motion_canvas"],
+        help="Engine for segments (default: manimgl)",
+    )
 
-    add_parser = subparsers.add_parser('add-segment', help='Add segment to existing composite')
-    add_parser.add_argument('scene_path', help='Path to composite scene directory')
-    add_parser.add_argument('seg_id', help='New segment ID')
-    add_parser.add_argument('--after', help='Insert after existing segment ID')
-    add_parser.add_argument('--engine', choices=['manimgl', 'motion_canvas'],
-                             help='Engine for new segment (auto-detected if omitted)')
+    add_parser = subparsers.add_parser("add-segment", help="Add segment to existing composite")
+    add_parser.add_argument("scene_path", help="Path to composite scene directory")
+    add_parser.add_argument("seg_id", help="New segment ID")
+    add_parser.add_argument("--after", help="Insert after existing segment ID")
+    add_parser.add_argument(
+        "--engine",
+        choices=["manimgl", "motion_canvas"],
+        help="Engine for new segment (auto-detected if omitted)",
+    )
 
     args = parser.parse_args()
 
-    if args.command == 'init':
+    if args.command == "init":
         init_scene(args.scene_path, args.template, args.engine)
-    elif args.command == 'add-segment':
+    elif args.command == "add-segment":
         add_segment(args.scene_path, args.seg_id, args.after, args.engine)
     else:
         parser.print_help()
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

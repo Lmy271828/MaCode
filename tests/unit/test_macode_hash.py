@@ -24,7 +24,9 @@ PROJECT_ROOT = os.path.dirname(BIN_DIR)
 
 # Load macode-hash as a module (no .py extension)
 loader = importlib.machinery.SourceFileLoader("macode_hash", os.path.join(BIN_DIR, "macode-hash"))
-macode_hash = importlib.util.module_from_spec(importlib.util.spec_from_loader("macode_hash", loader))
+macode_hash = importlib.util.module_from_spec(
+    importlib.util.spec_from_loader("macode_hash", loader)
+)
 sys.modules["macode_hash"] = macode_hash
 loader.exec_module(macode_hash)
 

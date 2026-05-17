@@ -38,39 +38,37 @@ def _cleanup(path: str):
 
 class TestZoneOverflow:
     def test_overflow_detected(self):
-        code = '''
+        code = """
 class MyScene(ZoneScene):
     def construct(self):
         self.place(Text("A", font_size=48), "title")
         self.place(Text("B", font_size=48), "title")
         self.place(Text("C", font_size=48), "title")
-'''
+"""
         path = _make_scene(code)
         try:
             profile = check_layout.load_layout_profile("lecture_3zones")
             report = check_layout.check(path, profile)
             assert report["status"] == "fail"
             assert any(
-                i["type"] == "zone_overflow" and i["zone"] == "title"
-                for i in report["issues"]
+                i["type"] == "zone_overflow" and i["zone"] == "title" for i in report["issues"]
             )
         finally:
             _cleanup(path)
 
     def test_no_overflow_when_under_limit(self):
-        code = '''
+        code = """
 class MyScene(ZoneScene):
     def construct(self):
         self.place(Text("A", font_size=48), "title")
         self.place(Text("B", font_size=48), "title")
-'''
+"""
         path = _make_scene(code)
         try:
             profile = check_layout.load_layout_profile("lecture_3zones")
             report = check_layout.check(path, profile)
             assert not any(
-                i["type"] == "zone_overflow" and i["zone"] == "title"
-                for i in report["issues"]
+                i["type"] == "zone_overflow" and i["zone"] == "title" for i in report["issues"]
             )
         finally:
             _cleanup(path)
@@ -79,37 +77,35 @@ class MyScene(ZoneScene):
 class TestObjectOverlap:
     def test_overlap_detected_for_large_objects(self):
         # Use large rectangles that exceed 50% occupancy when placed together
-        code = '''
+        code = """
 class MyScene(ZoneScene):
     def construct(self):
         self.place(Rectangle(width=1200, height=60), "title")
         self.place(Rectangle(width=1200, height=60), "title")
-'''
+"""
         path = _make_scene(code)
         try:
             profile = check_layout.load_layout_profile("lecture_3zones")
             report = check_layout.check(path, profile)
             assert any(
-                i["type"] == "object_overlap" and i["zone"] == "title"
-                for i in report["issues"]
+                i["type"] == "object_overlap" and i["zone"] == "title" for i in report["issues"]
             )
         finally:
             _cleanup(path)
 
     def test_no_overlap_for_small_objects(self):
-        code = '''
+        code = """
 class MyScene(ZoneScene):
     def construct(self):
         self.place(Dot(), "title")
         self.place(Dot(), "title")
-'''
+"""
         path = _make_scene(code)
         try:
             profile = check_layout.load_layout_profile("lecture_3zones")
             report = check_layout.check(path, profile)
             assert not any(
-                i["type"] == "object_overlap" and i["zone"] == "title"
-                for i in report["issues"]
+                i["type"] == "object_overlap" and i["zone"] == "title" for i in report["issues"]
             )
         finally:
             _cleanup(path)
@@ -118,45 +114,41 @@ class MyScene(ZoneScene):
 class TestWhitespace:
     def test_insufficient_whitespace(self):
         # Large rectangle fills nearly all of the small title zone
-        code = '''
+        code = """
 class MyScene(ZoneScene):
     def construct(self):
         self.place(Rectangle(width=1800, height=110), "title")
-'''
+"""
         path = _make_scene(code)
         try:
             profile = check_layout.load_layout_profile("lecture_3zones")
             report = check_layout.check(path, profile)
-            assert any(
-                i["type"] == "insufficient_whitespace" for i in report["issues"]
-            )
+            assert any(i["type"] == "insufficient_whitespace" for i in report["issues"])
         finally:
             _cleanup(path)
 
     def test_sufficient_whitespace(self):
-        code = '''
+        code = """
 class MyScene(ZoneScene):
     def construct(self):
         self.place(Text("A", font_size=24), "title")
-'''
+"""
         path = _make_scene(code)
         try:
             profile = check_layout.load_layout_profile("lecture_3zones")
             report = check_layout.check(path, profile)
-            assert not any(
-                i["type"] == "insufficient_whitespace" for i in report["issues"]
-            )
+            assert not any(i["type"] == "insufficient_whitespace" for i in report["issues"])
         finally:
             _cleanup(path)
 
 
 class TestFontSize:
     def test_title_font_size_too_small(self):
-        code = '''
+        code = """
 class MyScene(ZoneScene):
     def construct(self):
         self.place(Text("Title", font_size=30), "title")
-'''
+"""
         path = _make_scene(code)
         try:
             profile = check_layout.load_layout_profile("lecture_3zones")
@@ -169,11 +161,11 @@ class MyScene(ZoneScene):
             _cleanup(path)
 
     def test_body_font_size_ok(self):
-        code = '''
+        code = """
 class MyScene(ZoneScene):
     def construct(self):
         self.place(Text("Caption", font_size=30), "caption")
-'''
+"""
         path = _make_scene(code)
         try:
             profile = check_layout.load_layout_profile("lecture_3zones")
@@ -186,11 +178,11 @@ class MyScene(ZoneScene):
             _cleanup(path)
 
     def test_body_font_size_too_small(self):
-        code = '''
+        code = """
 class MyScene(ZoneScene):
     def construct(self):
         self.place(Text("Caption", font_size=20), "caption")
-'''
+"""
         path = _make_scene(code)
         try:
             profile = check_layout.load_layout_profile("lecture_3zones")

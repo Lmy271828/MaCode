@@ -10,7 +10,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 
 # When project.yaml has no defaults.engine (should not happen in a healthy repo).
 _FALLBACK_DEFAULT: str = "manimgl"
@@ -65,9 +64,7 @@ def load_defaults_engine(project_root: str) -> str:
     return _FALLBACK_DEFAULT
 
 
-def resolve_engine_from_manifest(
-    manifest: dict | None, scene_dir: str, project_root: str
-) -> str:
+def resolve_engine_from_manifest(manifest: dict | None, scene_dir: str, project_root: str) -> str:
     """Resolve engine when manifest dict is already loaded."""
     if manifest:
         eng = manifest.get("engine")
@@ -99,7 +96,11 @@ def resolve_engine(scene_dir: str, project_root: str | None = None) -> str:
 
 def _main() -> None:
     p = argparse.ArgumentParser(description="Print resolved engine name for a scene directory.")
-    p.add_argument("--scene-dir", required=True, help="Scene directory (with optional manifest.json / scene.py / scene.tsx)")
+    p.add_argument(
+        "--scene-dir",
+        required=True,
+        help="Scene directory (with optional manifest.json / scene.py / scene.tsx)",
+    )
     p.add_argument(
         "--project-root",
         default=None,

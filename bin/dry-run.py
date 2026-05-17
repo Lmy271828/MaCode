@@ -50,12 +50,29 @@ LATEX_FUNC_NAMES = {
 }
 
 VIDEO_FILTERS = {
-    "fade", "scale", "crop", "fps", "format", "trim", "setpts",
-    "hstack", "vstack", "overlay", "concat", "colorbalance",
+    "fade",
+    "scale",
+    "crop",
+    "fps",
+    "format",
+    "trim",
+    "setpts",
+    "hstack",
+    "vstack",
+    "overlay",
+    "concat",
+    "colorbalance",
 }
 AUDIO_FILTERS = {
-    "afade", "atrim", "asetpts", "amix", "volume", "aecho",
-    "afreqshift", "allpass", "amerge",
+    "afade",
+    "atrim",
+    "asetpts",
+    "amix",
+    "volume",
+    "aecho",
+    "afreqshift",
+    "allpass",
+    "amerge",
 }
 
 
@@ -72,6 +89,7 @@ def _classify_filter_type(fstr: str) -> str:
         return "af"
     return "vf"
 
+
 FFMPEG_TESTSRC = "testsrc=duration=1:size=320x240:rate=1"
 FFMPEG_ANULLSRC = "anullsrc=duration=1:sample_rate=44100"
 
@@ -80,17 +98,18 @@ FFMPEG_ANULLSRC = "anullsrc=duration=1:sample_rate=44100"
 # Environment bootstrap
 # ------------------------------------------------------------------
 
+
 def _ensure_manim_importable():
     """Ensure the venv site-packages are on sys.path if manim is not already importable."""
     try:
         import manim  # noqa: F401
+
         return
     except ImportError:
         pass
 
     venv_site = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        ".venv", "lib"
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".venv", "lib"
     )
     if os.path.isdir(venv_site):
         for entry in os.listdir(venv_site):
@@ -110,6 +129,7 @@ def _add_engine_src(engine: str):
 # ------------------------------------------------------------------
 # 1. Python syntax check
 # ------------------------------------------------------------------
+
 
 def check_python_syntax(path: str) -> tuple[bool, list[str]]:
     """Run py_compile on *path* and any companion ``.py`` files in the same directory."""
@@ -135,6 +155,7 @@ def check_python_syntax(path: str) -> tuple[bool, list[str]]:
 # ------------------------------------------------------------------
 # 2. Import check
 # ------------------------------------------------------------------
+
 
 def _resolve_module_name(node: ast.Import | ast.ImportFrom) -> list[str]:
     """Return the list of module names to check for an import node."""
@@ -206,6 +227,7 @@ def check_imports(path: str, engine: str) -> tuple[bool, list[tuple[str, int, st
 # ------------------------------------------------------------------
 # 3. LaTeX dry-run
 # ------------------------------------------------------------------
+
 
 def _safe_ast_eval(node: ast.AST):
     """Safely evaluate an AST node containing literals."""
@@ -384,6 +406,7 @@ def check_latex(path: str, engine: str) -> tuple[bool, int, int, list[tuple[str,
 # 4. ffmpeg dry-run
 # ------------------------------------------------------------------
 
+
 def _scan_ffmpeg_strings(path: str) -> list[tuple[str, int, str, str]]:
     """Scan a file for ffmpeg filter strings.
 
@@ -421,7 +444,7 @@ def _scan_ffmpeg_strings(path: str) -> list[tuple[str, int, str, str]]:
 
         # Skip lines that look like assertions or print statements for
         # heuristic matching, to avoid validating test substrings.
-        if re.search(r'\bassert\b|\bprint\(|\blogger\.|\blogger\b', line):
+        if re.search(r"\bassert\b|\bprint\(|\blogger\.|\blogger\b", line):
             continue
 
         for m in filter_expr_re.finditer(line):
@@ -436,28 +459,40 @@ def _parse_filter_complex_inputs_outputs(fgraph: str) -> tuple[set[str], set[str
     """Parse a filter_complex string and return (input_labels, output_labels)."""
     inputs: set[str] = set()
     outputs: set[str] = set()
-    segment_re = re.compile(r'^((?:\[.*?\])+)(.+?)((?:\[.*?\])+)$')
+    segment_re = re.compile(r"^((?:\[.*?\])+)(.+?)((?:\[.*?\])+)$")
     for segment in fgraph.split(";"):
         segment = segment.strip()
         if not segment:
             continue
         m = segment_re.match(segment)
         if m:
-            inputs.update(re.findall(r'\[(.*?)\]', m.group(1)))
-            outputs.update(re.findall(r'\[(.*?)\]', m.group(3)))
+            inputs.update(re.findall(r"\[(.*?)\]", m.group(1)))
+            outputs.update(re.findall(r"\[(.*?)\]", m.group(3)))
         else:
             # No explicit output labels – all labels are inputs.
-            inputs.update(re.findall(r'\[(.*?)\]', segment))
+            inputs.update(re.findall(r"\[(.*?)\]", segment))
     return inputs, outputs
 
 
 def _make_test_video(path: str) -> bool:
     """Create a 1-second test video with both video and audio streams."""
     cmd = [
-        "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-        "-f", "lavfi", "-i", FFMPEG_TESTSRC,
-        "-f", "lavfi", "-i", FFMPEG_ANULLSRC,
-        "-shortest", "-pix_fmt", "yuv420p",
+        "ffmpeg",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        FFMPEG_TESTSRC,
+        "-f",
+        "lavfi",
+        "-i",
+        FFMPEG_ANULLSRC,
+        "-shortest",
+        "-pix_fmt",
+        "yuv420p",
         path,
     ]
     try:
@@ -467,24 +502,40 @@ def _make_test_video(path: str) -> bool:
         return False
 
 
-def _build_ffmpeg_validate_cmd(filter_str: str, ftype: str, test_video: str | None) -> list[str] | None:
+def _build_ffmpeg_validate_cmd(
+    filter_str: str, ftype: str, test_video: str | None
+) -> list[str] | None:
     """Build an ffmpeg command that validates *filter_str* for 1 frame."""
     base = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y"]
 
     if ftype == "vf":
         return base + [
-            "-f", "lavfi", "-i", FFMPEG_TESTSRC,
-            "-vf", filter_str,
-            "-frames:v", "1",
-            "-f", "null", "-",
+            "-f",
+            "lavfi",
+            "-i",
+            FFMPEG_TESTSRC,
+            "-vf",
+            filter_str,
+            "-frames:v",
+            "1",
+            "-f",
+            "null",
+            "-",
         ]
 
     if ftype == "af":
         return base + [
-            "-f", "lavfi", "-i", FFMPEG_ANULLSRC,
-            "-af", filter_str,
-            "-frames:a", "1",
-            "-f", "null", "-",
+            "-f",
+            "lavfi",
+            "-i",
+            FFMPEG_ANULLSRC,
+            "-af",
+            filter_str,
+            "-frames:a",
+            "1",
+            "-f",
+            "null",
+            "-",
         ]
 
     if ftype == "filter_complex":
@@ -492,7 +543,7 @@ def _build_ffmpeg_validate_cmd(filter_str: str, ftype: str, test_video: str | No
         cmd = base[:]
         max_idx = -1
         for lbl in inputs:
-            m = re.match(r'(\d+):', lbl)
+            m = re.match(r"(\d+):", lbl)
             if m:
                 max_idx = max(max_idx, int(m.group(1)))
             else:
@@ -564,9 +615,7 @@ def check_ffmpeg(path: str) -> tuple[bool, str, list[tuple[str, int, str, str]]]
             if key in seen:
                 continue
             seen.add(key)
-            cmd = _build_ffmpeg_validate_cmd(
-                fstr, ftype, test_video if has_test_video else None
-            )
+            cmd = _build_ffmpeg_validate_cmd(fstr, ftype, test_video if has_test_video else None)
             if cmd is None:
                 continue
             try:
@@ -599,24 +648,29 @@ def check_ffmpeg(path: str) -> tuple[bool, str, list[tuple[str, int, str, str]]]
 # Main
 # ------------------------------------------------------------------
 
+
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description='Fast pre-render validation: syntax, imports, LaTeX and ffmpeg filters.',
-        epilog='Exit codes: 0=PASS, 1=FAIL, 2=argument or file error.',
+        description="Fast pre-render validation: syntax, imports, LaTeX and ffmpeg filters.",
+        epilog="Exit codes: 0=PASS, 1=FAIL, 2=argument or file error.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument('scene_file', help='Path to scene source file')
-    parser.add_argument('engine', nargs='?', default=None,
-                        help='Engine name (default: inferred from scene file extension)')
+    parser.add_argument("scene_file", help="Path to scene source file")
+    parser.add_argument(
+        "engine",
+        nargs="?",
+        default=None,
+        help="Engine name (default: inferred from scene file extension)",
+    )
     args = parser.parse_args()
 
     scene_file = args.scene_file
     engine = args.engine
     if engine is None:
-        if scene_file.endswith('.tsx'):
-            engine = 'motion_canvas'
+        if scene_file.endswith(".tsx"):
+            engine = "motion_canvas"
         else:
-            engine = 'manimgl'
+            engine = "manimgl"
 
     if not os.path.exists(scene_file):
         print(f"FATAL: Scene file not found: {scene_file}", file=sys.stderr)

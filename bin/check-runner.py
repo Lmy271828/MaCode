@@ -30,55 +30,55 @@ def fail(msg: str):
 
 
 def load_registry(engine: str) -> dict:
-    registry_path = os.path.join('engines', engine, 'check-registry.json')
+    registry_path = os.path.join("engines", engine, "check-registry.json")
     if not os.path.exists(registry_path):
         fail(f"Error: check-registry.json not found for engine '{engine}': {registry_path}")
-    with open(registry_path, encoding='utf-8') as f:
+    with open(registry_path, encoding="utf-8") as f:
         return json.load(f)
 
 
 def discover_checks(registry: dict, layer: str = None, check_ids: list = None) -> list:
     """Return list of (check_id, check_config) tuples to run."""
     results = []
-    layers = registry.get('layers', {})
+    layers = registry.get("layers", {})
 
     if layer:
         layer_data = layers.get(layer, {})
-        checks = layer_data.get('checks', {})
+        checks = layer_data.get("checks", {})
         for cid, cfg in checks.items():
             if check_ids is None or cid in check_ids:
                 results.append((cid, cfg))
         return results
 
     for _lname, ldata in layers.items():
-        checks = ldata.get('checks', {})
+        checks = ldata.get("checks", {})
         for cid, cfg in checks.items():
             if check_ids is not None and cid not in check_ids:
                 continue
-            if check_ids is None and not cfg.get('enabled_by_default', False):
+            if check_ids is None and not cfg.get("enabled_by_default", False):
                 continue
             results.append((cid, cfg))
     return results
 
 
 def run_check(check_id: str, cfg: dict, scene_dir: str) -> dict:
-    script = cfg.get('script', '')
+    script = cfg.get("script", "")
     if not script:
         return {
-            'check': check_id,
-            'status': 'error',
-            'issues': [{'type': 'config_error', 'message': 'Missing script path in registry'}],
+            "check": check_id,
+            "status": "error",
+            "issues": [{"type": "config_error", "message": "Missing script path in registry"}],
         }
 
     script_path = os.path.join(os.path.dirname(_SCRIPT_DIR), script)
     if not os.path.exists(script_path):
         return {
-            'check': check_id,
-            'status': 'error',
-            'issues': [{'type': 'script_missing', 'message': f'Script not found: {script_path}'}],
+            "check": check_id,
+            "status": "error",
+            "issues": [{"type": "script_missing", "message": f"Script not found: {script_path}"}],
         }
 
-    cmd = [sys.executable, script_path, '--scene-dir', scene_dir]
+    cmd = [sys.executable, script_path, "--scene-dir", scene_dir]
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
         if result.returncode in (0, 1):
@@ -86,21 +86,23 @@ def run_check(check_id: str, cfg: dict, scene_dir: str) -> dict:
             return json.loads(result.stdout)
         else:
             return {
-                'check': check_id,
-                'status': 'error',
-                'issues': [{'type': 'check_failed', 'message': result.stderr.strip() or 'Unknown error'}],
+                "check": check_id,
+                "status": "error",
+                "issues": [
+                    {"type": "check_failed", "message": result.stderr.strip() or "Unknown error"}
+                ],
             }
     except json.JSONDecodeError as e:
         return {
-            'check': check_id,
-            'status': 'error',
-            'issues': [{'type': 'invalid_json', 'message': f'Failed to parse check output: {e}'}],
+            "check": check_id,
+            "status": "error",
+            "issues": [{"type": "invalid_json", "message": f"Failed to parse check output: {e}"}],
         }
     except Exception as e:
         return {
-            'check': check_id,
-            'status': 'error',
-            'issues': [{'type': 'exception', 'message': str(e)}],
+            "check": check_id,
+            "status": "error",
+            "issues": [{"type": "exception", "message": str(e)}],
         }
 
 
@@ -108,32 +110,38 @@ def merge_segment_results(check_results: list) -> list:
     """Merge per-check segment results into unified segment records."""
     by_id = {}
     for cr in check_results:
-        for seg in cr.get('segments', []):
-            seg_id = seg['id']
+        for seg in cr.get("segments", []):
+            seg_id = seg["id"]
             if seg_id not in by_id:
                 by_id[seg_id] = {
-                    'id': seg_id,
-                    'status': 'pass',
-                    'issues': [],
+                    "id": seg_id,
+                    "status": "pass",
+                    "issues": [],
                 }
-            by_id[seg_id]['issues'].extend(seg.get('issues', []))
-            if seg.get('status') != 'pass':
-                by_id[seg_id]['status'] = seg['status']
+            by_id[seg_id]["issues"].extend(seg.get("issues", []))
+            if seg.get("status") != "pass":
+                by_id[seg_id]["status"] = seg["status"]
     return list(by_id.values())
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Registry-based check runner for MaCode scenes.',
+        description="Registry-based check runner for MaCode scenes.",
     )
-    parser.add_argument('scene_dir', help='Path to scene directory')
-    parser.add_argument('--layer', choices=['layer1', 'layer2', 'layer3'],
-                        help='Run only checks from this layer')
-    parser.add_argument('--check', action='append', dest='check_ids',
-                        help='Run specific check(s) by ID')
-    parser.add_argument('--engine', help='Override engine (default from manifest)')
-    parser.add_argument('--format', choices=['unified', 'raw'], default='unified',
-                        help='Output format: unified (merged) or raw (per-check)')
+    parser.add_argument("scene_dir", help="Path to scene directory")
+    parser.add_argument(
+        "--layer", choices=["layer1", "layer2", "layer3"], help="Run only checks from this layer"
+    )
+    parser.add_argument(
+        "--check", action="append", dest="check_ids", help="Run specific check(s) by ID"
+    )
+    parser.add_argument("--engine", help="Override engine (default from manifest)")
+    parser.add_argument(
+        "--format",
+        choices=["unified", "raw"],
+        default="unified",
+        help="Output format: unified (merged) or raw (per-check)",
+    )
     args = parser.parse_args()
 
     scene_dir = args.scene_dir
@@ -154,49 +162,49 @@ def main():
         report = run_check(cid, cfg, scene_dir)
         check_results.append(report)
 
-    if args.format == 'raw':
+    if args.format == "raw":
         output = {
-            'scene': os.path.basename(os.path.normpath(scene_dir)),
-            'engine': engine,
-            'timestamp': datetime.now(UTC).isoformat(),
-            'checks': check_results,
+            "scene": os.path.basename(os.path.normpath(scene_dir)),
+            "engine": engine,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "checks": check_results,
         }
     else:
         merged_segments = merge_segment_results(check_results)
-        global_status = 'pass'
+        global_status = "pass"
         for seg in merged_segments:
-            if seg['status'] != 'pass':
-                global_status = seg['status']
+            if seg["status"] != "pass":
+                global_status = seg["status"]
                 break
         output = {
-            'scene': os.path.basename(os.path.normpath(scene_dir)),
-            'engine': engine,
-            'timestamp': datetime.now(UTC).isoformat(),
-            'status': global_status,
-            'segments': merged_segments,
+            "scene": os.path.basename(os.path.normpath(scene_dir)),
+            "engine": engine,
+            "timestamp": datetime.now(UTC).isoformat(),
+            "status": global_status,
+            "segments": merged_segments,
         }
 
     # Severity summary for actionable exit codes
     has_error = False
     has_warning = False
     for cr in check_results:
-        for seg in cr.get('segments', []):
-            for issue in seg.get('issues', []):
-                sev = issue.get('severity', 'warning')
-                if sev == 'error':
+        for seg in cr.get("segments", []):
+            for issue in seg.get("issues", []):
+                sev = issue.get("severity", "warning")
+                if sev == "error":
                     has_error = True
-                elif sev == 'warning':
+                elif sev == "warning":
                     has_warning = True
-        for issue in cr.get('issues', []):
-            sev = issue.get('severity', 'warning')
-            if sev == 'error':
+        for issue in cr.get("issues", []):
+            sev = issue.get("severity", "warning")
+            if sev == "error":
                 has_error = True
-            elif sev == 'warning':
+            elif sev == "warning":
                 has_warning = True
 
-    output['severity_summary'] = {
-        'error': has_error,
-        'warning': has_warning,
+    output["severity_summary"] = {
+        "error": has_error,
+        "warning": has_warning,
     }
 
     print(json.dumps(output, indent=2, ensure_ascii=False))
@@ -210,5 +218,5 @@ def main():
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

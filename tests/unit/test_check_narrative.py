@@ -38,14 +38,14 @@ def _cleanup(path: str):
 class TestStageOrder:
     def test_correct_order_passes(self):
         # Enough visual objects to keep ratio <= 0.4
-        code = '''
+        code = """
 class MyScene(NarrativeScene):
     def construct(self):
         self.stage("statement", Text("D"))
         self.stage("visual", Circle(), Axes(), Square(), Rectangle(), Dot())
         self.stage("annotation", MathTex("x"))
         self.stage("example", Circle())
-'''
+"""
         path = _make_scene(code)
         try:
             profile = check_narrative.load_narrative_profile("definition_reveal")
@@ -55,12 +55,12 @@ class MyScene(NarrativeScene):
             _cleanup(path)
 
     def test_wrong_order_fails(self):
-        code = '''
+        code = """
 class MyScene(NarrativeScene):
     def construct(self):
         self.stage("visual", Circle(), Axes(), Square(), Rectangle(), Dot())
         self.stage("statement", Text("D"))
-'''
+"""
         path = _make_scene(code)
         try:
             profile = check_narrative.load_narrative_profile("definition_reveal")
@@ -71,12 +71,12 @@ class MyScene(NarrativeScene):
             _cleanup(path)
 
     def test_must_be_first_violation(self):
-        code = '''
+        code = """
 class MyScene(NarrativeScene):
     def construct(self):
         self.stage("visual", Circle(), Axes(), Square(), Rectangle(), Dot())
         self.stage("statement", Text("D"))
-'''
+"""
         path = _make_scene(code)
         try:
             profile = check_narrative.load_narrative_profile("definition_reveal")
@@ -91,36 +91,32 @@ class MyScene(NarrativeScene):
 
 class TestPrimaryZoneVisualTimeout:
     def test_visual_within_timeout_passes(self):
-        code = '''
+        code = """
 class MyScene(NarrativeScene):
     def construct(self):
         self.stage("statement", Text("Definition"), run_time=1.0)
         self.stage("visual", Circle(), run_time=1.0)
-'''
+"""
         path = _make_scene(code)
         try:
             profile = check_narrative.load_narrative_profile("definition_reveal")
             report = check_narrative.check(path, profile)
-            assert not any(
-                i["type"] == "primary_zone_visual_timeout" for i in report["issues"]
-            )
+            assert not any(i["type"] == "primary_zone_visual_timeout" for i in report["issues"])
         finally:
             _cleanup(path)
 
     def test_visual_timeout_fails(self):
-        code = '''
+        code = """
 class MyScene(NarrativeScene):
     def construct(self):
         self.stage("statement", Text("Definition"), run_time=4.0)
         self.stage("visual", Circle(), run_time=1.0)
-'''
+"""
         path = _make_scene(code)
         try:
             profile = check_narrative.load_narrative_profile("definition_reveal")
             report = check_narrative.check(path, profile)
-            assert any(
-                i["type"] == "primary_zone_visual_timeout" for i in report["issues"]
-            )
+            assert any(i["type"] == "primary_zone_visual_timeout" for i in report["issues"])
         finally:
             _cleanup(path)
 
@@ -143,12 +139,12 @@ class MyScene(NarrativeScene):
             _cleanup(path)
 
     def test_text_length_ok(self):
-        code = '''
+        code = """
 class MyScene(NarrativeScene):
     def construct(self):
         self.stage("statement", Text("Short"))
         self.stage("visual", Circle(), Axes(), Square(), Rectangle(), Dot())
-'''
+"""
         path = _make_scene(code)
         try:
             profile = check_narrative.load_narrative_profile("definition_reveal")
@@ -158,39 +154,35 @@ class MyScene(NarrativeScene):
             _cleanup(path)
 
     def test_text_visual_ratio_exceeded(self):
-        code = '''
+        code = """
 class MyScene(NarrativeScene):
     def construct(self):
         self.stage("statement", Text("ABCDEFGHIJ"))
         self.stage("annotation", Text("KLMNOPQRST"))
         self.stage("visual", Circle())
-'''
+"""
         path = _make_scene(code)
         try:
             profile = check_narrative.load_narrative_profile("definition_reveal")
             report = check_narrative.check(path, profile)
             # 20 text chars / 1 visual = 20.0 > 0.4
-            assert any(
-                i["type"] == "text_visual_ratio_exceeded" for i in report["issues"]
-            )
+            assert any(i["type"] == "text_visual_ratio_exceeded" for i in report["issues"])
         finally:
             _cleanup(path)
 
     def test_text_visual_ratio_ok(self):
-        code = '''
+        code = """
 class MyScene(NarrativeScene):
     def construct(self):
         self.stage("statement", Text("S"))
         self.stage("visual", Circle(), Axes(), Square(), Rectangle(), Dot())
         self.stage("visual", Rectangle())
-'''
+"""
         path = _make_scene(code)
         try:
             profile = check_narrative.load_narrative_profile("definition_reveal")
             report = check_narrative.check(path, profile)
             # 1 text char / 6 visual = 0.17 <= 0.4
-            assert not any(
-                i["type"] == "text_visual_ratio_exceeded" for i in report["issues"]
-            )
+            assert not any(i["type"] == "text_visual_ratio_exceeded" for i in report["issues"])
         finally:
             _cleanup(path)

@@ -147,7 +147,9 @@ def _merge_outputs(
 def _validate_orchestration(data: dict[str, Any]) -> None:
     ver = data.get("version")
     if ver != ORCHESTRATION_VERSION:
-        raise ValueError(f"orchestration state version must be {ORCHESTRATION_VERSION!r}, got {ver!r}")
+        raise ValueError(
+            f"orchestration state version must be {ORCHESTRATION_VERSION!r}, got {ver!r}"
+        )
     if not isinstance(data.get("taskId"), str):
         raise TypeError("taskId must be str")
     st = data.get("status")
@@ -174,7 +176,9 @@ def _validate_orchestration(data: dict[str, Any]) -> None:
     ):
         val = data.get(key)
         if val is not None and not isinstance(val, expected_type):
-            raise TypeError(f"{key} must be {getattr(expected_type, '__name__', expected_type)} or omitted")
+            raise TypeError(
+                f"{key} must be {getattr(expected_type, '__name__', expected_type)} or omitted"
+            )
 
 
 def write_state_to_path(

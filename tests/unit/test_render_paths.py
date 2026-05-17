@@ -61,9 +61,7 @@ def test_find_free_port_raises_when_exhausted():
 
 def test_scene_inherits_from_zoned(tmp_path):
     src = tmp_path / "scene.py"
-    src.write_text(
-        "from manim import Scene\nclass Foo(ZoneScene):\n    pass\n", encoding="utf-8"
-    )
+    src.write_text("from manim import Scene\nclass Foo(ZoneScene):\n    pass\n", encoding="utf-8")
     assert _paths.scene_inherits_from(str(src), ["ZoneScene"]) is True
 
 

@@ -2,6 +2,7 @@
 """bin/fix-strategies/align_segment_comment.py
 Fix strategy for segment consistency issues between manifest and source comments.
 """
+
 from __future__ import annotations
 
 import json
@@ -62,7 +63,11 @@ def _add_to_manifest(issue: dict, scene_dir: str) -> dict:
     segments = manifest.get("segments", [])
     # Avoid duplicate
     if any(s.get("id") == seg_id for s in segments):
-        return {"success": False, "patches": [], "message": f"Segment '{seg_id}' already in manifest"}
+        return {
+            "success": False,
+            "patches": [],
+            "message": f"Segment '{seg_id}' already in manifest",
+        }
 
     segments.append(new_seg)
     manifest["segments"] = segments
@@ -98,18 +103,9 @@ def _add_source_comment(issue: dict, scene_dir: str) -> dict:
     lines = issue.get("suggested_lines", [0, 0])
     insert_line = lines[0] if lines else 1
 
-    with open(scene_file, encoding="utf-8") as f:
-        content = f.read()
-
-    old_lines = content.splitlines(keepends=True)
-    # Insert comment before the suggested line (1-indexed)
-    idx = max(0, insert_line - 1)
     comment = f"# SEGMENT: {seg_id}\n"
     if scene_file.endswith(".tsx"):
         comment = f"// SEGMENT: {seg_id}\n"
-
-    new_lines = old_lines[:idx] + [comment] + old_lines[idx:]
-    new_text = "".join(new_lines)
 
     patch = {
         "file": scene_file,

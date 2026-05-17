@@ -10,6 +10,7 @@
     1 - 发现违规导入（API_GATE_VIOLATIONS）
     2 - 参数错误或文件缺失 / JSON 不可用
 """
+
 from __future__ import annotations
 
 import argparse
@@ -34,7 +35,9 @@ def infer_engine_from_sourcemap_json_path(abs_path: str) -> str | None:
     return parts[0]
 
 
-def load_blacklist(sourcemap_json_path: str, engine_cli: str | None = None) -> list[tuple[str, str | None, str, str]]:
+def load_blacklist(
+    sourcemap_json_path: str, engine_cli: str | None = None
+) -> list[tuple[str, str | None, str, str]]:
     """Parse sourcemap JSON; fail-closed (exit 2) on missing/malformed data.
 
     Returns list of (path_raw, module, reason, entry_id).
@@ -114,30 +117,32 @@ def _path_to_module(path_raw):
     >>> _path_to_module('.agent/tmp/')
     None
     """
-    path = path_raw.strip().rstrip('/')
+    path = path_raw.strip().rstrip("/")
 
     # 跳过非代码路径
-    if (path.startswith('.') and not path.startswith('./')) or \
-       path.startswith('node_modules') or \
-       path.startswith('venv'):
+    if (
+        (path.startswith(".") and not path.startswith("./"))
+        or path.startswith("node_modules")
+        or path.startswith("venv")
+    ):
         return None
 
     # 动态路径：$(python -c "...")/foo/bar/ → 取尾部 → foo.bar
-    if '$(' in path:
+    if "$(" in path:
         # 取最后一个 ) 之后的部分
-        idx = path.rfind(')')
+        idx = path.rfind(")")
         if idx >= 0:
-            path = path[idx + 1:].lstrip('/')
+            path = path[idx + 1 :].lstrip("/")
         else:
-            path = path.lstrip('/')
+            path = path.lstrip("/")
 
     # 去掉多余的引号和括号
     path = path.strip('"').strip("'")
 
     # 路径分隔符 → 点号
-    module = path.replace('/', '.')
+    module = path.replace("/", ".")
 
-    if not module or module in ('.', '..'):
+    if not module or module in (".", ".."):
         return None
 
     return module
@@ -161,7 +166,7 @@ def _get_replacement_hint(entry_id: str, module: str) -> str | None:
 def _extract_pitfall_keywords(pitfall: str) -> list[str]:
     """Extract backtick-quoted snippets from a pitfall string."""
     # Match content inside `...`
-    return re.findall(r'`([^`]+)`', pitfall)
+    return re.findall(r"`([^`]+)`", pitfall)
 
 
 def _find_handwritten_pitfalls(code: str, redirects: list[dict]) -> list[dict]:
@@ -198,20 +203,24 @@ def check_python_imports(code, blacklist):
         #   PREFIX: import <module>...  /  from <module>... import ...
         #   SUBMOD: from <parent>.<module>... import ... / import <parent>.<module>
         escaped = re.escape(module)
-        prefix_rx = rf'\b(?:import\s+{escaped}\b|from\s+{escaped}(?:\.\S+)?\s+import\b)'
-        submod_rx = rf'\b(?:import\s+\S+\.{escaped}\b|from\s+\S+\.{escaped}(?:\.\S+)?\s+import\b)'
+        prefix_rx = rf"\b(?:import\s+{escaped}\b|from\s+{escaped}(?:\.\S+)?\s+import\b)"
+        submod_rx = rf"\b(?:import\s+\S+\.{escaped}\b|from\s+\S+\.{escaped}(?:\.\S+)?\s+import\b)"
         if re.search(prefix_rx, code) or re.search(submod_rx, code):
-            violations.append({
-                "module": module,
-                "raw_path": raw_path,
-                "reason": reason,
-                "id": entry_id,
-            })
+            violations.append(
+                {
+                    "module": module,
+                    "raw_path": raw_path,
+                    "reason": reason,
+                    "id": entry_id,
+                }
+            )
 
     return violations
 
 
-def check_js_imports(code: str, blacklist_entries: list[tuple[str, str | None, str, str]]) -> list[dict]:
+def check_js_imports(
+    code: str, blacklist_entries: list[tuple[str, str | None, str, str]]
+) -> list[dict]:
     """检查 TS/JS 场景源码是否包含 BLACKLIST 中的违规导入。"""
     violations = []
     imported = set()
@@ -223,16 +232,18 @@ def check_js_imports(code: str, blacklist_entries: list[tuple[str, str | None, s
     for pkg in imported:
         for raw_path, _module, reason, entry_id in blacklist_entries:
             # Strip backticks that may surround path_raw in SOURCEMAP markdown
-            clean = raw_path.strip().strip('`').strip()
+            clean = raw_path.strip().strip("`").strip()
             if not clean:
                 continue
             if pkg == clean or pkg.startswith(clean + "/"):
-                violations.append({
-                    "module": pkg,
-                    "raw_path": raw_path,
-                    "reason": reason,
-                    "id": entry_id,
-                })
+                violations.append(
+                    {
+                        "module": pkg,
+                        "raw_path": raw_path,
+                        "reason": reason,
+                        "id": entry_id,
+                    }
+                )
                 break
 
     return violations
@@ -240,16 +251,16 @@ def check_js_imports(code: str, blacklist_entries: list[tuple[str, str | None, s
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Static API gate using SOURCEMAP BLACKLIST. Blocks forbidden imports.',
-        epilog='Exit codes: 0=OK, 1=violations found, 2=argument or file error.',
+        description="Static API gate using SOURCEMAP BLACKLIST. Blocks forbidden imports.",
+        epilog="Exit codes: 0=OK, 1=violations found, 2=argument or file error.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument('scene_file', help='Path to scene source file (.py or .tsx)')
-    parser.add_argument('sourcemap_json', help='Path to engines/{engine}/sourcemap.json')
+    parser.add_argument("scene_file", help="Path to scene source file (.py or .tsx)")
+    parser.add_argument("sourcemap_json", help="Path to engines/{engine}/sourcemap.json")
     parser.add_argument(
-        '--engine',
+        "--engine",
         default=None,
-        help='Explicit engine id (must match path engines/<engine>/sourcemap.json when inferable)',
+        help="Explicit engine id (must match path engines/<engine>/sourcemap.json when inferable)",
     )
     args = parser.parse_args()
 
@@ -262,7 +273,7 @@ def main():
 
     # 读取场景源码
     try:
-        with open(scene_file, encoding='utf-8') as f:
+        with open(scene_file, encoding="utf-8") as f:
             code = f.read()
     except OSError as e:
         print(f"FATAL: Cannot read scene: {e}", file=sys.stderr)
@@ -272,7 +283,7 @@ def main():
     redirects = load_redirects(sourcemap_path)
     all_violations = []
 
-    is_js = scene_file.endswith(('.ts', '.tsx', '.js', '.mjs'))
+    is_js = scene_file.endswith((".ts", ".tsx", ".js", ".mjs"))
 
     # 1. BLACKLIST 导入检查
     if is_js:
@@ -287,9 +298,9 @@ def main():
         print("API_GATE_VIOLATIONS:")
         for v in all_violations:
             print(f"  - {v['module']} (pattern: {v['raw_path']})")
-            if v.get('reason'):
+            if v.get("reason"):
                 print(f"    reason: {v['reason']}")
-            hint = _get_replacement_hint(v.get('id', ''), v['module'])
+            hint = _get_replacement_hint(v.get("id", ""), v["module"])
             if hint:
                 print(f"    REPLACEMENT: {hint}")
 
@@ -298,8 +309,10 @@ def main():
             for p in pitfall_matches:
                 print(f"    - {p.get('pitfall')} -> {p.get('correct')}")
 
-        print(f"\nFix: consult {sourcemap_path} (BLACKLIST + REDIRECT in engines/*/sourcemap.json).",
-              file=sys.stderr)
+        print(
+            f"\nFix: consult {sourcemap_path} (BLACKLIST + REDIRECT in engines/*/sourcemap.json).",
+            file=sys.stderr,
+        )
         sys.exit(1)
     else:
         if pitfall_matches:

@@ -57,15 +57,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--tool", default="", help="Tool name (e.g. render.sh)")
     parser.add_argument(
-        "--outputs", default="", help='JSON string for outputs object (e.g. \'{"port":80}\')'
+        "--outputs", default="", help="JSON string for outputs object (e.g. '{\"port\":80}')"
     )
     parser.add_argument("--error", default="", help="Human-readable error message")
-    parser.add_argument(
-        "--started-at", default="", help="ISO 8601 start timestamp"
-    )
-    parser.add_argument(
-        "--ended-at", default="", help="ISO 8601 end timestamp"
-    )
+    parser.add_argument("--started-at", default="", help="ISO 8601 start timestamp")
+    parser.add_argument("--ended-at", default="", help="ISO 8601 end timestamp")
     parser.add_argument(
         "--duration", type=float, default=None, help="Wall-clock duration in seconds"
     )

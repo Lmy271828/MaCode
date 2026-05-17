@@ -62,8 +62,8 @@ if [[ -z "$SUITE" ]]; then
 fi
 
 # Validate suite
-if [[ "$SUITE" != "smoke" && "$SUITE" != "integration" ]]; then
-    echo "Error: unknown suite '$SUITE' (expected: smoke or integration)" >&2
+if [[ "$SUITE" != "smoke" && "$SUITE" != "integration" && "$SUITE" != "contract" ]]; then
+    echo "Error: unknown suite '$SUITE' (expected: smoke, integration, or contract)" >&2
     exit 1
 fi
 

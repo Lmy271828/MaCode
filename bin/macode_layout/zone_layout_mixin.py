@@ -47,9 +47,7 @@ class ZoneLayoutMixin:
         layouts_dir = self._macode_layouts_dir()
         path = layouts_dir / f"{profile}.json"
         if not path.exists():
-            raise ZoneNotFoundError(
-                f"Layout profile '{profile}.json' not found in {layouts_dir}"
-            )
+            raise ZoneNotFoundError(f"Layout profile '{profile}.json' not found in {layouts_dir}")
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
         self._layout = data
@@ -148,16 +146,18 @@ class ZoneLayoutMixin:
                 elif class_name == "Text":
                     obj_type = "text"
 
-                snapshot["objects"].append({
-                    "id": f"{getattr(mobj, 'name', class_name)}_d{depth}",
-                    "type": obj_type,
-                    "bbox": {
-                        "x": max(0.0, min(1.0, norm_x)),
-                        "y": max(0.0, min(1.0, norm_y)),
-                        "w": min(1.0, w / canvas_w),
-                        "h": min(1.0, h / canvas_h),
-                    },
-                })
+                snapshot["objects"].append(
+                    {
+                        "id": f"{getattr(mobj, 'name', class_name)}_d{depth}",
+                        "type": obj_type,
+                        "bbox": {
+                            "x": max(0.0, min(1.0, norm_x)),
+                            "y": max(0.0, min(1.0, norm_y)),
+                            "w": min(1.0, w / canvas_w),
+                            "h": min(1.0, h / canvas_h),
+                        },
+                    }
+                )
             for child in getattr(mobj, "submobjects", []):
                 traverse(child, depth + 1)
 

@@ -75,9 +75,7 @@ def _check_fuses(ctx: RenderContext) -> int:
     disk_bytes = 0
     tmp_dir = os.path.join(".agent", "tmp")
     if os.path.isdir(tmp_dir):
-        result = subprocess.run(
-            ["du", "-sb", tmp_dir], capture_output=True, text=True, check=False
-        )
+        result = subprocess.run(["du", "-sb", tmp_dir], capture_output=True, text=True, check=False)
         if result.returncode == 0:
             disk_bytes = int(result.stdout.strip().split()[0])
     if disk_bytes > FUSE_MAX_DISK_BYTES:

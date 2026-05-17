@@ -108,8 +108,18 @@ class TestMain:
     def test_cli_patch(self, capsys):
         path = _make_manifest({"duration": 10, "fps": 30})
         with mock.patch.object(
-            sys, "argv",
-            ["patch-manifest.py", path, "--duration", "3", "--fps", "10", "--resolution", "640x360"],
+            sys,
+            "argv",
+            [
+                "patch-manifest.py",
+                path,
+                "--duration",
+                "3",
+                "--fps",
+                "10",
+                "--resolution",
+                "640x360",
+            ],
         ):
             patch_manifest.main()
         data = _read_manifest(path)
@@ -123,14 +133,16 @@ class TestMain:
 
         # Patch with backup
         with mock.patch.object(
-            sys, "argv",
+            sys,
+            "argv",
             ["patch-manifest.py", path, "--backup", backup, "--duration", "3"],
         ):
             patch_manifest.main()
 
         # Restore
         with mock.patch.object(
-            sys, "argv",
+            sys,
+            "argv",
             ["patch-manifest.py", path, "--restore", backup],
         ):
             patch_manifest.main()
@@ -149,7 +161,8 @@ class TestMain:
     def test_cli_invalid_resolution(self):
         path = _make_manifest({"duration": 10})
         with mock.patch.object(
-            sys, "argv",
+            sys,
+            "argv",
             ["patch-manifest.py", path, "--resolution", "invalid"],
         ):
             with pytest.raises(SystemExit) as exc_info:

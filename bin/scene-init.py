@@ -28,7 +28,7 @@ class {class_name}(Scene):
         self.wait({wait_duration})
 '''
 
-DEFAULT_SCENE_TSX = '''import {{makeScene2D}} from '@motion-canvas/2d';
+DEFAULT_SCENE_TSX = """import {{makeScene2D}} from '@motion-canvas/2d';
 import {{Txt}} from '@motion-canvas/2d';
 import {{createRef}} from '@motion-canvas/core';
 
@@ -50,7 +50,7 @@ export default makeScene2D(function* (view) {{
   yield* text().scale(1.2, 0.5);
   yield* text().scale(1, 0.5);
 }});
-'''
+"""
 
 
 def make_manifest(engine: str, duration: float) -> dict:
@@ -76,7 +76,9 @@ def make_manifest(engine: str, duration: float) -> dict:
 
 def sanitize_class_name(name: str) -> str:
     """Convert a scene directory name to a valid Python class name."""
-    return "".join(word.capitalize() for word in name.replace("-", "_").split("_") if word) + "Scene"
+    return (
+        "".join(word.capitalize() for word in name.replace("-", "_").split("_") if word) + "Scene"
+    )
 
 
 def compact_json(data: dict) -> str:

@@ -18,6 +18,8 @@ _BIN_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 if _BIN_DIR not in sys.path:
     sys.path.insert(0, _BIN_DIR)
 from macode_state import write_progress, write_state  # noqa: E402
+
+
 def get_project_root() -> str:
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -35,9 +37,9 @@ def main():
         description="Render a composite-unified scene (orchestrator).",
         usage="%(prog)s <scene_dir> [options]",
         epilog="Examples:\n"
-               "  %(prog)s scenes/04_composite_unified_demo\n"
-               "  %(prog)s scenes/04_composite_unified_demo --fps 2 --duration 1\n"
-               "  %(prog)s scenes/04_composite_unified_demo --json",
+        "  %(prog)s scenes/04_composite_unified_demo\n"
+        "  %(prog)s scenes/04_composite_unified_demo --fps 2 --duration 1\n"
+        "  %(prog)s scenes/04_composite_unified_demo --json",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("scene_dir", help="Scene directory")
@@ -63,13 +65,16 @@ def main():
     print(f"[composite-unified] Generating orchestrator for '{scene_name}'...")
     result = subprocess.run(
         [python, os.path.join(project_root, "bin", "composite-unified.py"), scene_dir, unified_dir],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     if result.returncode != 0:
         print("[composite-unified] Orchestrator generation failed", file=sys.stderr)
         print(result.stderr, file=sys.stderr)
         write_state(scene_name, "failed", exit_code=1)
-        write_progress(scene_name, "composite_init", "failed", message="orchestrator generation failed")
+        write_progress(
+            scene_name, "composite_init", "failed", message="orchestrator generation failed"
+        )
         sys.exit(1)
     print(result.stdout.strip())
 
@@ -126,8 +131,16 @@ def main():
 
     # ── Deliver ───────────────────────────────────────
     subprocess.run(
-        [python, os.path.join(project_root, "pipeline", "deliver.py"), scene_name, os.path.join(".agent", "tmp", scene_name), os.path.join(project_root, "output")],
-        capture_output=True, text=True, check=False,
+        [
+            python,
+            os.path.join(project_root, "pipeline", "deliver.py"),
+            scene_name,
+            os.path.join(".agent", "tmp", scene_name),
+            os.path.join(project_root, "output"),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
     )
 
     # ── Output ────────────────────────────────────────
@@ -136,12 +149,17 @@ def main():
 
     if args.json:
         final_size = os.path.getsize(output_mp4) if os.path.isfile(output_mp4) else 0
-        print(json.dumps({
-            "scene": scene_name,
-            "type": "composite-unified",
-            "output": output_mp4,
-            "final_size_bytes": final_size,
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "scene": scene_name,
+                    "type": "composite-unified",
+                    "output": output_mp4,
+                    "final_size_bytes": final_size,
+                },
+                indent=2,
+            )
+        )
     else:
         print(f"Done: {output_mp4}")
 

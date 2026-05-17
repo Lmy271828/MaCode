@@ -17,7 +17,9 @@ import tempfile
 BIN_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "bin")
 
 # Load shared utilities directly from the extracted module
-spec = importlib.util.spec_from_file_location("checks._utils", os.path.join(BIN_DIR, "checks", "_utils.py"))
+spec = importlib.util.spec_from_file_location(
+    "checks._utils", os.path.join(BIN_DIR, "checks", "_utils.py")
+)
 checks_utils = importlib.util.module_from_spec(spec)
 sys.modules["checks._utils"] = checks_utils
 spec.loader.exec_module(checks_utils)

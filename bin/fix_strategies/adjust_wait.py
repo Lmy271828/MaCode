@@ -4,6 +4,7 @@ Fix strategy for duration_mismatch issues.
 
 Adjusts self.wait() duration or yield* wait times to match declared duration.
 """
+
 from __future__ import annotations
 
 import os
@@ -95,13 +96,15 @@ def _fix_python(lines: list[str], start: int, end: int, delta: float, scene_file
         new_val = round(new_val, 2)
         # Preserve formatting (e.g. self.wait( 2.0 ) -> self.wait( 1.5 ))
         new_line = old_line[:m_start] + f"self.wait({new_val})" + old_line[m_end:]
-        patches.append({
-            "file": scene_file,
-            "line_start": line_idx + 1,
-            "line_end": line_idx + 1,
-            "old_text": old_line,
-            "new_text": new_line,
-        })
+        patches.append(
+            {
+                "file": scene_file,
+                "line_start": line_idx + 1,
+                "line_end": line_idx + 1,
+                "old_text": old_line,
+                "new_text": new_line,
+            }
+        )
         message = f"Adjusted self.wait({old_val}) -> self.wait({new_val}) at line {line_idx + 1}"
     elif waits and delta < 0:
         # Increase the last wait
@@ -109,13 +112,15 @@ def _fix_python(lines: list[str], start: int, end: int, delta: float, scene_file
         new_val = old_val + abs(delta)
         new_val = round(new_val, 2)
         new_line = old_line[:m_start] + f"self.wait({new_val})" + old_line[m_end:]
-        patches.append({
-            "file": scene_file,
-            "line_start": line_idx + 1,
-            "line_end": line_idx + 1,
-            "old_text": old_line,
-            "new_text": new_line,
-        })
+        patches.append(
+            {
+                "file": scene_file,
+                "line_start": line_idx + 1,
+                "line_end": line_idx + 1,
+                "old_text": old_line,
+                "new_text": new_line,
+            }
+        )
         message = f"Adjusted self.wait({old_val}) -> self.wait({new_val}) at line {line_idx + 1}"
     elif runtimes and delta > 0:
         # Reduce the longest run_time
@@ -126,18 +131,28 @@ def _fix_python(lines: list[str], start: int, end: int, delta: float, scene_file
             new_val = max(0.1, old_val - reducible)
             new_val = round(new_val, 2)
             new_line = old_line[:m_start] + f"run_time={new_val}" + old_line[m_end:]
-            patches.append({
-                "file": scene_file,
-                "line_start": line_idx + 1,
-                "line_end": line_idx + 1,
-                "old_text": old_line,
-                "new_text": new_line,
-            })
+            patches.append(
+                {
+                    "file": scene_file,
+                    "line_start": line_idx + 1,
+                    "line_end": line_idx + 1,
+                    "old_text": old_line,
+                    "new_text": new_line,
+                }
+            )
             message = f"Adjusted run_time={old_val} -> run_time={new_val} at line {line_idx + 1}"
         else:
-            return {"success": False, "patches": [], "message": "Run_time too short to reduce further"}
+            return {
+                "success": False,
+                "patches": [],
+                "message": "Run_time too short to reduce further",
+            }
     else:
-        return {"success": False, "patches": [], "message": "No adjustable wait() or run_time found"}
+        return {
+            "success": False,
+            "patches": [],
+            "message": "No adjustable wait() or run_time found",
+        }
 
     return {
         "success": True,

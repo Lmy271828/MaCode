@@ -57,7 +57,7 @@ class TestCheckSnapshot:
             "timestamp": 0,
             "objects": [
                 {"id": "circle", "type": "visual", "bbox": {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2}}
-            ]
+            ],
         }
         assert layout_mod.check_snapshot(snapshot) == []
 
@@ -66,8 +66,12 @@ class TestCheckSnapshot:
             "timestamp": 1.5,
             "objects": [
                 {"id": "title", "type": "text", "bbox": {"x": 0.3, "y": 0.1, "w": 0.4, "h": 0.08}},
-                {"id": "subtitle", "type": "text", "bbox": {"x": 0.35, "y": 0.12, "w": 0.3, "h": 0.06}}
-            ]
+                {
+                    "id": "subtitle",
+                    "type": "text",
+                    "bbox": {"x": 0.35, "y": 0.12, "w": 0.3, "h": 0.06},
+                },
+            ],
         }
         issues = layout_mod.check_snapshot(snapshot)
         assert len(issues) == 1
@@ -82,8 +86,12 @@ class TestCheckSnapshot:
             "timestamp": 0,
             "objects": [
                 {"id": "label", "type": "text", "bbox": {"x": 0.2, "y": 0.2, "w": 0.3, "h": 0.1}},
-                {"id": "eq", "type": "formula", "bbox": {"x": 0.25, "y": 0.25, "w": 0.2, "h": 0.08}}
-            ]
+                {
+                    "id": "eq",
+                    "type": "formula",
+                    "bbox": {"x": 0.25, "y": 0.25, "w": 0.2, "h": 0.08},
+                },
+            ],
         }
         issues = layout_mod.check_snapshot(snapshot)
         assert len(issues) == 1
@@ -94,8 +102,8 @@ class TestCheckSnapshot:
             "timestamp": 0,
             "objects": [
                 {"id": "a", "type": "text", "bbox": {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.1}},
-                {"id": "b", "type": "text", "bbox": {"x": 0.5, "y": 0.5, "w": 0.2, "h": 0.1}}
-            ]
+                {"id": "b", "type": "text", "bbox": {"x": 0.5, "y": 0.5, "w": 0.2, "h": 0.1}},
+            ],
         }
         assert layout_mod.check_snapshot(snapshot) == []
 
@@ -115,8 +123,12 @@ class TestCheck:
                 "canvas": [1920, 1080],
                 "objects": [
                     {"id": "t1", "type": "text", "bbox": {"x": 0.3, "y": 0.1, "w": 0.4, "h": 0.08}},
-                    {"id": "t2", "type": "text", "bbox": {"x": 0.35, "y": 0.12, "w": 0.3, "h": 0.06}}
-                ]
+                    {
+                        "id": "t2",
+                        "type": "text",
+                        "bbox": {"x": 0.35, "y": 0.12, "w": 0.3, "h": 0.06},
+                    },
+                ],
             }
             path = os.path.join(scene_dir, "layout_snapshots.jsonl")
             with open(path, "w") as f:

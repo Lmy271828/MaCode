@@ -7,6 +7,7 @@ Reads check-static reports, applies fix strategies, verifies, and rolls back on 
 Usage:
     auto-fix.py <scene_dir> [--max-rounds 3] [--dry-run]
 """
+
 from __future__ import annotations
 
 import argparse

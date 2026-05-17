@@ -7,8 +7,6 @@ import os
 import sys
 import tempfile
 
-import pytest
-
 BIN_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "bin")
 sys.path.insert(0, BIN_DIR)
 
@@ -96,7 +94,9 @@ class TestAddSourceComment:
         with tempfile.TemporaryDirectory() as d:
             scene = os.path.join(d, "scene.tsx")
             with open(scene, "w", encoding="utf-8") as f:
-                f.write("import {makeScene2D} from '@motion-canvas/2d';\n\nexport default makeScene2D(function* (view) {\n});\n")
+                f.write(
+                    "import {makeScene2D} from '@motion-canvas/2d';\n\nexport default makeScene2D(function* (view) {\n});\n"
+                )
 
             issue = _make_issue("add_source_comment", seg_id="intro", lines=[2, 2])
             result = align_segment_comment.apply(issue, d)

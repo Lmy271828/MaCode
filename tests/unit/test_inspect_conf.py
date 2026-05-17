@@ -19,7 +19,9 @@ import pytest
 
 BIN_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "bin")
 
-spec = importlib.util.spec_from_file_location("inspect_conf", os.path.join(BIN_DIR, "inspect-conf.py"))
+spec = importlib.util.spec_from_file_location(
+    "inspect_conf", os.path.join(BIN_DIR, "inspect-conf.py")
+)
 inspect_conf = importlib.util.module_from_spec(spec)
 sys.modules["inspect_conf"] = inspect_conf
 spec.loader.exec_module(inspect_conf)
@@ -28,6 +30,7 @@ spec.loader.exec_module(inspect_conf)
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_conf(content: str) -> str:
     with tempfile.NamedTemporaryFile(mode="w", suffix=".conf", delete=False, encoding="utf-8") as f:
@@ -38,6 +41,7 @@ def _make_conf(content: str) -> str:
 # ---------------------------------------------------------------------------
 # parse_engine_conf
 # ---------------------------------------------------------------------------
+
 
 class TestParseEngineConf:
     def test_missing_file_returns_defaults(self):
@@ -168,6 +172,7 @@ mode: batch
 # ---------------------------------------------------------------------------
 # main / CLI
 # ---------------------------------------------------------------------------
+
 
 class TestMain:
     def test_main_prints_json(self, capsys):

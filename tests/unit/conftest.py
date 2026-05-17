@@ -31,6 +31,7 @@ def _load_bin_module(name: str, filename: str):
 @pytest.fixture(scope="session")
 def bin_modules():
     """Lazy-loaded bin modules available to all tests."""
+
     class Modules:
         pass
 

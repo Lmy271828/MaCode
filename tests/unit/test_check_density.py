@@ -36,7 +36,7 @@ def _cleanup(path: str):
 
 class TestObjectCount:
     def test_too_many_objects(self):
-        code = '''
+        code = """
 class MyScene(ZoneScene):
     def construct(self):
         self.add(Circle())
@@ -51,7 +51,7 @@ class MyScene(ZoneScene):
         self.add(Circle())
         self.add(Circle())
         self.add(Circle())
-'''
+"""
         path = _make_scene(code)
         try:
             report = check_density.check(path)
@@ -61,12 +61,12 @@ class MyScene(ZoneScene):
             _cleanup(path)
 
     def test_object_count_ok(self):
-        code = '''
+        code = """
 class MyScene(ZoneScene):
     def construct(self):
         self.add(Circle())
         self.add(Square())
-'''
+"""
         path = _make_scene(code)
         try:
             report = check_density.check(path)
@@ -77,7 +77,7 @@ class MyScene(ZoneScene):
 
 class TestColorCount:
     def test_too_many_colors(self):
-        code = '''
+        code = """
 class MyScene(ZoneScene):
     def construct(self):
         c1 = Circle().set_color("RED")
@@ -88,7 +88,7 @@ class MyScene(ZoneScene):
         c6 = Circle().set_color("PURPLE")
         c7 = Circle().set_color("WHITE")
         self.add(c1, c2, c3, c4, c5, c6, c7)
-'''
+"""
         path = _make_scene(code)
         try:
             report = check_density.check(path)
@@ -98,13 +98,13 @@ class MyScene(ZoneScene):
             _cleanup(path)
 
     def test_color_count_ok(self):
-        code = '''
+        code = """
 class MyScene(ZoneScene):
     def construct(self):
         c1 = Circle().set_color("RED")
         c2 = Circle().set_color("GREEN")
         self.add(c1, c2)
-'''
+"""
         path = _make_scene(code)
         try:
             report = check_density.check(path)
@@ -113,7 +113,7 @@ class MyScene(ZoneScene):
             _cleanup(path)
 
     def test_colors_from_keywords(self):
-        code = '''
+        code = """
 class MyScene(ZoneScene):
     def construct(self):
         c1 = Circle(fill="RED")
@@ -124,7 +124,7 @@ class MyScene(ZoneScene):
         c6 = Circle().set_color("PURPLE")
         c7 = Circle(fill_color="WHITE")
         self.add(c1, c2, c3, c4, c5, c6, c7)
-'''
+"""
         path = _make_scene(code)
         try:
             report = check_density.check(path)
@@ -136,7 +136,7 @@ class MyScene(ZoneScene):
 
 class TestAnimationCount:
     def test_too_many_animations(self):
-        code = '''
+        code = """
 class MyScene(ZoneScene):
     def construct(self):
         self.play(Create(Circle()))
@@ -159,7 +159,7 @@ class MyScene(ZoneScene):
         self.play(Create(Circle()))
         self.play(Create(Circle()))
         self.play(Create(Circle()))
-'''
+"""
         path = _make_scene(code)
         try:
             report = check_density.check(path)
@@ -169,12 +169,12 @@ class MyScene(ZoneScene):
             _cleanup(path)
 
     def test_animation_count_ok(self):
-        code = '''
+        code = """
 class MyScene(ZoneScene):
     def construct(self):
         self.play(Create(Circle()))
         self.play(FadeIn(Square()))
-'''
+"""
         path = _make_scene(code)
         try:
             report = check_density.check(path)
@@ -183,13 +183,13 @@ class MyScene(ZoneScene):
             _cleanup(path)
 
     def test_place_and_add_counted_as_objects(self):
-        code = '''
+        code = """
 class MyScene(ZoneScene):
     def construct(self):
         self.place(Circle(), "main_visual")
         self.place(Square(), "main_visual")
         self.add(Axes())
-'''
+"""
         path = _make_scene(code)
         try:
             report = check_density.check(path)

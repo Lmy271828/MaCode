@@ -276,8 +276,7 @@ def check(scene_file: str, layout_profile: dict) -> dict:
                         "type": "object_overlap",
                         "zone": zone_name,
                         "message": (
-                            f"Zone '{zone_name}' objects likely overlap "
-                            f"(occupancy {occupancy:.1%})"
+                            f"Zone '{zone_name}' objects likely overlap (occupancy {occupancy:.1%})"
                         ),
                     }
                 )
@@ -347,9 +346,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("scene_file", help="Path to scene.py")
-    parser.add_argument(
-        "--layout-profile", default="lecture_3zones", help="Layout profile name"
-    )
+    parser.add_argument("--layout-profile", default="lecture_3zones", help="Layout profile name")
     parser.add_argument("--output", default=None, help="Write JSON report to file")
     args = parser.parse_args()
 

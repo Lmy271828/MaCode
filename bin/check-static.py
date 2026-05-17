@@ -30,92 +30,107 @@ def fail(msg: str):
     sys.exit(1)
 
 
-def run_registry_checks(scene_dir: str, engine: str = None, layer: str = 'layer1') -> dict:
+def run_registry_checks(scene_dir: str, engine: str = None, layer: str = "layer1") -> dict:
     """Delegate to check-runner.py for layer checks."""
-    cmd = [sys.executable, os.path.join(_SCRIPT_DIR, 'check-runner.py'), scene_dir, '--layer', layer]
+    cmd = [
+        sys.executable,
+        os.path.join(_SCRIPT_DIR, "check-runner.py"),
+        scene_dir,
+        "--layer",
+        layer,
+    ]
     if engine:
-        cmd += ['--engine', engine]
+        cmd += ["--engine", engine]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode in (0, 1) and result.stdout.strip():
         return json.loads(result.stdout)
     # Defensive: empty stdout or unexpected failure — synthesize error report
-    error_msg = result.stderr.strip() or 'check-runner.py produced no output'
+    error_msg = result.stderr.strip() or "check-runner.py produced no output"
     return {
-        'scene': os.path.basename(os.path.normpath(scene_dir)),
-        'status': 'error',
-        'segments': [],
-        'issues': [{'type': 'runner_failed', 'message': error_msg}],
+        "scene": os.path.basename(os.path.normpath(scene_dir)),
+        "status": "error",
+        "segments": [],
+        "issues": [{"type": "runner_failed", "message": error_msg}],
     }
 
 
 def check_composite_or_unified(scene_dir: str, manifest: dict, manifest_type: str):
     """递归检查 composite / composite-unified 的子场景。"""
-    segments = manifest.get('segments', [])
+    segments = manifest.get("segments", [])
     results = []
     for seg in segments:
-        seg_id = seg.get('id', 'unknown')
-        seg_dir = os.path.join(scene_dir, seg.get('scene_dir', ''))
+        seg_id = seg.get("id", "unknown")
+        seg_dir = os.path.join(scene_dir, seg.get("scene_dir", ""))
         if not os.path.isdir(seg_dir):
-            results.append({
-                'id': seg_id,
-                'status': 'error',
-                'issues': [{'type': 'dir_missing', 'message': f'Segment dir not found: {seg_dir}'}]
-            })
+            results.append(
+                {
+                    "id": seg_id,
+                    "status": "error",
+                    "issues": [
+                        {"type": "dir_missing", "message": f"Segment dir not found: {seg_dir}"}
+                    ],
+                }
+            )
             continue
-        result = subprocess.run(
-            [sys.executable, __file__, seg_dir],
-            capture_output=True, text=True
-        )
+        result = subprocess.run([sys.executable, __file__, seg_dir], capture_output=True, text=True)
         if result.returncode == 0:
             data = json.loads(result.stdout)
-            results.append({
-                'id': seg_id,
-                'status': data.get('status', 'unknown'),
-                'sub_segments': data.get('segments', []),
-                'issues': data.get('issues', []),
-            })
+            results.append(
+                {
+                    "id": seg_id,
+                    "status": data.get("status", "unknown"),
+                    "sub_segments": data.get("segments", []),
+                    "issues": data.get("issues", []),
+                }
+            )
         else:
-            results.append({
-                'id': seg_id,
-                'status': 'error',
-                'issues': [{'type': 'check_failed', 'message': result.stderr.strip()}]
-            })
+            results.append(
+                {
+                    "id": seg_id,
+                    "status": "error",
+                    "issues": [{"type": "check_failed", "message": result.stderr.strip()}],
+                }
+            )
 
     output = {
-        'scene': os.path.basename(os.path.normpath(scene_dir)),
-        'type': manifest_type,
-        'timestamp': datetime.now(UTC).isoformat(),
-        'segments': results,
+        "scene": os.path.basename(os.path.normpath(scene_dir)),
+        "type": manifest_type,
+        "timestamp": datetime.now(UTC).isoformat(),
+        "segments": results,
     }
     print(json.dumps(output, indent=2, ensure_ascii=False))
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Static scene checker (no rendering). '
-                    'Validates segment consistency, duration and formula density.',
+        description="Static scene checker (no rendering). "
+        "Validates segment consistency, duration and formula density.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument('scene_dir', help='Path to scene directory')
-    parser.add_argument('--layer', default='layer1', choices=['layer1', 'layer2', 'layer3'],
-                        help='Check layer to run (default: layer1)')
-    parser.add_argument('--output', default=None, help='Write report to file (with locking)')
+    parser.add_argument("scene_dir", help="Path to scene directory")
+    parser.add_argument(
+        "--layer",
+        default="layer1",
+        choices=["layer1", "layer2", "layer3"],
+        help="Check layer to run (default: layer1)",
+    )
+    parser.add_argument("--output", default=None, help="Write report to file (with locking)")
     args = parser.parse_args()
 
     scene_dir = args.scene_dir
     if not os.path.isdir(scene_dir):
         fail(f"Error: directory not found: {scene_dir}")
 
-    manifest_path = os.path.join(scene_dir, 'manifest.json')
+    manifest_path = os.path.join(scene_dir, "manifest.json")
     if not os.path.exists(manifest_path):
         fail(f"Error: manifest.json not found: {manifest_path}")
 
-    with open(manifest_path, encoding='utf-8') as f:
+    with open(manifest_path, encoding="utf-8") as f:
         manifest = json.load(f)
 
     layer = args.layer
-    manifest_type = manifest.get('type', 'scene')
-    if manifest_type == 'composite-unified' and layer == 'layer1':
+    manifest_type = manifest.get("type", "scene")
+    if manifest_type == "composite-unified" and layer == "layer1":
         check_composite_or_unified(scene_dir, manifest, manifest_type)
         return
 
@@ -125,14 +140,14 @@ def main():
 
     # Backward-compatible output format
     output = {
-        'scene': report.get('scene', os.path.basename(os.path.normpath(scene_dir))),
-        'timestamp': datetime.now(UTC).isoformat(),
-        'segments': report.get('segments', []),
+        "scene": report.get("scene", os.path.basename(os.path.normpath(scene_dir))),
+        "timestamp": datetime.now(UTC).isoformat(),
+        "segments": report.get("segments", []),
     }
     if args.output:
         write_check_report(args.output, output)
     print(json.dumps(output, indent=2, ensure_ascii=False))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

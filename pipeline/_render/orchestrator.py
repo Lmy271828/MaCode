@@ -34,9 +34,9 @@ def _parse_args() -> argparse.Namespace:
         description="Render a single scene (orchestrator).",
         usage="%(prog)s <scene_dir> [options]",
         epilog="Examples:\n"
-               "  %(prog)s scenes/01_test\n"
-               "  %(prog)s scenes/01_test --fps 2 --duration 1\n"
-               "  %(prog)s scenes/01_test --json",
+        "  %(prog)s scenes/01_test\n"
+        "  %(prog)s scenes/01_test --fps 2 --duration 1\n"
+        "  %(prog)s scenes/01_test --json",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("scene_dir", help="Scene directory")
@@ -81,14 +81,10 @@ def main() -> None:
     eresult = engine.run(rctx)
     encresult = encode.run(rctx)
 
-    lifecycle.progress(
-        scene_name, "cleanup", "completed", message="Render finished successfully"
-    )
+    lifecycle.progress(scene_name, "cleanup", "completed", message="Render finished successfully")
     lifecycle.progress(scene_name, "completed", "completed", message="Done")
 
-    final_size = (
-        os.path.getsize(encresult.final_mp4) if os.path.isfile(encresult.final_mp4) else 0
-    )
+    final_size = os.path.getsize(encresult.final_mp4) if os.path.isfile(encresult.final_mp4) else 0
     if args.json:
         print(
             json.dumps(

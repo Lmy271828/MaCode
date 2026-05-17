@@ -9,6 +9,7 @@ Outputs JSON to .agent/context/skill_context.json containing:
 - recent errors / activity
 - recommended next steps
 """
+
 from __future__ import annotations
 
 import json

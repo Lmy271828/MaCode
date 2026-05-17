@@ -1,7 +1,6 @@
 """Unit tests for bin/macode_layout shared geometry."""
 
 import numpy as np
-
 from macode_layout.layout_geometry import compute_position, px_per_unit, zone_bounds
 from macode_layout.layout_validator import (
     PrimaryZoneEmptyError,
@@ -34,7 +33,7 @@ def test_validate_zone_overflow():
     zo["z"] = [object()]
     try:
         validate_zone("z", object(), zone_meta, zo)
-        assert False  # pragma: no cover
+        raise AssertionError("Expected ZoneOverflowError")
     except ZoneOverflowError:
         pass
 
@@ -45,7 +44,7 @@ def test_validate_primary_requires_visual():
     objs = {"m": [TextObj()]}
     try:
         validate_primary_zone(zones, objs)
-        assert False  # pragma: no cover
+        raise AssertionError("Expected PrimaryZoneEmptyError")
     except PrimaryZoneEmptyError:
         pass
     zones = {"m": {"importance": "primary"}}

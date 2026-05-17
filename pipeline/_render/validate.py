@@ -57,9 +57,7 @@ def _exit_with(msg: str, code: int = 1) -> None:
 def _parse_engine_conf(engine: str) -> dict:
     engine_conf_path = os.path.join(PROJECT_ROOT, "engines", engine, "engine.conf")
     if not os.path.isfile(engine_conf_path):
-        _exit_with(
-            f"Error: engine.conf not found for '{engine}'\n  Expected: {engine_conf_path}"
-        )
+        _exit_with(f"Error: engine.conf not found for '{engine}'\n  Expected: {engine_conf_path}")
     result = subprocess.run(
         [get_python(), os.path.join(PROJECT_ROOT, "bin", "inspect-conf.py"), engine_conf_path],
         capture_output=True,
@@ -93,7 +91,9 @@ def _run_validate_manifest(manifest_path: str) -> None:
 def _run_api_gate(scene_file: str, engine: str, log_file: str) -> None:
     sourcemap_path = os.path.join(PROJECT_ROOT, "engines", engine, "sourcemap.json")
     api_gate = os.path.join(PROJECT_ROOT, "bin", "api-gate.py")
-    if not (os.path.isfile(sourcemap_path) and os.path.isfile(api_gate) and os.access(api_gate, os.X_OK)):
+    if not (
+        os.path.isfile(sourcemap_path) and os.path.isfile(api_gate) and os.access(api_gate, os.X_OK)
+    ):
         return
     print(f"[api-gate] Checking {scene_file} against sourcemap.json BLACKLIST...")
     with open(log_file, "a", encoding="utf-8") as logf:
@@ -223,9 +223,7 @@ def validate_scene(
 
     scene_file = locate_scene_file(scene_dir, ext_list)
     if not scene_file:
-        _exit_with(
-            f"Error: scene file not found in {scene_dir}\n  Tried extensions: {ext_list}"
-        )
+        _exit_with(f"Error: scene file not found in {scene_dir}\n  Tried extensions: {ext_list}")
 
     fps = args_fps if args_fps is not None else manifest.get("fps", 30)
     duration = args_duration if args_duration is not None else manifest.get("duration", 3)

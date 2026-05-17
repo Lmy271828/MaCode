@@ -35,10 +35,13 @@ def _import_runner():
     try:
         from utils.shader_backend import Backend
         from utils.shader_runner import HeadlessShaderRunner
+
         return HeadlessShaderRunner, Backend
     except ImportError as exc:
         print(f"[error] Cannot import shader_runner: {exc}", file=sys.stderr)
-        print("[hint] Ensure moderngl is installed in the active Python environment.", file=sys.stderr)
+        print(
+            "[hint] Ensure moderngl is installed in the active Python environment.", file=sys.stderr
+        )
         sys.exit(1)
 
 
@@ -52,12 +55,31 @@ def main():
 """,
     )
     parser.add_argument("shader_dir", help="Path to shader asset directory containing shader.json")
-    parser.add_argument("--output", "-o", default=None, help="Output directory for frames (default: shader_dir/frames/)")
-    parser.add_argument("--fps", type=float, default=None, help="Frames per second (override shader.json)")
-    parser.add_argument("--duration", type=float, default=None, help="Duration in seconds (override shader.json)")
-    parser.add_argument("--resolution", type=str, default=None, help="Resolution as WxH, e.g. 1920x1080 (override shader.json)")
+    parser.add_argument(
+        "--output",
+        "-o",
+        default=None,
+        help="Output directory for frames (default: shader_dir/frames/)",
+    )
+    parser.add_argument(
+        "--fps", type=float, default=None, help="Frames per second (override shader.json)"
+    )
+    parser.add_argument(
+        "--duration", type=float, default=None, help="Duration in seconds (override shader.json)"
+    )
+    parser.add_argument(
+        "--resolution",
+        type=str,
+        default=None,
+        help="Resolution as WxH, e.g. 1920x1080 (override shader.json)",
+    )
     parser.add_argument("--prefix", default="frame", help="Frame filename prefix (default: frame)")
-    parser.add_argument("--backend", choices=["gpu", "d3d12", "cpu", "headless"], default=None, help="Force rendering backend")
+    parser.add_argument(
+        "--backend",
+        choices=["gpu", "d3d12", "cpu", "headless"],
+        default=None,
+        help="Force rendering backend",
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
 
     args = parser.parse_args()

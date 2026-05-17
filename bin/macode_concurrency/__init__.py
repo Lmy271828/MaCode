@@ -26,7 +26,9 @@ def file_lock(lock_path: str, timeout: float = 10.0):
         except OSError:
             if time.time() - start > timeout:
                 os.close(fd)
-                raise TimeoutError(f"Could not acquire lock on {lock_path} within {timeout}s") from None
+                raise TimeoutError(
+                    f"Could not acquire lock on {lock_path} within {timeout}s"
+                ) from None
             time.sleep(0.05)
     try:
         yield fd

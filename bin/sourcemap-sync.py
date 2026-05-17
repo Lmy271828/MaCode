@@ -267,9 +267,13 @@ def main() -> None:
         description="MaCode sourcemap: engines/{engine}/sourcemap.json is canonical.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("engine", nargs="?", help="Engine name (default: project.yaml defaults.engine)")
+    parser.add_argument(
+        "engine", nargs="?", help="Engine name (default: project.yaml defaults.engine)"
+    )
     parser.add_argument("--all", action="store_true", help="Sync all engines with sourcemap.json")
-    parser.add_argument("--check", action="store_true", help="Verify SOURCEMAP.md matches JSON (no write)")
+    parser.add_argument(
+        "--check", action="store_true", help="Verify SOURCEMAP.md matches JSON (no write)"
+    )
     parser.add_argument(
         "--write-md-only",
         action="store_true",

@@ -57,8 +57,7 @@ def validate_zone(
         mro_names = {cls.__name__ for cls in type(mobj).__mro__}
         if not mro_names.intersection(set(allowed)):
             raise ZoneTypeError(
-                f"Zone '{zone_name}' does not allow type '{type_name}'. "
-                f"Allowed: {allowed}"
+                f"Zone '{zone_name}' does not allow type '{type_name}'. Allowed: {allowed}"
             )
 
 

@@ -13,8 +13,6 @@ import os
 import sys
 import tempfile
 
-import pytest
-
 BIN_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "bin")
 
 spec = importlib.util.spec_from_file_location(

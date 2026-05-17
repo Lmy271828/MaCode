@@ -35,6 +35,7 @@ class TestStateWrite(unittest.TestCase):
 
     def tearDown(self) -> None:
         import shutil
+
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def _load_state(self) -> dict:
@@ -188,6 +189,7 @@ class TestProgressWrite(unittest.TestCase):
 
     def tearDown(self) -> None:
         import shutil
+
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def test_basic_append(self):
@@ -218,9 +220,7 @@ class TestProgressWrite(unittest.TestCase):
 
     def test_no_message(self):
         """Should omit message field when not provided."""
-        result = run_script(
-            "progress-write.py", [self.progress_file, "render", "running"]
-        )
+        result = run_script("progress-write.py", [self.progress_file, "render", "running"])
         self.assertEqual(result.returncode, 0)
         with open(self.progress_file) as f:
             record = json.loads(f.read())
@@ -253,6 +253,7 @@ class TestStateRead(unittest.TestCase):
 
     def tearDown(self) -> None:
         import shutil
+
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def test_read_full(self):
@@ -270,17 +271,13 @@ class TestStateRead(unittest.TestCase):
 
     def test_read_jq_path(self):
         """Should resolve simple jq path."""
-        result = run_script(
-            "state-read.py", [self.state_dir, "--jq", ".outputs.framesRendered"]
-        )
+        result = run_script("state-read.py", [self.state_dir, "--jq", ".outputs.framesRendered"])
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stdout.strip(), "90")
 
     def test_read_jq_missing(self):
         """Should fail on missing jq path."""
-        result = run_script(
-            "state-read.py", [self.state_dir, "--jq", ".outputs.missing"]
-        )
+        result = run_script("state-read.py", [self.state_dir, "--jq", ".outputs.missing"])
         self.assertNotEqual(result.returncode, 0)
 
     def test_missing_state(self):

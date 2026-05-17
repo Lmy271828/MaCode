@@ -6,6 +6,7 @@ Usage:
     extract-keyframes.py <mp4> --output-dir <dir> [--times 0.0 1.5 3.0]
     extract-keyframes.py <mp4> --output-dir <dir> --count 5
 """
+
 from __future__ import annotations
 
 import argparse
@@ -35,7 +36,9 @@ def get_duration(mp4_path: str) -> float:
     return float(result.stdout.strip())
 
 
-def extract_keyframes(mp4_path: str, output_dir: str, times: list[float] | None = None, count: int = 5) -> dict:
+def extract_keyframes(
+    mp4_path: str, output_dir: str, times: list[float] | None = None, count: int = 5
+) -> dict:
     os.makedirs(output_dir, exist_ok=True)
 
     if times is None:

@@ -17,8 +17,6 @@ import sys
 import tempfile
 from unittest import mock
 
-import pytest
-
 BIN_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "bin")
 
 spec = importlib.util.spec_from_file_location("auto_fix", os.path.join(BIN_DIR, "auto-fix.py"))
@@ -54,20 +52,46 @@ def _make_duration_issue(declared: float, computed: float) -> dict:
 
 class TestCollectFixableIssues:
     def test_filters_by_confidence(self):
-        report = _make_report("warning", [
-            {"type": "A", "fixable": True, "fix_confidence": 0.9, "fix": {"strategy": "adjust_wait"}},
-            {"type": "B", "fixable": True, "fix_confidence": 0.5, "fix": {"strategy": "adjust_wait"}},
-            {"type": "C", "fixable": False, "fix_confidence": 0.9},
-        ])
+        report = _make_report(
+            "warning",
+            [
+                {
+                    "type": "A",
+                    "fixable": True,
+                    "fix_confidence": 0.9,
+                    "fix": {"strategy": "adjust_wait"},
+                },
+                {
+                    "type": "B",
+                    "fixable": True,
+                    "fix_confidence": 0.5,
+                    "fix": {"strategy": "adjust_wait"},
+                },
+                {"type": "C", "fixable": False, "fix_confidence": 0.9},
+            ],
+        )
         result = auto_fix.collect_fixable_issues(report)
         assert len(result) == 1
         assert result[0]["type"] == "A"
 
     def test_sorts_by_confidence_descending(self):
-        report = _make_report("warning", [
-            {"type": "low", "fixable": True, "fix_confidence": 0.8, "fix": {"strategy": "adjust_wait"}},
-            {"type": "high", "fixable": True, "fix_confidence": 0.95, "fix": {"strategy": "adjust_wait"}},
-        ])
+        report = _make_report(
+            "warning",
+            [
+                {
+                    "type": "low",
+                    "fixable": True,
+                    "fix_confidence": 0.8,
+                    "fix": {"strategy": "adjust_wait"},
+                },
+                {
+                    "type": "high",
+                    "fixable": True,
+                    "fix_confidence": 0.95,
+                    "fix": {"strategy": "adjust_wait"},
+                },
+            ],
+        )
         result = auto_fix.collect_fixable_issues(report)
         assert result[0]["type"] == "high"
         assert result[1]["type"] == "low"
@@ -126,6 +150,7 @@ class TestRollbackPatches:
 
         # Create backup
         import shutil
+
         shutil.copy2(path, path + ".autofix.bak")
 
         # Modify file
@@ -187,13 +212,18 @@ class TestMain:
 
             # Need a manifest.json for check-static to not fail early
             with open(os.path.join(d, "manifest.json"), "w", encoding="utf-8") as f:
-                json.dump({
-                    "engine": "manim",
-                    "duration": 3,
-                    "fps": 30,
-                    "resolution": [1920, 1080],
-                    "segments": [{"id": "main", "time_range": [0.0, 3.0], "line_start": 3, "line_end": 6}],
-                }, f)
+                json.dump(
+                    {
+                        "engine": "manim",
+                        "duration": 3,
+                        "fps": 30,
+                        "resolution": [1920, 1080],
+                        "segments": [
+                            {"id": "main", "time_range": [0.0, 3.0], "line_start": 3, "line_end": 6}
+                        ],
+                    },
+                    f,
+                )
 
             outputs = [report1, report2, report2]
             call_idx = [0]
@@ -232,11 +262,18 @@ class TestMain:
                 f.write("        self.wait(2.0)\n")
 
             with open(os.path.join(d, "manifest.json"), "w", encoding="utf-8") as f:
-                json.dump({
-                    "engine": "manim", "duration": 3, "fps": 30,
-                    "resolution": [1920, 1080],
-                    "segments": [{"id": "main", "time_range": [0.0, 3.0], "line_start": 3, "line_end": 5}],
-                }, f)
+                json.dump(
+                    {
+                        "engine": "manim",
+                        "duration": 3,
+                        "fps": 30,
+                        "resolution": [1920, 1080],
+                        "segments": [
+                            {"id": "main", "time_range": [0.0, 3.0], "line_start": 3, "line_end": 5}
+                        ],
+                    },
+                    f,
+                )
 
             def fake_run(cmd, **kwargs):
                 if any("check-static.py" in str(arg) for arg in cmd):

@@ -105,9 +105,7 @@ def extract_stage_calls(tree: ast.AST) -> list:
                 continue
             stage_id_node = node.args[0]
             stage_id = ""
-            if isinstance(stage_id_node, ast.Constant) and isinstance(
-                stage_id_node.value, str
-            ):
+            if isinstance(stage_id_node, ast.Constant) and isinstance(stage_id_node.value, str):
                 stage_id = stage_id_node.value
             mobjects = node.args[1:]
             run_time = None

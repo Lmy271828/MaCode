@@ -40,9 +40,7 @@ class NarrativeSceneMixin:
         path = narratives_dir / f"{profile}.json"
         if not path.exists():
             available = (
-                [p.stem for p in narratives_dir.glob("*.json")]
-                if narratives_dir.exists()
-                else []
+                [p.stem for p in narratives_dir.glob("*.json")] if narratives_dir.exists() else []
             )
             raise NarrativeProfileError(
                 f"Narrative profile '{profile}.json' not found in {narratives_dir}. "
@@ -133,9 +131,7 @@ class NarrativeSceneMixin:
             "profile": self.NARRATIVE_PROFILE,
             "played": sorted(self._stages_played),
             "stage_times": self._stage_start_times,
-            "total_elapsed": (
-                getattr(self, "time", 0.0) or 0.0
-            ) - self._narrative_time_origin,
+            "total_elapsed": (getattr(self, "time", 0.0) or 0.0) - self._narrative_time_origin,
         }
 
     def _build_animations(
