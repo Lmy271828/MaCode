@@ -56,26 +56,26 @@ class TestPathToModule:
 class TestCheckPythonImports:
     def test_detects_blacklisted_import(self):
         code = "import manimlib\n"
-        blacklist = [("manimlib/", "manimlib")]
+        blacklist = [("manimlib/", "manimlib", "old api", "DEPRECATED_GL")]
         v = api_gate.check_python_imports(code, blacklist)
         assert len(v) == 1
-        assert "manimlib" in v[0]
+        assert v[0]["module"] == "manimlib"
 
     def test_detects_from_import(self):
         code = "from manimlib import Scene\n"
-        blacklist = [("manimlib/", "manimlib")]
+        blacklist = [("manimlib/", "manimlib", "old api", "DEPRECATED_GL")]
         v = api_gate.check_python_imports(code, blacklist)
         assert len(v) == 1
 
     def test_detects_submodule_import(self):
         code = "import foo.manimlib.bar\n"
-        blacklist = [("manimlib/", "manimlib")]
+        blacklist = [("manimlib/", "manimlib", "old api", "DEPRECATED_GL")]
         v = api_gate.check_python_imports(code, blacklist)
         assert len(v) == 1
 
     def test_allows_whitelisted_import(self):
         code = "import numpy\n"
-        blacklist = [("manimlib/", "manimlib")]
+        blacklist = [("manimlib/", "manimlib", "old api", "DEPRECATED_GL")]
         v = api_gate.check_python_imports(code, blacklist)
         assert len(v) == 0
 
@@ -95,7 +95,7 @@ class TestLoadBlacklist:
                 json.dump(data, f)
 
             result = api_gate.load_blacklist(jp)
-            modules = [m for _, m in result]
+            modules = [m for _, m, _, _ in result]
             assert "manimlib" in modules
             assert "mobject.types" in modules
 
@@ -123,7 +123,7 @@ class TestLoadBlacklist:
             with open(jp, "w", encoding="utf-8") as f:
                 json.dump({"blacklist": [{"path_raw": "badpkg/"}]}, f)
             result = api_gate.load_blacklist(jp, engine_cli="manim")
-            assert any(m == "badpkg" for _, m in result)
+            assert any(m == "badpkg" for _, m, _, _ in result)
 
     def test_missing_sourcemap_exits(self):
         with pytest.raises(SystemExit) as exc_info:

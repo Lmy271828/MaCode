@@ -273,13 +273,15 @@ scenes/
 
 | 工具 | 典型任务 | 调用示例 | 输出 |
 |------|----------|----------|------|
-| `pipeline/render.sh <scene_dir>` | 渲染单个场景 | `pipeline/render.sh scenes/01_test/` | `.agent/tmp/{scene}/final.mp4` |
+| `macode init <scene_dir>` | 快速创建单场景模板 | `macode init scenes/05_demo --engine manim` | `manifest.json` + `scene.py` |
+| `pipeline/render.sh <scene_dir>` | 渲染单个场景（自动 dry-run） | `pipeline/render.sh scenes/01_test/` | `.agent/tmp/{scene}/final.mp4` |
 | `bin/render-all.sh` | 批量渲染项目所有场景 | `bin/render-all.sh --parallel 4` | 各场景 `final.mp4` |
 | `bin/macode status` | 查看项目健康状态 | `bin/macode status` | 文本摘要 |
 | `bin/macode check <scene_dir>` | 静态检查场景合规性 | `macode check scenes/01_test --static` | 检查报告 JSON |
 | `bin/macode cleanup [--dry-run]` | 清理 stalled 进程和日志 | `macode cleanup --dry-run` | 清理报告 |
 | `bin/install-hooks.sh [--check]` | 安装/检查 git hooks | `bin/install-hooks.sh --check` | 安装报告 |
 | `bin/macode dry-run <scene_file>` | 预渲染验证（语法、导入、LaTeX） | `macode dry-run scenes/01_test/scene.py` | 通过/失败 + 问题列表 |
+| `--skip-dry-run` | 跳过 render 前的 fast dry-run | `macode render scenes/01_test --skip-dry-run` | 直接启动引擎 |
 | `bin/macode inspect --grep <re>` | 查询引擎 API 是否在白名单 | `macode inspect --grep "Circle\|MathTex"` | 匹配的 WHITELIST 条目 |
 | `macode sourcemap health` | SOURCEMAP 快速健康检查 | `macode sourcemap health` | 版本漂移 + 一致性摘要 |
 | `macode sourcemap validate <engine>` | SOURCEMAP 深度校验 | `macode sourcemap validate manim` | 校验 + 路径检查 |

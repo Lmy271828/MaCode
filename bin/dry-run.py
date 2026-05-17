@@ -117,6 +117,11 @@ def check_python_syntax(path: str) -> tuple[bool, list[str]]:
     companion_dir = os.path.dirname(path)
     files.extend(sorted(glob.glob(os.path.join(companion_dir, "*.py"))))
     files = list(dict.fromkeys(files))  # dedupe, preserve order
+    # Skip non-Python files (e.g. .tsx scenes)
+    files = [f for f in files if f.endswith(".py")]
+
+    if not files:
+        return True, []
 
     errors = []
     for f in files:
@@ -153,6 +158,11 @@ def check_imports(path: str, engine: str) -> tuple[bool, list[tuple[str, int, st
     companion_dir = os.path.dirname(path)
     files.extend(sorted(glob.glob(os.path.join(companion_dir, "*.py"))))
     files = list(dict.fromkeys(files))
+    # Skip non-Python files
+    files = [f for f in files if f.endswith(".py")]
+
+    if not files:
+        return True, []
 
     failures: list[tuple[str, int, str]] = []  # (file, line, module)
     checked = set()
@@ -290,6 +300,9 @@ def check_latex(path: str, engine: str) -> tuple[bool, int, int, list[tuple[str,
     Returns (ok, success_count, total_count, failures)
     where failures is a list of (file, line, formula, error_msg).
     """
+    if not path.endswith(".py"):
+        return True, 0, 0, []
+
     _add_engine_src(engine)
     try:
         import utils.latex_helper as lh  # noqa: PLC0415
@@ -512,6 +525,9 @@ def check_ffmpeg(path: str) -> tuple[bool, str, list[tuple[str, int, str, str]]]
     files = [path]
     companion_dir = os.path.dirname(path)
     files.extend(sorted(glob.glob(os.path.join(companion_dir, "*.py"))))
+    files = list(dict.fromkeys(files))
+    # Also include .sh companion scripts which often contain ffmpeg commands
+    files.extend(sorted(glob.glob(os.path.join(companion_dir, "*.sh"))))
     files = list(dict.fromkeys(files))
 
     all_filters: list[tuple[str, int, str, str]] = []

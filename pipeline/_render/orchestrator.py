@@ -50,6 +50,11 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip static checks (for manual debugging)",
     )
+    parser.add_argument(
+        "--skip-dry-run",
+        action="store_true",
+        help="Skip fast pre-render dry-run (syntax, imports, LaTeX)",
+    )
     args = parser.parse_args()
     return args
 
@@ -70,6 +75,7 @@ def main() -> None:
         args_width=args.width,
         args_height=args.height,
         skip_checks=args.skip_checks,
+        skip_dry_run=args.skip_dry_run,
     )
 
     eresult = engine.run(rctx)
@@ -97,12 +103,16 @@ def main() -> None:
                     "resolution": [rctx.width, rctx.height],
                     "final_size_bytes": final_size,
                     "log": rctx.log_file,
+                    "cache_hit": eresult.cache_hit,
                 },
                 indent=2,
             )
         )
     else:
-        print(f"Done: {encresult.final_mp4}")
+        if eresult.cache_hit:
+            print(f"Done (cache hit): {encresult.final_mp4}")
+        else:
+            print(f"Done: {encresult.final_mp4}")
 
 
 if __name__ == "__main__":

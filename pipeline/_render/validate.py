@@ -104,9 +104,28 @@ def _run_api_gate(scene_file: str, engine: str, log_file: str) -> None:
         )
     if result.returncode != 0:
         print("[api-gate] BLOCKED. Fix violations before rendering.")
-        subprocess.run(["tail", "-n", "5", log_file], check=False)
+        subprocess.run(["tail", "-n", "10", log_file], check=False)
         sys.exit(1)
     print("[api-gate] OK")
+
+
+def _run_dry_run(scene_file: str, engine: str) -> None:
+    """Fast pre-render validation: syntax, imports, LaTeX, ffmpeg filters."""
+    dry_run = os.path.join(PROJECT_ROOT, "bin", "dry-run.py")
+    if not os.path.isfile(dry_run):
+        return
+    print(f"[dry-run] Pre-flight check for {scene_file}...")
+    result = subprocess.run(
+        [get_python(), dry_run, scene_file, engine],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        print(result.stdout)
+        print(result.stderr, file=sys.stderr)
+        print("[dry-run] FAILED. Fix errors before rendering.", file=sys.stderr)
+        sys.exit(1)
+    print("[dry-run] OK")
 
 
 def _run_one_check(
@@ -187,6 +206,7 @@ def validate_scene(
     args_width: int | None,
     args_height: int | None,
     skip_checks: bool,
+    skip_dry_run: bool = False,
 ) -> RenderContext:
     """Full validation pipeline. Returns RenderContext or sys.exit(1) on failure."""
     manifest_path = os.path.join(scene_dir, "manifest.json")
@@ -227,6 +247,9 @@ def validate_scene(
 
     _run_validate_manifest(manifest_path)
     _run_api_gate(scene_file, engine, log_file)
+
+    if not skip_dry_run:
+        _run_dry_run(scene_file, engine)
 
     check_reports_dir = os.path.join(".agent", "check_reports")
     os.makedirs(check_reports_dir, exist_ok=True)

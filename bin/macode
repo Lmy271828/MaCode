@@ -50,6 +50,26 @@ fi
 CMD="${1:-help}"
 
 case "$CMD" in
+    init)
+        SCENE_DIR="${2:-}"
+        if [[ -z "$SCENE_DIR" ]]; then
+            echo "Usage: macode init <scene_dir> [--engine manim|manimgl|motion_canvas] [--duration <sec>]" >&2
+            exit 1
+        fi
+        shift 2
+        python3 "$PROJECT_ROOT/bin/scene-init.py" "$SCENE_DIR" "$@"
+        ;;
+
+    fix)
+        SCENE_DIR="${2:-}"
+        if [[ -z "$SCENE_DIR" ]]; then
+            echo "Usage: macode fix <scene_dir> [--max-rounds 3] [--dry-run]" >&2
+            exit 1
+        fi
+        shift 2
+        python3 "$PROJECT_ROOT/bin/auto-fix.py" "$SCENE_DIR" "$@"
+        ;;
+
     render)
         SCENE_DIR="${2:-}"
         if [[ -z "$SCENE_DIR" ]]; then
@@ -144,6 +164,8 @@ case "$CMD" in
 
     status)
         bash "$PROJECT_ROOT/bin/macode-status.sh" "$PROJECT_NAME" "$PROJECT_ROOT"
+        echo ""
+        python3 "$PROJECT_ROOT/bin/macode-skill-context.py"
         ;;
 
     undo)
@@ -548,6 +570,9 @@ MaCode — Math Animation Harness
 Usage: macode <command> [args]
 
 Commands:
+  init <scene_dir>                Create a new single scene from template
+    --engine <name>               Engine: manim | manimgl | motion_canvas
+    --duration <sec>              Scene duration (default: 3.0)
   render <scene_dir>              Render a single scene
   render-all                      Render all scenes
   composite <info|render|init|add-segment> [args]
@@ -560,6 +585,9 @@ Commands:
   check <scene_dir>               Run static + frame checks
     --static                      Run only static check
     --frames                      Run only frame check
+  fix <scene_dir>                 Auto-fix fixable issues (duration, overlap)
+    --max-rounds <n>              Max fix attempts (default: 3)
+    --dry-run                     Show patches without applying
   shader <list|render|extract>    Manage shader assets (Layer 2 → Layer 1)
     list                          List available shader assets
     render <dir> [opts]           Compile shader to PNG frames
@@ -596,6 +624,7 @@ Commands:
   help                            Show this help
 
 Examples:
+  macode init scenes/05_new_demo --engine manim
   macode render scenes/01_test
   macode dev scenes/01_test --watch --port 3000
   macode check scenes/04_base_demo --static

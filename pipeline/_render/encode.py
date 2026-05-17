@@ -136,11 +136,37 @@ def _deliver(ctx: RenderContext) -> None:
     )
 
 
+def _extract_keyframes(ctx: RenderContext) -> None:
+    """P2-B: Extract keyframe PNGs from the rendered MP4 for visual inspection."""
+    final_mp4 = os.path.join(ctx.output_dir, "final.mp4")
+    if not os.path.isfile(final_mp4):
+        return
+    keyframes_dir = os.path.join(ctx.output_dir, "keyframes")
+    script = os.path.join(PROJECT_ROOT, "bin", "extract-keyframes.py")
+    if not os.path.isfile(script):
+        return
+    print(f"[keyframes] Extracting to {keyframes_dir}...")
+    subprocess.run(
+        [
+            get_python(),
+            script,
+            final_mp4,
+            "-o",
+            keyframes_dir,
+            "--count",
+            "5",
+        ],
+        capture_output=True,
+        check=False,
+    )
+
+
 def run(ctx: RenderContext) -> EncodeResult:
     _layer2_check(ctx)
     frame_count = _check_fuses(ctx)
     final_mp4 = _encode_mp4(ctx)
     _deliver(ctx)
+    _extract_keyframes(ctx)
 
     # Recount after encode (for accurate JSON output)
     if os.path.isdir(ctx.frames_dir):

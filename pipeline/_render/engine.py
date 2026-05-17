@@ -7,6 +7,7 @@ lifecycle/log capture stays unified.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -22,6 +23,43 @@ from .validate import RenderContext
 @dataclass
 class EngineResult:
     service_was_started: bool
+    cache_hit: bool = False
+
+
+def _compute_source_hash(ctx: RenderContext) -> str:
+    """Compute a short hash of scene source + manifest for cache validation."""
+    h = hashlib.sha256()
+    for path in (ctx.scene_file, os.path.join(ctx.scene_dir, "manifest.json")):
+        if os.path.isfile(path):
+            with open(path, "rb") as f:
+                h.update(f.read())
+    return h.hexdigest()[:16]
+
+
+def _check_source_hash(ctx: RenderContext) -> bool:
+    """Return True if cached output exists and source hasn't changed."""
+    hash_file = os.path.join(ctx.output_dir, ".source_hash")
+    current = _compute_source_hash(ctx)
+    if os.path.isfile(hash_file):
+        with open(hash_file, encoding="utf-8") as f:
+            stored = f.read().strip()
+        if stored == current:
+            # Verify that at least one output artifact exists
+            candidates = [
+                os.path.join(ctx.output_dir, "final.mp4"),
+                os.path.join(ctx.output_dir, "raw.mp4"),
+            ]
+            if ctx.engine_mode != "interactive":
+                candidates.append(ctx.frames_dir)
+            if any(os.path.exists(p) for p in candidates):
+                return True
+    return False
+
+
+def _write_source_hash(ctx: RenderContext) -> None:
+    hash_file = os.path.join(ctx.output_dir, ".source_hash")
+    with open(hash_file, "w", encoding="utf-8") as f:
+        f.write(_compute_source_hash(ctx))
 
 
 def _resolve_engine_script(ctx: RenderContext) -> str:
@@ -218,6 +256,17 @@ def run(ctx: RenderContext) -> EngineResult:
 
     engine_script = _resolve_engine_script(ctx)
 
+    # P2-A: Source-hash cache check
+    if _check_source_hash(ctx):
+        print(f"[{ctx.engine}] Source unchanged — using cached output for {ctx.scene_name}")
+        progress(
+            ctx.scene_name,
+            "capture",
+            "completed",
+            message="Cache hit — reusing previous render",
+        )
+        return EngineResult(service_was_started=False, cache_hit=True)
+
     progress(
         ctx.scene_name,
         "init",
@@ -252,4 +301,5 @@ def run(ctx: RenderContext) -> EngineResult:
     if service_was_started:
         _stop_service(ctx)
 
-    return EngineResult(service_was_started=service_was_started)
+    _write_source_hash(ctx)
+    return EngineResult(service_was_started=service_was_started, cache_hit=False)
